@@ -148,7 +148,7 @@ export default function ClientForm({ token }: { token: string }) {
                     <Input
                       name="currency"
                       placeholder="Currency (e.g. INR)"
-                      defaultValue="INR"
+                      defaultValue="INR or USD"
                       required
                     />
                   </Field>
