@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Packing List</title>
+  <style>
+    @page { size: A4; margin: 10mm; }
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #000; }
+    table { width: 100%; border-collapse: collapse; }
+    td, th { border: 1px solid #000; padding: 4px; vertical-align: top; }
+    .center { text-align: center; }
+    .right { text-align: right; }
+    .bold { font-weight: bold; }
+    .yellow { background: #fff59d; }
+    .no-border { border: none; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<table>
+  <tr>
+    <td colspan="10" class="center bold">PACKING LIST</td>
+  </tr>
+  <tr>
+    <td class="bold">Invoice No.</td>
+    <td class="yellow">{{invoice_no}}</td>
+    <td class="bold">Date :-</td>
+    <td class="yellow">{{invoice_date}}</td>
+    <td colspan="6"></td>
+  </tr>
+</table>
+
+<!-- CONSIGNEE -->
+<table>
+  <tr>
+    <td colspan="10" class="bold">
+      Full Name : <span class="yellow">{{consignee_name}}</span><br />
+      ITPS <span class="yellow">{{shipping_country}}</span>
+    </td>
+  </tr>
+</table>
+
+<!-- ITEMS TABLE -->
+<table>
+  <thead>
+    <tr class="center bold">
+      <th>SR.NO</th>
+      <th>CUSTOMER NAME</th>
+      <th>Product Name</th>
+      <th>Packing</th>
+      <th>Manufacturer</th>
+      <th>Batch No</th>
+      <th>Exp date</th>
+      <th>QTY</th>
+      <th>Shipping country</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#items}}
+    <tr class="center">
+      <td>{{sr}}</td>
+      <td></td>
+      <td class="yellow">{{product}}</td>
+      <td>{{packing}}</td>
+      <td>{{manufacturer}}</td>
+      <td>{{batch}}</td>
+      <td>{{exp_date}}</td>
+      <td>{{qty}}</td>
+      <td class="yellow">{{shipping_country}}</td>
+    </tr>
+    {{/items}}
+  </tbody>
+</table>
+
+</body>
+</html>

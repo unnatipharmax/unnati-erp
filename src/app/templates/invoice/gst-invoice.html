@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>GST INVOICE</title>
+  <style>
+    @page { size: A4; margin: 10mm; }
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #000; }
+    table { width: 100%; border-collapse: collapse; }
+    td, th { border: 1px solid #000; padding: 3px; vertical-align: top; }
+    .center { text-align: center; }
+    .right { text-align: right; }
+    .bold { font-weight: bold; }
+    .small { font-size: 10px; }
+    .yellow { background: #fff59d; }
+    .no-border { border: none; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<table>
+  <tr>
+    <td colspan="6" class="center bold">GST INVOICE</td>
+  </tr>
+  <tr>
+    <td colspan="4" class="bold">
+      NAME & ADDRESS<br />
+      UNNATI PHARMAX<br />
+      Ground Floor House No 307/4, Guru Vandana Apartment,<br />
+      Kakasaheb Cholkar Marg, Lakadganj, Nagpur,<br />
+      MAHARASHTRA – 440008<br />
+      GSTIN/UIN : 27FNXPP3883B1ZA<br />
+      PAN : FNXPP3883B
+    </td>
+    <td class="bold">Invoice No.</td>
+    <td class="yellow">{{invoice_no}}</td>
+  </tr>
+  <tr>
+    <td colspan="4"></td>
+    <td class="bold">Date</td>
+    <td class="yellow">{{invoice_date}}</td>
+  </tr>
+</table>
+
+<!-- CONSIGNEE / BUYER -->
+<table>
+  <tr>
+    <td colspan="3" class="bold">
+      Consignee<br />
+      Full Name : <span class="yellow">{{consignee_name}}</span><br />
+      Address : <span class="yellow">{{consignee_address}}</span><br />
+      Country : <span class="yellow">{{consignee_country}}</span>
+    </td>
+    <td colspan="3" class="bold">
+      Buyer’s Reference(s)<br />
+      <span class="yellow">{{buyer_reference}}</span>
+    </td>
+  </tr>
+</table>
+
+<!-- SHIPPING DETAILS -->
+<table>
+  <tr>
+    <td>Shipment Method</td>
+    <td class="yellow">{{shipment_method}}</td>
+    <td>Pre-carriage by</td>
+    <td class="yellow">{{pre_carrier}}</td>
+    <td>Country of Origin of Goods</td>
+    <td>INDIA</td>
+  </tr>
+  <tr>
+    <td>Port of Loading</td>
+    <td class="yellow">{{port_of_loading}}</td>
+    <td>Port of Discharge</td>
+    <td></td>
+    <td>Final Destination</td>
+    <td class="yellow">{{final_destination}}</td>
+  </tr>
+</table>
+
+<!-- ITEMS TABLE -->
+<table>
+  <thead>
+    <tr class="center bold">
+      <th>Sr.No</th>
+      <th>Products</th>
+      <th>Composition</th>
+      <th>Mfg Name</th>
+      <th>HSN Code</th>
+      <th>Packing</th>
+      <th>GST</th>
+      <th>Batch No</th>
+      <th>Mfg Date</th>
+      <th>Exp Date</th>
+      <th>Unit</th>
+      <th>INR Unit</th>
+      <th>Amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#items}}
+    <tr class="center">
+      <td>{{sr}}</td>
+      <td class="yellow">{{product}}</td>
+      <td class="yellow">{{composition}}</td>
+      <td class="yellow">{{manufacturer}}</td>
+      <td>{{hsn}}</td>
+      <td>{{packing}}</td>
+      <td>{{gst}}</td>
+      <td>{{batch}}</td>
+      <td>{{mfg_date}}</td>
+      <td>{{exp_date}}</td>
+      <td>{{qty}}</td>
+      <td>{{rate}}</td>
+      <td class="right">{{amount}}</td>
+    </tr>
+    {{/items}}
+  </tbody>
+</table>
+
+<!-- TOTALS -->
+<table>
+  <tr>
+    <td colspan="11" class="right bold">Shipping Charges (EMS)</td>
+    <td colspan="2" class="yellow right">{{shipping_charges}}</td>
+  </tr>
+  <tr>
+    <td colspan="11" class="right bold">Total Amount (INR)</td>
+    <td colspan="2" class="yellow right">{{total_inr}}</td>
+  </tr>
+  <tr>
+    <td colspan="11" class="right bold">Total Amount (USD)</td>
+    <td colspan="2" class="yellow right">{{total_usd}}</td>
+  </tr>
+</table>
+
+<!-- DECLARATION -->
+<table>
+  <tr>
+    <td colspan="6" class="small">
+      Amount (In Words) : <span class="yellow">{{amount_words}}</span><br />
+      Export under LUT without payment of GST at 0%.<br />
+      We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.
+    </td>
+    <td colspan="6" class="right">
+      Authorised Signatory
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>

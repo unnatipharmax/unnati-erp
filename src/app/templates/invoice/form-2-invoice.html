@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Postal Bill of Export - II</title>
+  <style>
+    @page { size: A4; margin: 10mm; }
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; color: #000; }
+    table { width: 100%; border-collapse: collapse; }
+    td, th { border: 1px solid #000; padding: 3px; vertical-align: top; }
+    .center { text-align: center; }
+    .right { text-align: right; }
+    .bold { font-weight: bold; }
+    .small { font-size: 9.5px; }
+    .yellow { background: #fff59d; }
+    .no-border { border: none; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<table>
+  <tr>
+    <td colspan="10" class="center bold">FORM-II<br/>(see regulation 4)<br/>Postal Bill of Export - II<br/>(To be submitted in duplicate)</td>
+  </tr>
+</table>
+
+<!-- EXPORTER DETAILS -->
+<table>
+  <tr>
+    <td colspan="5" class="bold">Foreign Post Office Code</td>
+    <td colspan="5" class="bold">Name of Exporter</td>
+  </tr>
+  <tr>
+    <td colspan="5" class="yellow">{{foreign_post_office_code}}</td>
+    <td colspan="5" class="bold">UNNATI PHARMAX</td>
+  </tr>
+  <tr>
+    <td colspan="10" class="bold">Name and Address of Exporter</td>
+  </tr>
+  <tr>
+    <td colspan="10">
+      Ground Floor House No 307/4, Guru Vandana Apartment,<br/>
+      Kakasaheb Cholkar Marg, Lakadganj, Nagpur, NAGPUR,<br/>
+      MAHARASHTRA, 440008
+    </td>
+  </tr>
+</table>
+
+<!-- IDENTIFIERS -->
+<table>
+  <tr>
+    <td>IEC</td>
+    <td class="yellow">{{iec}}</td>
+    <td>GSTIN</td>
+    <td class="bold">27FNXPP3883B1ZA</td>
+    <td>PAN</td>
+    <td class="bold">FNXPP3883B</td>
+    <td>State Code</td>
+    <td class="yellow">{{state_code}}</td>
+  </tr>
+</table>
+
+<!-- INVOICE DETAILS -->
+<table>
+  <tr>
+    <td>Invoice No</td>
+    <td class="yellow">{{invoice_no}}</td>
+    <td>Date</td>
+    <td class="yellow">{{invoice_date}}</td>
+    <td>Currency</td>
+    <td class="yellow">{{currency}}</td>
+    <td>Exchange Rate</td>
+    <td class="yellow">{{exchange_rate}}</td>
+  </tr>
+</table>
+
+<!-- CONSIGNEE -->
+<table>
+  <tr>
+    <td colspan="10" class="bold">Consignee details</td>
+  </tr>
+  <tr>
+    <td colspan="10">
+      Full Name : <span class="yellow">{{consignee_name}}</span><br/>
+      Address : <span class="yellow">{{consignee_address}}</span><br/>
+      Country : <span class="yellow">{{consignee_country}}</span>
+    </td>
+  </tr>
+</table>
+
+<!-- ITEMS -->
+<table>
+  <thead>
+    <tr class="center bold">
+      <th>SI No</th>
+      <th>Description</th>
+      <th>HSN Code</th>
+      <th>Quantity</th>
+      <th>Unit</th>
+      <th>Rate</th>
+      <th>Amount (INR)</th>
+      <th>Export Duty</th>
+      <th>Cess</th>
+      <th>Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#items}}
+    <tr class="center">
+      <td>{{sr}}</td>
+      <td class="yellow">{{product}}</td>
+      <td>{{hsn}}</td>
+      <td>{{qty}}</td>
+      <td>{{unit}}</td>
+      <td>{{rate}}</td>
+      <td>{{amount}}</td>
+      <td>0</td>
+      <td>0</td>
+      <td>{{amount}}</td>
+    </tr>
+    {{/items}}
+  </tbody>
+</table>
+
+<!-- DECLARATIONS -->
+<table>
+  <tr>
+    <td colspan="10" class="small">
+      We declare that we intend to claim rewards under Merchandise Exports from India Scheme (MEIS)
+      (for export through Chennai / Mumbai / Delhi FPO only). YES / NO<br/><br/>
+      We declare that we intend to zero rate exports under Section 16 of IGST Act.<br/><br/>
+      We hereby declare that the contents of this postal bill of export are true and correct in every respect.
+    </td>
+  </tr>
+</table>
+
+<!-- FOOTER -->
+<table>
+  <tr>
+    <td colspan="5" class="right bold">Total Assessable Value</td>
+    <td colspan="5" class="yellow right">{{total_assessable_value}}</td>
+  </tr>
+  <tr>
+    <td colspan="5" class="right">Signature of the Exporter / Authorised Agent</td>
+    <td colspan="5">&nbsp;</td>
+  </tr>
+</table>
+
+</body>
+</html>

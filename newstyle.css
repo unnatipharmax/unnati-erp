@@ -1,0 +1,540 @@
+.ct-loader{
+  position:absolute;
+  top:70px;
+  width:100%;
+  z-index:1;
+  text-align:center;
+}
+
+#SS_KANBAN_TemplateComponentContainer{
+  --kb-bg:#f6f7fb;
+  --kb-col-bg:#ffffff;
+  --kb-border:#e6e8ef;
+  --kb-shadow:0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+  --kb-shadow-hover:0 6px 18px rgba(16,24,40,.12);
+  --kb-radius:14px;
+  --kb-col-w:320px;
+  --kb-gap:14px;
+  --txt:#101828;
+  --muted:#667085;
+  --pill-bg:#f2f4f7;
+  --pill-border:#e4e7ec;
+  --link:#175cd3;
+
+  background:var(--kb-bg);
+  padding:12px;
+  border-radius:12px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  transform: rotateX(180deg) !important;
+  -webkit-transform: rotateX(180deg) !important;
+  scrollbar-gutter: stable both-edges;
+}
+
+#SS_KANBAN_TemplateComponentContainer > *{
+  transform: rotateX(180deg) !important;
+  -webkit-transform: rotateX(180deg) !important;
+}
+
+#SS_KANBAN_TemplateComponentContainer::-webkit-scrollbar{ height:10px; }
+#SS_KANBAN_TemplateComponentContainer::-webkit-scrollbar-thumb{
+  background:rgba(31,41,55,.18);
+  border-radius:999px;
+}
+
+#SS_KANBAN_TemplateComponentContainer .kb-row,
+#SS_KANBAN_TemplateComponentContainer .kb-group-container,
+#SS_KANBAN_TemplateComponentContainer .s-g-row.kb-row,
+#SS_KANBAN_TemplateComponentContainer .s-g-row.kb-group-container{
+  display:flex !important;
+  flex-wrap:nowrap !important;
+  gap:var(--kb-gap) !important;
+  align-items:flex-start !important;
+  width: max-content;
+  min-width:max-content;
+  overflow:visible !important;
+  padding:6px 6px 10px;
+}
+
+/* Column */
+#SS_KANBAN_TemplateComponentContainer{
+  --ss-bg: #f5f7fb;
+  --ss-border: #e6e8ef;
+  --ss-shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+  --ss-shadow-hover: 0 4px 14px rgba(16,24,40,.12);
+  --ss-radius: 14px;
+  background: var(--ss-bg) !important;
+  --ss-card-radius: 12px;
+  --ss-text: #101828;
+  --ss-muted: #667085;
+  --ss-pill-bg: #f2f4f7;
+  --ss-pill-border: #e4e7ec;
+}
+
+/* Column header (Smartsheet-like) */
+#SS_KANBAN_TemplateComponentContainer .kb-col-header{
+  display:none !important;
+}
+
+/* Use inner header as the ONLY header */
+#SS_KANBAN_TemplateComponentContainer .kb-col-inner-header{
+  display: block !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 6px 10px 6px !important;
+}
+
+#SS_KANBAN_TemplateComponentContainer .kb-col-inner-header .title{
+  margin: 0 !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  line-height:1.2 !important;
+  color: #101828 !important;
+  padding: 10px 14px !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  border: 0 !important;
+}
+
+#SS_KANBAN_TemplateComponentContainer .kb-col-inner-header::before{
+  content: none !important;
+}
+
+#SS_KANBAN_TemplateComponentContainer .kb-item-region,
+#SS_KANBAN_TemplateComponentContainer .kb-col-content{
+  background: #ffffff !important;
+  border: 1px solid var(--ss-border) !important;
+  border-radius: var(--ss-radius) !important;
+  box-shadow: var(--ss-shadow) !important;
+  padding: 10px 10px 12px !important;
+  padding-top: 10px !important;
+}
+
+/* Hover effect: grey curved box highlight */
+#SS_KANBAN_TemplateComponentContainer .kb-col:hover{
+  background: rgba(16,24,40,.04) !important;
+}
+
+/* Make hover not change card colors (only column) */
+#SS_KANBAN_TemplateComponentContainer .kb-col:hover .kb-card{
+  transform: none !important;
+}
+
+/* Cards container (vertical scroll inside column) */
+#SS_KANBAN_TemplateComponentContainer .kb-item-container{
+  max-height:68vh !important;
+  overflow-y:auto !important;
+  padding-right:6px !important;
+}
+
+#SS_KANBAN_TemplateComponentContainer .kb-col{
+  flex:0 0 var(--kb-col-w) !important;
+  width:var(--kb-col-w) !important;
+  min-width:var(--kb-col-w) !important;
+  overflow:hidden !important;
+  border-radius: var(--ss-radius) !important;
+  padding: 6px !important;
+  transition: box-shadow .15s ease, background .15s ease, transform .15s ease;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Nice vertical scrollbar */
+#SS_KANBAN_TemplateComponentContainer .kb-item-container::-webkit-scrollbar{ width:10px; }
+#SS_KANBAN_TemplateComponentContainer .kb-item-container::-webkit-scrollbar-thumb{
+  background:rgba(31,41,55,.16);
+  border-radius:999px;
+  border:3px solid transparent;
+  background-clip:content-box;
+}
+
+/* Card */
+#SS_KANBAN_TemplateComponentContainer .kb-card{
+  width:100% !important;
+  max-width:none !important;
+  float:none !important;
+  background: #fff !important;
+  border: 1px solid var(--ss-border) !important;
+  border-radius: var(--ss-card-radius) !important;
+  box-shadow: var(--ss-shadow) !important;
+  padding: 12px 12px 12px 14px !important;
+  position: relative !important;
+  overflow: hidden !important;
+  margin:10px 0 !important;
+  transition:transform .12s ease, box-shadow .12s ease;
+}
+
+/* FULL height left stripe */
+#SS_KANBAN_TemplateComponentContainer .kb-card::before{
+  content: "" !important;
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 8px !important;
+  border-radius: 0 !important;
+  background: var(--kb-card-accent, #d0d5dd) !important;
+}
+
+/* Hover */
+#SS_KANBAN_TemplateComponentContainer .kb-card:hover{
+  box-shadow: 0 6px 18px rgba(16,24,40,.12) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Title clamp */
+#SS_KANBAN_TemplateComponentContainer .kb-card .card-title,
+#SS_KANBAN_TemplateComponentContainer .kb-card .title,
+#SS_KANBAN_TemplateComponentContainer .kb-card{
+  color:var(--txt) !important;
+  font-weight:400 !important;
+  font-size:13px !important;
+  line-height:1.25 !important;
+  text-decoration:none !important;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+
+#SS_KANBAN_TemplateComponentContainer .kb-card a{
+  display:inline !important;
+}
+
+#SS_KANBAN_TemplateComponentContainer .kb-card a:hover{
+  text-decoration:underline #000 !important;
+}
+
+/* Footer row */
+#SS_KANBAN_TemplateComponentContainer .ss-card-footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:10px;
+}
+
+/* Inner wrapper spacing */
+#SS_KANBAN_TemplateComponentContainer .ss-card{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Project pill */
+#SS_KANBAN_TemplateComponentContainer .ss-pill{
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ss-pill-bg);
+  border: 1px solid var(--ss-pill-border);
+  color: #344054;
+  font-size: 12px;
+  font-weight: 600;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* User */
+#SS_KANBAN_TemplateComponentContainer .ss-user{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+
+#SS_KANBAN_TemplateComponentContainer .ss-avatar{
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--av-bg, #64748b);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 26px;
+  overflow:hidden;
+  box-shadow:0 1px 2px rgba(16,24,40,.10);
+}
+
+#SS_KANBAN_TemplateComponentContainer .ss-avatar img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+
+#SS_KANBAN_TemplateComponentContainer .ss-avatar.ss-initials{
+  color:#fff;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.4px;
+}
+
+#SS_KANBAN_TemplateComponentContainer .ss-user-name{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:700;
+  min-width:0;
+  max-width:160px;
+}
+
+@media (max-width: 1200px){
+  #SS_KANBAN_TemplateComponentContainer{
+    --kb-col-w: 290px;
+  }
+}
+
+/* Drag cursors */
+#SS_KANBAN_TemplateComponentContainer .kb-card,
+#SS_KANBAN_TemplateComponentContainer .kb-items {
+  cursor: grab;
+}
+
+.gu-mirror,
+.gu-transit {
+  cursor: grabbing !important;
+}
+
+/* Dragula (keep) */
+.gu-mirror { 
+  position: fixed !important; 
+  margin: 0 !important; 
+  z-index: 9999 !important; 
+  opacity: 0.8; 
+  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=80)"; 
+  filter: alpha(opacity=80); 
+} 
+
+.gu-hide { display: none !important; }
+
+.gu-unselectable { 
+  -webkit-user-select: none !important; 
+  -moz-user-select: none !important; 
+  -ms-user-select: none !important; 
+  user-select: none !important; 
+}
+
+.gu-transit { 
+  opacity: 0.2; 
+  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=20)"; 
+  filter: alpha(opacity=20); 
+}
+
+/* ============================
+   ✅ PATCH SECTION (IMPORTANT)
+   Put this at the very end
+   ============================ */
+
+/* 1) Empty column droppable (FIXED: adds content + keeps height) */
+#SS_KANBAN_TemplateComponentContainer .kb-item-container{
+  min-height: 180px !important;
+  padding-bottom: 30px !important;
+}
+
+#SS_KANBAN_TemplateComponentContainer .kb-item-container:empty::before{
+  display: block !important;
+  height: 140px !important;
+  border: 2px dashed rgba(16,24,40,.18) !important;
+  border-radius: 12px !important;
+  margin: 8px !important;
+  color: rgba(16,24,40,.35) !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  line-height: 140px !important;
+  text-align: center !important;
+  background: rgba(16,24,40,.02) !important;
+  pointer-events: none !important;
+}
+
+/* 2) Severity-based card stripe (requires dataseverity="Critical/High/Medium/Low") */
+#SS_KANBAN_TemplateComponentContainer .kb-item-container[dataseverity="Critical"] { --kb-card-accent:#dc2626 !important; }
+#SS_KANBAN_TemplateComponentContainer .kb-item-container[dataseverity="High"]     { --kb-card-accent:#f97316 !important; }
+#SS_KANBAN_TemplateComponentContainer .kb-item-container[dataseverity="Medium"]   { --kb-card-accent:#eab308 !important; }
+#SS_KANBAN_TemplateComponentContainer .kb-item-container[dataseverity="Low"]      { --kb-card-accent:#6b7280 !important; }
+
+/* 3) Hover feedback for drop zone */
+#SS_KANBAN_TemplateComponentContainer .kb-item-container:hover{
+  background-color: rgba(16,24,40,.03) !important;
+  box-shadow: inset 0 0 0 2px rgba(16,24,40,.08) !important;
+}
+
+/* ============================
+   DRAG FEEL FIX (Dragula)
+   Put this at the very end
+   ============================ */
+
+/* 1) Only clamp text, NOT the whole card (important for drag mirror sizing) */
+#SS_KANBAN_TemplateComponentContainer .kb-card{
+  display: block !important;           /* override your -webkit-box on kb-card */
+  -webkit-line-clamp: unset !important;
+  -webkit-box-orient: unset !important;
+}
+
+#SS_KANBAN_TemplateComponentContainer .kb-card .card-title,
+#SS_KANBAN_TemplateComponentContainer .kb-card .title{
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+/* 2) Hover: slight expand BEFORE drag */
+#SS_KANBAN_TemplateComponentContainer .kb-card{
+  transform: translateZ(0) scale(1) !important;
+  transition: transform .12s ease, box-shadow .12s ease !important;
+  will-change: transform;
+}
+
+#SS_KANBAN_TemplateComponentContainer .kb-card:hover{
+  transform: translateY(-1px) scale(1.02) !important; /* subtle pop */
+  box-shadow: 0 10px 22px rgba(16,24,40,.14) !important;
+}
+
+/* 3) While dragging: make the original card look "picked up" */
+#SS_KANBAN_TemplateComponentContainer .gu-transit{
+  opacity: 0.15 !important;
+  filter: none !important;
+}
+
+/* 4) The dragged card that should "stick" to cursor */
+.gu-mirror{
+  opacity: 1 !important;
+  filter: none !important;
+  transform: rotate(0.3deg) scale(1.03) !important;  /* tiny lift feel */
+  box-shadow: 0 16px 32px rgba(16,24,40,.18) !important;
+  border-radius: 12px !important;
+  cursor: grabbing !important;
+  pointer-events: none !important; /* ensures it never blocks drop */
+}
+
+/* Ensure mirror looks like a real card */
+.gu-mirror.kb-card,
+.gu-mirror .kb-card{
+  background: #fff !important;
+}
+
+/* 5) Make empty column drop zone easier to hit */
+#SS_KANBAN_TemplateComponentContainer .kb-item-container{
+  min-height: 220px !important;  /* larger hit area improves "settle" feel */
+}
+
+/* Header layout like Smartsheet */
+#SS_KANBAN_TemplateComponentContainer .kb-col-inner-header.ss-kb-header{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:10px;
+}
+
+#SS_KANBAN_TemplateComponentContainer .ss-kb-tools{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+#SS_KANBAN_TemplateComponentContainer .ss-kb-count{
+  font-size:12px;
+  font-weight:700;
+  color: #667085;
+}
+
+#SS_KANBAN_TemplateComponentContainer .ss-kb-collapse{
+  border: 1px solid rgba(16,24,40,.10);
+  background: #fff;
+  border-radius: 10px;
+  width: 32px;
+  height: 28px;
+  cursor: pointer;
+  font-weight: 900;
+  line-height: 1;
+}
+
+#SS_KANBAN_TemplateComponentContainer .kb-col.ss-kb-collapsed{
+  width: 56px !important;
+  min-width: 56px !important;
+  flex: 0 0 56px !important;
+  padding: 6px !important;
+  border-radius: 14px !important;
+}
+
+#SS_KANBAN_TemplateComponentContainer .kb-col.ss-kb-collapsed .kb-item-container{
+  display:none !important;
+}
+
+#SS_KANBAN_TemplateComponentContainer .kb-col.ss-kb-collapsed .kb-item-region,
+#SS_KANBAN_TemplateComponentContainer .kb-col.ss-kb-collapsed .kb-col-content{
+  padding: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+/* Make the header act like a vertical strip */
+#SS_KANBAN_TemplateComponentContainer .kb-col.ss-kb-collapsed .kb-col-inner-header{
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+  padding: 8px 0 !important;
+  margin: 0 !important;
+  height: 68vh !important;
+}
+
+/* KEY TRICK: turn tools wrapper into "contents" so we can order button/title/count */
+#SS_KANBAN_TemplateComponentContainer .kb-col.ss-kb-collapsed .ss-kb-tools{
+  display: contents !important;
+}
+
+/* Button at the TOP */
+#SS_KANBAN_TemplateComponentContainer .kb-col.ss-kb-collapsed .ss-kb-collapse{
+  order: 1 !important;
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 10px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity .12s ease !important;
+}
+
+/* Title in the MIDDLE (vertical) */
+#SS_KANBAN_TemplateComponentContainer .kb-col.ss-kb-collapsed .kb-col-inner-header .title{
+  order: 2 !important;
+  writing-mode: vertical-rl !important;
+  transform: rotate(180deg) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+
+/* Count at the BOTTOM (vertical) */
+#SS_KANBAN_TemplateComponentContainer .kb-col.ss-kb-collapsed .ss-kb-count{
+  order: 3 !important;
+  display: block !important;
+  writing-mode: vertical-rl !important;
+  transform: rotate(180deg) !important;
+  margin: 0 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #667085 !important;
+}
+
+/* Show button only on hover like Smartsheet */
+#SS_KANBAN_TemplateComponentContainer .kb-col.ss-kb-collapsed:hover .ss-kb-collapse{
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Optional hover highlight */
+#SS_KANBAN_TemplateComponentContainer .kb-col.ss-kb-collapsed:hover{
+  background: rgba(16,24,40,.04) !important;
+}
