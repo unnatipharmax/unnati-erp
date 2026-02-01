@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -89,26 +90,48 @@ model OrderInitiation {
   source          OrderSource
   filledByUserId  String?
   clientFormToken String?
-  fullName        String
-  address         String
-  city            String
-  state           String
-  postalCode      String
-  country         String
-  email           String
-  phone           String
-  remitterName    String
-  amountPaid      Decimal     @db.Decimal(12, 2)
-  currency        String
-  status          OrderStatus @default(INITIATED)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
 
-  // ✅ Opposite side of relation (fixes your error)
+  fullName   String
+  address    String
+  city       String
+  state      String
+  postalCode String
+  country    String
+  email      String
+  phone      String
+
+  remitterName String
+  amountPaid   Decimal @db.Decimal(12, 2)
+  currency     String
+
+  status OrderStatus @default(INITIATED)
+
+  // ✅ opposite side of 1-1
   clientFormLink ClientFormLink?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status])
   @@index([email])
+}
+
+model ClientFormLink {
+  id          String    @id @default(uuid())
+  token       String    @unique
+  isUsed      Boolean   @default(false)
+  expiresAt   DateTime
+  createdById String?
+  usedAt      DateTime?
+
+  // ✅ 1-1 link
+  orderId String?          @unique
+  order   OrderInitiation? @relation(fields: [orderId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([isUsed])
+  @@index([expiresAt])
 }
 
 enum OrderSource {
@@ -122,21 +145,4 @@ enum OrderStatus {
   PAYMENT_VERIFIED
   PACKING
   DISPATCHED
-}
-
-model ClientFormLink {
-  id          String    @id @default(uuid())
-  token       String    @unique
-  isUsed      Boolean   @default(false)
-  expiresAt   DateTime
-  createdById String?
-  usedAt      DateTime?
-
-  orderId String?          @unique
-  order   OrderInitiation? @relation(fields: [orderId], references: [id])
-
-  createdAt DateTime @default(now())
-
-  @@index([isUsed])
-  @@index([expiresAt])
 }
