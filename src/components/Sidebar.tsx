@@ -6,6 +6,7 @@ import { Home, Users, Package, FileText, Image as ImageIcon, Link } from "lucide
 const menu = [
   { name: "HOME", path: "/dashboard", icon: Home },
   { name: "ORDER INITIATION", path: "/dashboard/client-forms", icon: Link },
+  { name: "ORDER ENTRY", path: "/dashboard/order-entry", icon: FileText },
   { name: "PARTY MASTER", path: "/dashboard/party", icon: Users },
   { name: "PRODUCT MASTER", path: "/dashboard/product", icon: Package },
   { name: "PURCHASE BILL", path: "/dashboard/purchase", icon: FileText },
