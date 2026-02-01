@@ -57,6 +57,7 @@ model Product {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   PurchaseItems PurchaseItem[]
+  orderItems OrderEntryItem[]
 }
 
 model PurchaseBill {
@@ -108,6 +109,7 @@ model OrderInitiation {
 
   // ✅ opposite side of 1-1
   clientFormLink ClientFormLink?
+  orderEntry    OrderEntry?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -145,4 +147,47 @@ enum OrderStatus {
   PAYMENT_VERIFIED
   PACKING
   DISPATCHED
+}
+
+enum ShipmentMode {
+  EMS
+  ITPS
+  RMS
+  DHL
+}
+
+model OrderEntry {
+  id            String       @id @default(uuid())
+
+  // 1-1 with OrderInitiation
+  orderId       String       @unique
+  order         OrderInitiation @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  shippingPrice Decimal      @db.Decimal(12,2)
+  shipmentMode  ShipmentMode
+  notes         String?
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  items         OrderEntryItem[]
+}
+
+model OrderEntryItem {
+  id           String     @id @default(uuid())
+
+  orderEntryId String
+  orderEntry   OrderEntry @relation(fields: [orderEntryId], references: [id], onDelete: Cascade)
+
+  // ✅ dropdown (FK to Product Master)
+  productId    String
+  product      Product    @relation(fields: [productId], references: [id])
+
+  quantity     Int
+  sellingPrice Decimal    @db.Decimal(12,2)
+
+  createdAt    DateTime   @default(now())
+
+  @@index([orderEntryId])
+  @@index([productId])
 }
