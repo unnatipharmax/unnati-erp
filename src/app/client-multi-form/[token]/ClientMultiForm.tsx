@@ -86,7 +86,7 @@ export default function ClientMultiForm({
             <div className="mt-4 rounded-2xl border border-red-700/40 bg-red-500/10 p-4">
               <div className="font-semibold text-red-300">❌ Balance exhausted</div>
               <div className="text-sm text-slate-300 mt-1">
-                Please contact accounts team to add funds.
+                Please contact accounts team to add funds..
               </div>
             </div>
           )}
