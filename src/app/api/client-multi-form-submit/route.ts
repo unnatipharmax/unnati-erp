@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
 import { Prisma, OrderSource } from "@prisma/client";
 
-export const runtime = "nodejs"; // keep Prisma + crypto stable on dev
+export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
@@ -26,41 +26,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Token required" }, { status: 400 });
     }
 
-    // 1) "Lock" the link WITHOUT a transaction
-    const lock = await prisma.clientFormLink.updateMany({
-      where: {
-        token,
-        isUsed: false,
-        expiresAt: { gt: new Date() },
-      },
-      data: {
-        isUsed: true,
-        usedAt: new Date(),
-      },
+    // 1️⃣ Validate multi-order link
+    const link = await prisma.clientAccountLink.findUnique({
+      where: { token },
+      include: { account: true },
     });
 
-    if (lock.count === 0) {
-      const existing = await prisma.clientFormLink.findUnique({
-        where: { token },
-        select: { isUsed: true, expiresAt: true },
-      });
-
-      if (!existing) {
-        return NextResponse.json({ error: "Invalid link" }, { status: 400 });
-      }
-
-      if (existing.isUsed) {
-        return NextResponse.json({ error: "Link already used" }, { status: 400 });
-      }
-
-      return NextResponse.json({ error: "Link expired" }, { status: 400 });
+    if (!link || !link.isActive || !link.account.isActive) {
+      return NextResponse.json({ error: "Invalid or inactive link" }, { status: 400 });
     }
 
-    // 2) Create order
+    // 2️⃣ Create order initiation (NO balance deduction here)
     const order = await prisma.orderInitiation.create({
       data: {
         source: OrderSource.CLIENT,
         clientFormToken: token,
+        accountId: link.accountId,
+
         fullName,
         address,
         city,
@@ -69,6 +51,7 @@ export async function POST(req: Request) {
         country,
         email,
         phone,
+
         remitterName,
         amountPaid: new Prisma.Decimal(String(amountPaid || "0")),
         currency: currency || "INR",
@@ -76,15 +59,13 @@ export async function POST(req: Request) {
       select: { id: true },
     });
 
-    // 3) Attach orderId to link (best-effort)
-    await prisma.clientFormLink.update({
-      where: { token },
-      data: { orderId: order.id },
+    return NextResponse.json({
+      orderId: order.id,
+      accountName: link.account.name,
+      remainingBalance: link.account.balance, // unchanged for now
     });
-
-    return NextResponse.json({ orderId: order.id });
   } catch (e: any) {
-    console.error("client-form-submit error:", e);
+    console.error("client-multi-form-submit error:", e);
     return NextResponse.json(
       { error: e?.message || "Failed" },
       { status: 400 }
