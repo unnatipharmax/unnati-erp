@@ -40,7 +40,6 @@ export async function POST(req: Request) {
         items: {
           create: items.map((it: any) => ({
           product: { connect: { id: it.productId } },
-          productName: nameMap.get(it.productId) || "Unknown Product",
           quantity: Number(it.quantity),
           sellingPrice: String(it.sellingPrice),
           })),
@@ -54,7 +53,6 @@ export async function POST(req: Request) {
           deleteMany: {}, // wipe old items
           create: items.map((it: any) => ({
           product: { connect: { id: it.productId } },
-          productName: nameMap.get(it.productId) || "Unknown Product",
           quantity: Number(it.quantity),
           sellingPrice: String(it.sellingPrice),
           })),
