@@ -4,10 +4,10 @@ import { useMemo, useState } from "react";
 
 export default function ClientForm({ token }: { token: string }) {
   const [loading, setLoading] = useState(false);
-  const [ok, setOk] = useState<{ orderId: string } | null>(null);
+  const [ok, setOk] = useState<{ orderId: string; linkType: "single" | "multi" } | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  const isSubmitted = !!ok;
+  const isSubmitted = ok?.linkType === "single";
 
   const shortOrder = useMemo(() => {
     if (!ok?.orderId) return "";
@@ -21,7 +21,8 @@ export default function ClientForm({ token }: { token: string }) {
     setLoading(true);
     setErr(null);
 
-    const form = new FormData(e.currentTarget);
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
 
     const payload = {
       token,
@@ -49,7 +50,12 @@ export default function ClientForm({ token }: { token: string }) {
     if (!res.ok) {
       setErr(data?.error || "Something went wrong");
     } else {
-      setOk({ orderId: data.orderId });
+      setOk({ orderId: data.orderId, linkType: data.linkType });
+
+      // ✅ If MULTI link: clear form so they can submit another order easily
+    if (data.linkType === "multi") {
+      formEl.reset();
+    }
     }
 
     setLoading(false);
@@ -66,18 +72,22 @@ export default function ClientForm({ token }: { token: string }) {
 
           {/* Success box */}
           {ok && (
-            <div className="mt-5 rounded-2xl border border-emerald-700/40 bg-emerald-500/10 p-4">
-              <div className="font-semibold text-emerald-300">
-                ✅ Submitted successfully
-              </div>
-              <div className="text-sm text-slate-200 mt-1">
-                Order: <span className="font-bold">#{shortOrder}</span>
-              </div>
-              <div className="text-xs text-slate-400 mt-2 break-all">
-                Internal ID: {ok.orderId}
-              </div>
-            </div>
-          )}
+  <div className="mt-5 rounded-2xl border border-emerald-700/40 bg-emerald-500/10 p-4">
+    <div className="font-semibold text-emerald-300">✅ Submitted successfully</div>
+    <div className="text-sm text-slate-200 mt-1">
+      Order: <span className="font-bold">#{shortOrder}</span>
+    </div>
+    <div className="text-xs text-slate-400 mt-2 break-all">
+      Internal ID: {ok.orderId}
+    </div>
+
+    {ok.linkType === "multi" && (
+      <div className="mt-3 text-sm text-slate-200">
+        You can place another order using the same link.
+      </div>
+    )}
+  </div>
+)}
 
           <form onSubmit={onSubmit} className="mt-6 space-y-6">
             {/* Disable everything after submit */}
@@ -171,8 +181,10 @@ export default function ClientForm({ token }: { token: string }) {
         </div>
 
         <p className="text-xs text-slate-500 mt-4">
-          This form link is unique and may expire.
-        </p>
+  {ok?.linkType === "multi"
+    ? "This is a multiple-order link and does not expire."
+    : "This form link is unique and may expire."}
+</p>
       </div>
     </div>
   );
