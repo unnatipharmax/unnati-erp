@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
-import { ShipmentMode } from "@prisma/client";
+import { Prisma, ShipmentMode } from "@prisma/client";
 
 export async function POST(req: Request) {
   try {
@@ -39,9 +39,10 @@ export async function POST(req: Request) {
         notes: notes || null,
         items: {
           create: items.map((it: any) => ({
-            productName: nameMap.get(it.productId) || "Unknown Product",
-            quantity: Number(it.quantity),
-            sellingPrice: String(it.sellingPrice),
+          product: { connect: { id: it.productId } },
+          productName: nameMap.get(it.productId) || "Unknown Product",
+          quantity: Number(it.quantity),
+          sellingPrice: String(it.sellingPrice),
           })),
         },
       },
@@ -52,9 +53,10 @@ export async function POST(req: Request) {
         items: {
           deleteMany: {}, // wipe old items
           create: items.map((it: any) => ({
-            productName: nameMap.get(it.productId) || "Unknown Product",
-            quantity: Number(it.quantity),
-            sellingPrice: String(it.sellingPrice),
+          product: { connect: { id: it.productId } },
+          productName: nameMap.get(it.productId) || "Unknown Product",
+          quantity: Number(it.quantity),
+          sellingPrice: String(it.sellingPrice),
           })),
         },
       },
