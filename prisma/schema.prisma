@@ -110,6 +110,7 @@ model OrderInitiation {
   // ✅ opposite side of 1-1
   clientFormLink ClientFormLink?
   orderEntry    OrderEntry?
+  orderValue Decimal? @db.Decimal(12,2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
