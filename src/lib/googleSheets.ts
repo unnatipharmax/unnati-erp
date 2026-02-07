@@ -45,7 +45,7 @@ export async function createClientAccountSheet(sheetTitle: string) {
   const spreadsheetId = created.data.spreadsheetId!;
   const spreadsheetUrl = created.data.spreadsheetUrl!;
 
-  // 2️⃣ MOVE spreadsheet into your Drive folder  ✅ ADD THIS HERE
+  // 2️⃣ OVE spreadsheet into your Drive folder  ✅ ADD THIS HERE
   // const folderId = process.env.GOOGLE_SHEETS_FOLDER_ID;
   // if (folderId) {
   //   await drive.files.update({
