@@ -8,13 +8,12 @@ const SCOPES = [
 function getAuth() {
   const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   let privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
-  if (!clientEmail || !privateKey) throw new Error("Missing GOOGLE service account env vars");
-
-privateKey = privateKey.replace(/\\n/g, "\n").trim();
 
   if (!clientEmail || !privateKey) {
     throw new Error("Missing GOOGLE service account env vars");
   }
+
+  privateKey = privateKey.replace(/\\n/g, "\n");
 
   return new google.auth.JWT({
     email: clientEmail,
@@ -25,11 +24,13 @@ privateKey = privateKey.replace(/\\n/g, "\n").trim();
 
 export async function createClientAccountSheet(sheetTitle: string) {
   const auth = getAuth();
+
   const sheets = google.sheets({ version: "v4", auth });
+  const drive = google.drive({ version: "v3", auth });
 
   const title = `Unnati - ${sheetTitle} - Orders`;
 
-  // 1) Create spreadsheet with 3 tabs
+  // 1️⃣ CREATE spreadsheet
   const created = await sheets.spreadsheets.create({
     requestBody: {
       properties: { title },
@@ -41,14 +42,17 @@ export async function createClientAccountSheet(sheetTitle: string) {
     },
   });
 
-  const spreadsheetId = created.data.spreadsheetId;
-  const spreadsheetUrl = created.data.spreadsheetUrl;
+  const spreadsheetId = created.data.spreadsheetId!;
+  const spreadsheetUrl = created.data.spreadsheetUrl!;
 
-  if (!spreadsheetId || !spreadsheetUrl) {
-    throw new Error("Failed to create Google Sheet");
-  }
+  // 2️⃣ MOVE spreadsheet into your Drive folder  ✅ ADD THIS HERE
+  await drive.files.update({
+    fileId: spreadsheetId,
+    addParents: process.env.GOOGLE_SHEETS_FOLDER_ID,
+    removeParents: "root",
+  });
 
-  // 2) Add headers (row 1) for each tab
+  // 3️⃣ ADD HEADERS
   await sheets.spreadsheets.values.update({
     spreadsheetId,
     range: "Orders!A1:K1",
