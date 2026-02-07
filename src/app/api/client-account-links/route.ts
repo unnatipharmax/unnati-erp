@@ -80,7 +80,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, ...result });
   } catch (e: any) {
-  console.error("client-account-links error:", e?.response?.data || e);
+  console.error("client-account-links error:", {
+    message: e?.message,
+    google: e?.response?.data,
+  });
   return NextResponse.json(
     { error: e?.response?.data?.error?.message || e?.message || "Failed" },
     { status: 500 }
