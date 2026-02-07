@@ -8,13 +8,13 @@ const SCOPES = [
 function getAuth() {
   const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   let privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
+  if (!clientEmail || !privateKey) throw new Error("Missing GOOGLE service account env vars");
+
+privateKey = privateKey.replace(/\\n/g, "\n").trim();
 
   if (!clientEmail || !privateKey) {
     throw new Error("Missing GOOGLE service account env vars");
   }
-
-  // Vercel often stores newlines as \n literal
-  privateKey = privateKey.replace(/\\n/g, "\n");
 
   return new google.auth.JWT({
     email: clientEmail,
