@@ -26,7 +26,7 @@ export async function createClientAccountSheet(sheetTitle: string) {
   const auth = getAuth();
 
   const sheets = google.sheets({ version: "v4", auth });
-  const drive = google.drive({ version: "v3", auth });
+  // const drive = google.drive({ version: "v3", auth });
 
   const title = `Unnati - ${sheetTitle} - Orders`;
 
@@ -46,30 +46,30 @@ export async function createClientAccountSheet(sheetTitle: string) {
   const spreadsheetUrl = created.data.spreadsheetUrl!;
 
   // 2️⃣ MOVE spreadsheet into your Drive folder  ✅ ADD THIS HERE
-  const folderId = process.env.GOOGLE_SHEETS_FOLDER_ID;
-  if (folderId) {
-    await drive.files.update({
-      fileId: spreadsheetId,
-      addParents: folderId,
-      removeParents: "root",
-      supportsAllDrives: true,
-    });
-  }
+  // const folderId = process.env.GOOGLE_SHEETS_FOLDER_ID;
+  // if (folderId) {
+  //   await drive.files.update({
+  //     fileId: spreadsheetId,
+  //     addParents: folderId,
+  //     removeParents: "root",
+  //     supportsAllDrives: true,
+  //   });
+  // }
 
-  // ✅ (HIGHLY RECOMMENDED) SHARE SHEET TO YOUR NORMAL EMAIL SO YOU CAN SEE IT
-  const adminEmail = process.env.GOOGLE_SHEETS_ADMIN_EMAIL; // set this
-  if (adminEmail) {
-    await drive.permissions.create({
-      fileId: spreadsheetId,
-      supportsAllDrives: true,
-      sendNotificationEmail: false,
-      requestBody: {
-        type: "user",
-        role: "writer",
-        emailAddress: adminEmail,
-      },
-    });
-  }
+  // // ✅ (HIGHLY RECOMMENDED) SHARE SHEET TO YOUR NORMAL EMAIL SO YOU CAN SEE IT
+  // const adminEmail = process.env.GOOGLE_SHEETS_ADMIN_EMAIL; // set this
+  // if (adminEmail) {
+  //   await drive.permissions.create({
+  //     fileId: spreadsheetId,
+  //     supportsAllDrives: true,
+  //     sendNotificationEmail: false,
+  //     requestBody: {
+  //       type: "user",
+  //       role: "writer",
+  //       emailAddress: adminEmail,
+  //     },
+  //   });
+  // }
 
   // 3️⃣ ADD HEADERS
   await sheets.spreadsheets.values.update({
