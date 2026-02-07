@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
 import { Prisma, LedgerType } from "@prisma/client";
 import crypto from "crypto";
+import { createClientAccountSheet } from "../../../lib/googleSheets";
 
 export const runtime = "nodejs";
 
@@ -29,16 +30,22 @@ export async function POST(req: Request) {
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const token = makeToken();
+
+    // Create Google Sheet first (so we can store sheetId/url inside the same DB transaction)
+    const sheet = await createClientAccountSheet(name);
 
     const result = await prisma.$transaction(async (tx) => {
-      // 1) Create account
+      // 1) Create account (now includes sheet mapping)
       const account = await tx.clientAccount.create({
         data: {
           name,
           balance: opening,
           isActive: true,
+          googleSheetId: sheet.spreadsheetId,
+          googleSheetUrl: sheet.spreadsheetUrl,
         },
-        select: { id: true, name: true, balance: true },
+        select: { id: true, balance: true },
       });
 
       // 2) Ledger credit (audit)
@@ -54,14 +61,12 @@ export async function POST(req: Request) {
       }
 
       // 3) Link token
-      const token = makeToken();
       await tx.clientAccountLink.create({
         data: {
           token,
           accountId: account.id,
           isActive: true,
         },
-        select: { id: true },
       });
 
       return {
@@ -69,6 +74,7 @@ export async function POST(req: Request) {
         token,
         balance: account.balance.toString(),
         url: `${baseUrl}/client-multi-form/${token}`,
+        sheetUrl: sheet.spreadsheetUrl,
       };
     });
 
@@ -78,4 +84,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: e?.message || "Failed" }, { status: 500 });
   }
 }
-    

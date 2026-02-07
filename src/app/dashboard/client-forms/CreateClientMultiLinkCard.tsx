@@ -5,6 +5,7 @@ import { useState } from "react";
 export default function CreateClientMultiLinkCard() {
   const [loading, setLoading] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
+  const [sheetUrl, setSheetUrl] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   const [name, setName] = useState("");
@@ -35,6 +36,7 @@ export default function CreateClientMultiLinkCard() {
       setErr(data?.error || "Failed to create multi order link");
     } else {
       setUrl(data.url);
+      setSheetUrl(data.sheetUrl || null);
     }
 
     setLoading(false);
@@ -83,20 +85,36 @@ export default function CreateClientMultiLinkCard() {
 
       {/* Result */}
       {url && (
-        <div className="mt-4 p-3 rounded-lg bg-slate-50 border">
-          <div className="text-sm font-semibold text-slate-800">
-            Multi Order Link
-          </div>
-          <div className="text-xs text-slate-600 break-all mt-1">{url}</div>
+  <div className="mt-4 p-3 rounded-lg bg-slate-50 border">
+    <div className="text-sm font-semibold text-slate-800">
+      Multi Order Link
+    </div>
 
-          <button
-            className="mt-3 text-sm text-blue-700 font-semibold"
-            onClick={() => navigator.clipboard.writeText(url)}
-          >
-            Copy Link
-          </button>
-        </div>
-      )}
+    <div className="text-xs text-slate-600 break-all mt-1">
+      {url}
+    </div>
+
+    <button
+      className="mt-3 text-sm text-blue-700 font-semibold"
+      onClick={() => navigator.clipboard.writeText(url)}
+    >
+      Copy Link
+    </button>
+
+    {/* ✅ Google Sheet link */}
+    {sheetUrl && (
+      <a
+        className="mt-2 inline-block text-sm text-emerald-700 font-semibold"
+        href={sheetUrl}
+        target="_blank"
+        rel="noreferrer"
+      >
+        Open Google Sheet
+      </a>
+    )}
+  </div>
+)}
+
     </div>
   );
 }

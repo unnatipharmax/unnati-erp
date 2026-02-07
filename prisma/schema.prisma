@@ -201,6 +201,9 @@ model ClientAccount {
   name      String
   balance   Decimal  @db.Decimal(12,2) @default(0)
 
+  googleSheetId  String?
+  googleSheetUrl String?
+
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
