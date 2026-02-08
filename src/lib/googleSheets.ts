@@ -30,17 +30,29 @@ export async function createClientAccountSheet(sheetTitle: string) {
 
   const title = `Unnati - ${sheetTitle} - Orders`;
 
-  // 1️⃣ CREATE spreadsheet
-  const created = await sheets.spreadsheets.create({
-    requestBody: {
-      properties: { title },
-      sheets: [
-        { properties: { title: "Orders" } },
-        { properties: { title: "Sales Entry" } },
-        { properties: { title: "Ledger" } },
-      ],
-    },
-  });
+  console.log("SA_EMAIL:", process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL);
+  console.log("KEY_STARTS_WITH:", (process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY || "").slice(0, 30));
+
+  let created;
+  try {
+    created = await sheets.spreadsheets.create({
+      requestBody: {
+        properties: { title },
+        sheets: [
+          { properties: { title: "Orders" } },
+          { properties: { title: "Sales Entry" } },
+          { properties: { title: "Ledger" } },
+        ],
+      },
+    });
+  } catch (e: any) {
+    console.error(
+      "SHEETS_CREATE_FAILED:",
+      JSON.stringify(e?.response?.data || e, null, 2)
+    );
+    throw e;
+  }
+
 
   const spreadsheetId = created.data.spreadsheetId!;
   const spreadsheetUrl = created.data.spreadsheetUrl!;
