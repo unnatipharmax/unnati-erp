@@ -10,7 +10,7 @@ function getAuth() {
   let privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
 
   if (!clientEmail || !privateKey) {
-    throw new Error("Missing GOOGLE service account env vars");
+    throw new Error("Missing GOOGLE service account env vars sf");
   }
 
   privateKey = privateKey.replace(/\\n/g, "\n");
