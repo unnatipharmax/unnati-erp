@@ -5,34 +5,51 @@ const SCOPES = [
   "https://www.googleapis.com/auth/drive",
 ];
 
-function getAuth() {
-  const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  let privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
+type ServiceAccountCreds = {
+  client_email: string;
+  private_key: string;
+};
 
-  if (!clientEmail || !privateKey) {
-    throw new Error("Missing GOOGLE service account env vars sf");
+function loadServiceAccountCreds(): ServiceAccountCreds {
+  // 1) Preferred: base64 JSON (best for Vercel env)
+  const b64 = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_B64;
+  if (b64) {
+    const jsonStr = Buffer.from(b64, "base64").toString("utf8");
+    const parsed = JSON.parse(jsonStr);
+    if (!parsed.client_email || !parsed.private_key) {
+      throw new Error("Service account JSON missing client_email/private_key");
+    }
+    return {
+      client_email: parsed.client_email,
+      private_key: parsed.private_key,
+    };
   }
+  throw new Error(
+    "Missing service account creds. Provide GOOGLE_SERVICE_ACCOUNT_JSON_B64 or GOOGLE_SERVICE_ACCOUNT_JSON or EMAIL/PRIVATE_KEY."
+  );
+}
 
-  privateKey = privateKey.replace(/\\n/g, "\n");
+function getJwtClient() {
+  const { client_email, private_key } = loadServiceAccountCreds();
+
+  const fixedKey = private_key.replace(/\\n/g, "\n");
 
   return new google.auth.JWT({
-    email: clientEmail,
-    key: privateKey,
+    email: client_email,
+    key: fixedKey,
     scopes: SCOPES,
   });
 }
 
 export async function createClientAccountSheet(sheetTitle: string) {
-  const auth = getAuth();
+  const auth = getJwtClient();
 
   const sheets = google.sheets({ version: "v4", auth });
-  // const drive = google.drive({ version: "v3", auth });
+  const drive = google.drive({ version: "v3", auth });
 
   const title = `Unnati - ${sheetTitle} - Orders`;
 
-  console.log("SA_EMAIL:", process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL);
-  console.log("KEY_STARTS_WITH:", (process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY || "").slice(0, 30));
-
+  // 1) Create spreadsheet
   let created;
   try {
     created = await sheets.spreadsheets.create({
@@ -46,44 +63,50 @@ export async function createClientAccountSheet(sheetTitle: string) {
       },
     });
   } catch (e: any) {
-    console.error(
-      "SHEETS_CREATE_FAILED:",
-      JSON.stringify(e?.response?.data || e, null, 2)
-    );
+    console.error("SHEETS_CREATE_FAILED:", JSON.stringify(e?.response?.data || e, null, 2));
     throw e;
   }
-
 
   const spreadsheetId = created.data.spreadsheetId!;
   const spreadsheetUrl = created.data.spreadsheetUrl!;
 
-  // 2️⃣ OVE spreadsheet into your Drive folder  ✅ ADD THIS HERE
-  // const folderId = process.env.GOOGLE_SHEETS_FOLDER_ID;
-  // if (folderId) {
-  //   await drive.files.update({
-  //     fileId: spreadsheetId,
-  //     addParents: folderId,
-  //     removeParents: "root",
-  //     supportsAllDrives: true,
-  //   });
-  // }
+  // 2) Move to folder (optional)
+  const folderId = process.env.GOOGLE_SHEETS_FOLDER_ID;
+  if (folderId) {
+    try {
+      await drive.files.update({
+        fileId: spreadsheetId,
+        addParents: folderId,
+        removeParents: "root",
+        supportsAllDrives: true,
+      });
+    } catch (e: any) {
+      console.error("DRIVE_MOVE_FAILED:", JSON.stringify(e?.response?.data || e, null, 2));
+      // not fatal
+    }
+  }
 
-  // // ✅ (HIGHLY RECOMMENDED) SHARE SHEET TO YOUR NORMAL EMAIL SO YOU CAN SEE IT
-  // const adminEmail = process.env.GOOGLE_SHEETS_ADMIN_EMAIL; // set this
-  // if (adminEmail) {
-  //   await drive.permissions.create({
-  //     fileId: spreadsheetId,
-  //     supportsAllDrives: true,
-  //     sendNotificationEmail: false,
-  //     requestBody: {
-  //       type: "user",
-  //       role: "writer",
-  //       emailAddress: adminEmail,
-  //     },
-  //   });
-  // }
+  // 3) Share to admin email so you can see it (optional but recommended)
+  const adminEmail = process.env.GOOGLE_SHEETS_ADMIN_EMAIL;
+  if (adminEmail) {
+    try {
+      await drive.permissions.create({
+        fileId: spreadsheetId,
+        supportsAllDrives: true,
+        sendNotificationEmail: false,
+        requestBody: {
+          type: "user",
+          role: "writer",
+          emailAddress: adminEmail,
+        },
+      });
+    } catch (e: any) {
+      console.error("DRIVE_SHARE_FAILED:", JSON.stringify(e?.response?.data || e, null, 2));
+      // not fatal
+    }
+  }
 
-  // 3️⃣ ADD HEADERS
+  // 4) Headers
   await sheets.spreadsheets.values.update({
     spreadsheetId,
     range: "Orders!A1:K1",
