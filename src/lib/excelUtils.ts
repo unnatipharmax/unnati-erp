@@ -1,11 +1,6 @@
 // src/lib/excelUtils.ts
-// npm install exceljs
+// ✅ 100% in-memory — no filesystem writes — works on Vercel
 import ExcelJS from "exceljs";
-import path from "path";
-import fs from "fs";
-
-const LEDGER_DIR = path.join(process.cwd(), "public", "ledgers");
-if (!fs.existsSync(LEDGER_DIR)) fs.mkdirSync(LEDGER_DIR, { recursive: true });
 
 const C = {
   darkBg:  "FF1E2A3A",
@@ -36,16 +31,29 @@ function styleData(
   if (opts.bg)  cell.fill   = { type: "pattern", pattern: "solid", fgColor: { argb: opts.bg } };
 }
 
-// ── Create fresh ledger on multi-link creation ────────────────────────────────
-export async function createClientLedger(params: {
-  accountId:      string;
+export type OrderRow = {
+  orderDate:     string;
+  orderId:       string;
+  products:      string;
+  totalQty:      number;
+  shipmentMode:  string;
+  orderValue:    number;
+  balanceBefore: number;
+  balanceAfter:  number;
+  status?:       string;
+  notes?:        string | null;
+};
+
+function buildWorkbook(params: {
   accountName:    string;
   openingBalance: number;
   token:          string;
   orderUrl:       string;
-  createdAt?:     Date;
-}): Promise<string> {
-  const { accountId, accountName, openingBalance, token, orderUrl, createdAt } = params;
+  createdAt:      Date;
+  orders:         OrderRow[];
+}): ExcelJS.Workbook {
+  const { accountName, openingBalance, token, orderUrl, createdAt, orders } = params;
+
   const wb = new ExcelJS.Workbook();
   wb.creator = "Unnati Pharmax ERP";
   wb.created = new Date();
@@ -54,7 +62,6 @@ export async function createClientLedger(params: {
   const ws1 = wb.addWorksheet("Client Summary");
   ws1.properties.defaultRowHeight = 20;
 
-  // Title
   ws1.mergeCells("A1:F1");
   const title = ws1.getCell("A1");
   title.value     = "UNNATI PHARMAX — CLIENT LEDGER";
@@ -63,36 +70,34 @@ export async function createClientLedger(params: {
   title.alignment = { horizontal: "center", vertical: "middle" };
   ws1.getRow(1).height = 36;
 
-  // Info block
   const info: [string, string | number][] = [
-    ["Client Name",           accountName],
-    ["Account ID",            accountId],
-    ["Opening Balance (₹)",   openingBalance],
-    ["Order Link Token",      token],
-    ["Order URL",             orderUrl],
-    ["Created On",            (createdAt ?? new Date()).toLocaleDateString("en-IN")],
+    ["Client Name",          accountName],
+    ["Opening Balance (₹)",  openingBalance],
+    ["Order URL",            orderUrl],
+    ["Token",                token],
+    ["Created On",           createdAt.toLocaleDateString("en-IN")],
   ];
+
   info.forEach(([label, val], i) => {
     const row = i + 2;
     ws1.mergeCells(`A${row}:B${row}`);
     const lc = ws1.getCell(`A${row}`);
-    lc.value = label;
-    lc.font  = { name: "Arial", bold: true, size: 10 };
+    lc.value  = label;
+    lc.font   = { name: "Arial", bold: true, size: 10 };
     lc.border = border;
     ws1.mergeCells(`C${row}:F${row}`);
-    const vc = ws1.getCell(`C${row}`);
+    const vc  = ws1.getCell(`C${row}`);
     vc.value  = val;
     vc.font   = { name: "Arial", size: 10 };
     vc.border = border;
     if (label.includes("Balance")) {
-      vc.numFmt = "₹#,##0.00";
+      vc.numFmt    = "₹#,##0.00";
       vc.alignment = { horizontal: "right" };
     }
   });
 
-  ws1.getRow(8).height = 10; // spacer
+  ws1.getRow(8).height = 10;
 
-  // Live summary stats — row 9 headers, row 10 formulas
   const statHdrs = ["Opening Balance (₹)", "Total Orders", "Total Spent (₹)", "Remaining Balance (₹)"];
   statHdrs.forEach((h, i) => {
     const cell = ws1.getCell(9, i + 1);
@@ -101,22 +106,19 @@ export async function createClientLedger(params: {
   });
   ws1.getRow(9).height = 26;
 
-  // Formulas reference the Transactions sheet
-  const statFormulas: [ExcelJS.CellFormulaValue, string][] = [
-    [{ formula: "C4"                                               }, "₹#,##0.00"],
-    [{ formula: "COUNTA(Transactions!A2:A1000000)"                 }, "0"        ],
-    [{ formula: "IFERROR(SUM(Transactions!F2:F1000000),0)"         }, "₹#,##0.00"],
-    [{ formula: "IFERROR(A10-C10,A10)"                             }, "₹#,##0.00"],
+  const formulas: [ExcelJS.CellFormulaValue, string][] = [
+    [{ formula: "C3"                                       }, "₹#,##0.00"],
+    [{ formula: "COUNTA(Transactions!A2:A1000000)"          }, "0"        ],
+    [{ formula: "IFERROR(SUM(Transactions!F2:F1000000),0)"  }, "₹#,##0.00"],
+    [{ formula: "IFERROR(A10-C10,A10)"                      }, "₹#,##0.00"],
   ];
-  statFormulas.forEach(([formula, fmt], i) => {
+  formulas.forEach(([formula, fmt], i) => {
     const cell = ws1.getCell(10, i + 1);
     cell.value = formula;
     styleData(cell, { fmt, align: "right" });
   });
-  ws1.getRow(10).height = 22;
 
   [24, 24, 24, 24, 24, 24].forEach((w, i) => { ws1.getColumn(i + 1).width = w; });
-  ws1.views = [{ state: "frozen", ySplit: 10 }];
 
   // ── Sheet 2: Transactions ───────────────────────────────────────────────────
   const ws2 = wb.addWorksheet("Transactions");
@@ -134,123 +136,45 @@ export async function createClientLedger(params: {
     styleHeader(cell);
   });
   ws2.getRow(1).height = 26;
+  ws2.views = [{ state: "frozen", ySplit: 1 }];
 
   const colWidths = [14, 36, 40, 10, 15, 18, 20, 20, 12, 28];
   colWidths.forEach((w, i) => { ws2.getColumn(i + 1).width = w; });
-  ws2.views = [{ state: "frozen", ySplit: 1 }];
 
-  const filename = `ledger_${accountId}.xlsx`;
-  await wb.xlsx.writeFile(path.join(LEDGER_DIR, filename));
-  return filename;
-}
-
-// ── Append one order row (called from order-entry API) ────────────────────────
-export async function appendOrderToLedger(
-  filename: string,
-  row: {
-    orderDate:    string;
-    orderId:      string;
-    products:     string;   // "ProductA x2, ProductB x1"
-    totalQty:     number;
-    shipmentMode: string;
-    orderValue:   number;
-    balanceBefore: number;
-    balanceAfter:  number;
-    status?:      string;
-    notes?:       string;
-  }
-): Promise<void> {
-  const filepath = path.join(LEDGER_DIR, filename);
-  if (!fs.existsSync(filepath)) throw new Error(`Ledger file not found: ${filename}`);
-
-  const wb  = new ExcelJS.Workbook();
-  await wb.xlsx.readFile(filepath);
-
-  const ws2    = wb.getWorksheet("Transactions")!;
-  const nextRow = (ws2.lastRow?.number ?? 1) + 1;
-  const isAlt   = nextRow % 2 === 0;
-
-  const values = [
-    row.orderDate,
-    row.orderId,
-    row.products,
-    row.totalQty,
-    row.shipmentMode,
-    row.orderValue,
-    row.balanceBefore,
-    row.balanceAfter,
-    row.status  ?? "PLACED",
-    row.notes   ?? "",
-  ];
-
-  const excelRow = ws2.getRow(nextRow);
-  values.forEach((val, i) => {
-    const cell = excelRow.getCell(i + 1);
-    cell.value = val;
-    const isCurrency = [5, 6, 7].includes(i);
-    styleData(cell, {
-      fmt:   isCurrency ? "₹#,##0.00" : undefined,
-      align: isCurrency ? "right" : i === 3 ? "center" : "left",
-      bg:    isAlt ? C.altRow : undefined,
+  orders.forEach((row, idx) => {
+    const r    = idx + 2;
+    const isAlt = r % 2 === 0;
+    const values = [
+      row.orderDate, row.orderId, row.products, row.totalQty,
+      row.shipmentMode, row.orderValue, row.balanceBefore, row.balanceAfter,
+      row.status ?? "PLACED", row.notes ?? "",
+    ];
+    values.forEach((val, i) => {
+      const cell       = ws2.getCell(r, i + 1);
+      cell.value       = val;
+      const isCurrency = [5, 6, 7].includes(i);
+      styleData(cell, {
+        fmt:   isCurrency ? "₹#,##0.00" : undefined,
+        align: isCurrency ? "right" : i === 3 ? "center" : "left",
+        bg:    isAlt ? C.altRow : undefined,
+      });
     });
   });
-  excelRow.height = 20;
-  excelRow.commit();
 
-  await wb.xlsx.writeFile(filepath);
+  return wb;
 }
 
-// ── Generate a fresh ledger from DB data (re-download anytime) ────────────────
-export async function regenerateLedger(params: {
+// ── Public API — returns a Buffer ready to stream as HTTP response ─────────────
+export async function generateLedgerBuffer(params: {
   accountId:      string;
   accountName:    string;
   openingBalance: number;
   token:          string;
   orderUrl:       string;
   createdAt:      Date;
-  orders: {
-    orderId:      string;
-    placedAt:     Date;
-    products:     string;
-    totalQty:     number;
-    shipmentMode: string;
-    orderValue:   number;
-    balanceBefore: number;
-    balanceAfter:  number;
-    status:       string;
-    notes?:       string | null;
-  }[];
-}): Promise<string> {
-  // Delete existing file so createClientLedger starts fresh
-  const filepath = path.join(LEDGER_DIR, `ledger_${params.accountId}.xlsx`);
-  if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
-
-  const filename = await createClientLedger({
-    accountId:      params.accountId,
-    accountName:    params.accountName,
-    openingBalance: params.openingBalance,
-    token:          params.token,
-    orderUrl:       params.orderUrl,
-    createdAt:      params.createdAt,
-  });
-
-  // Append every past order
-  for (const o of params.orders) {
-    await appendOrderToLedger(filename, {
-      orderDate:    o.placedAt.toLocaleDateString("en-IN"),
-      orderId:      o.orderId,
-      products:     o.products,
-      totalQty:     o.totalQty,
-      shipmentMode: o.shipmentMode,
-      orderValue:   o.orderValue,
-      balanceBefore: o.balanceBefore,
-      balanceAfter:  o.balanceAfter,
-      status:       o.status,
-      notes:        o.notes ?? "",
-    });
-  }
-
-  return filename;
+  orders:         OrderRow[];
+}): Promise<Buffer> {
+  const wb    = buildWorkbook(params);
+  const array = await wb.xlsx.writeBuffer();
+  return Buffer.from(array);
 }
-
-export { LEDGER_DIR };
