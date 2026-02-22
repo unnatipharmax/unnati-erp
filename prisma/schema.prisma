@@ -3,17 +3,29 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  SALES
+  ACCOUNTS
+  PACKAGING
 }
 
 model User {
   id        String   @id @default(uuid())
+  username  String   @unique
   email     String   @unique
   password  String
   name      String
+  role      Role     @default(SALES)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Party {
@@ -46,18 +58,18 @@ model Email {
 }
 
 model Product {
-  id            String         @id @default(uuid())
+  id            String           @id @default(uuid())
   name          String
   manufacturer  String?
   hsn           String?
   pack          String?
   mrp           Float?
   gstPercent    Float?
-  isActive      Boolean        @default(true)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  isActive      Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
   PurchaseItems PurchaseItem[]
-  orderItems OrderEntryItem[]
+  orderItems    OrderEntryItem[]
 }
 
 model PurchaseBill {
@@ -91,31 +103,25 @@ model OrderInitiation {
   source          OrderSource
   filledByUserId  String?
   clientFormToken String?
-
-  fullName   String
-  address    String
-  city       String
-  state      String
-  postalCode String
-  country    String
-  email      String
-  phone      String
-
-  remitterName String
-  amountPaid   Decimal @db.Decimal(12, 2)
-  currency     String
-
-  status OrderStatus @default(INITIATED)
-
-  // ✅ opposite side of 1-1
-  clientFormLink ClientFormLink?
-  orderEntry    OrderEntry?
-  orderValue Decimal? @db.Decimal(12,2)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  accountId String?
-  account   ClientAccount? @relation(fields: [accountId], references: [id])
+  fullName        String
+  address         String
+  city            String
+  state           String
+  postalCode      String
+  country         String
+  email           String
+  phone           String
+  remitterName    String
+  amountPaid      Decimal     @db.Decimal(12, 2)
+  currency        String
+  status          OrderStatus @default(INITIATED)
+  orderValue      Decimal?    @db.Decimal(12, 2)
+  clientFormLink  ClientFormLink?
+  orderEntry      OrderEntry?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  accountId       String?
+  account         ClientAccount? @relation(fields: [accountId], references: [id])
 
   @@index([status])
   @@index([email])
@@ -129,12 +135,9 @@ model ClientFormLink {
   expiresAt   DateTime
   createdById String?
   usedAt      DateTime?
-
-  // ✅ 1-1 link
-  orderId String?          @unique
-  order   OrderInitiation? @relation(fields: [orderId], references: [id])
-
-  createdAt DateTime @default(now())
+  orderId     String?   @unique
+  order       OrderInitiation? @relation(fields: [orderId], references: [id])
+  createdAt   DateTime  @default(now())
 
   @@index([isUsed])
   @@index([expiresAt])
@@ -161,35 +164,25 @@ enum ShipmentMode {
 }
 
 model OrderEntry {
-  id            String       @id @default(uuid())
-
-  // 1-1 with OrderInitiation
-  orderId       String       @unique
+  id            String          @id @default(uuid())
+  orderId       String          @unique
   order         OrderInitiation @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  shippingPrice Decimal      @db.Decimal(12,2)
+  shippingPrice Decimal         @db.Decimal(12, 2)
   shipmentMode  ShipmentMode
   notes         String?
-
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
   items         OrderEntryItem[]
 }
 
 model OrderEntryItem {
   id           String     @id @default(uuid())
-
   orderEntryId String
   orderEntry   OrderEntry @relation(fields: [orderEntryId], references: [id], onDelete: Cascade)
-
-  // ✅ dropdown (FK to Product Master)
   productId    String
   product      Product    @relation(fields: [productId], references: [id])
-
   quantity     Int
-  sellingPrice Decimal    @db.Decimal(12,2)
-
+  sellingPrice Decimal    @db.Decimal(12, 2)
   createdAt    DateTime   @default(now())
 
   @@index([orderEntryId])
@@ -197,30 +190,26 @@ model OrderEntryItem {
 }
 
 model ClientAccount {
-  id        String   @id @default(uuid())
-  name      String
-  balance   Decimal  @db.Decimal(12,2) @default(0)
-
+  id             String              @id @default(uuid())
+  name           String
+  balance        Decimal             @db.Decimal(12, 2) @default(0)
   googleSheetId  String?
   googleSheetUrl String?
-
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  links     ClientAccountLink[]
-  orders    OrderInitiation[]
-  ledger    AccountLedger[]
+  isActive       Boolean             @default(true)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  links          ClientAccountLink[]
+  orders         OrderInitiation[]
+  ledger         AccountLedger[]
 }
 
 model ClientAccountLink {
-  id         String   @id @default(uuid())
-  token      String   @unique
-  accountId  String
-  account    ClientAccount @relation(fields: [accountId], references: [id])
-
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
+  id        String        @id @default(uuid())
+  token     String        @unique
+  accountId String
+  account   ClientAccount @relation(fields: [accountId], references: [id])
+  isActive  Boolean       @default(true)
+  createdAt DateTime      @default(now())
 
   @@index([accountId])
 }
@@ -231,18 +220,15 @@ enum LedgerType {
 }
 
 model AccountLedger {
-  id         String    @id @default(uuid())
-  accountId  String
-  account    ClientAccount @relation(fields: [accountId], references: [id])
-
-  type       LedgerType
-  amount     Decimal   @db.Decimal(12,2)
-  note       String?
-  orderId    String?   // to tie debit to a specific order if you want
-  createdAt  DateTime  @default(now())
+  id        String        @id @default(uuid())
+  accountId String
+  account   ClientAccount @relation(fields: [accountId], references: [id])
+  type      LedgerType
+  amount    Decimal       @db.Decimal(12, 2)
+  note      String?
+  orderId   String?
+  createdAt DateTime      @default(now())
 
   @@index([accountId])
   @@index([orderId])
 }
-
-
