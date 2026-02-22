@@ -7,8 +7,8 @@ const menu = [
   { name: "HOME", path: "/dashboard", icon: Home },
   { name: "ORDER INITIATION", path: "/dashboard/client-forms", icon: Link },
   { name: "ORDER ENTRY", path: "/dashboard/order-entry", icon: FileText },
+  { name: "PRODUCT MASTER", path: "/dashboard/product-master", icon: Package },
   { name: "PARTY MASTER", path: "/dashboard/party", icon: Users },
-  { name: "PRODUCT MASTER", path: "/dashboard/product", icon: Package },
   { name: "PURCHASE BILL", path: "/dashboard/purchase", icon: FileText },
   { name: "OCR (GEMINI)", path: "/dashboard/ocr", icon: ImageIcon },
 ];
