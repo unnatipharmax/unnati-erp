@@ -1,8 +1,9 @@
+// src/app/api/client-account-links/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
 import { Prisma, LedgerType } from "@prisma/client";
 import crypto from "crypto";
-import { createClientAccountSheet } from "../../../lib/googleSheets";
+import { createClientLedger } from "../../../lib/excelUtils";
 
 export const runtime = "nodejs";
 
@@ -23,70 +24,76 @@ export async function POST(req: Request) {
 
     const opening = new Prisma.Decimal(String(openingBalanceRaw || "0"));
     if (opening.lessThan(0)) {
-      return NextResponse.json(
-        { error: "Opening balance cannot be negative" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Opening balance cannot be negative" }, { status: 400 });
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const token = makeToken();
-
-    // Create Google Sheet first (so we can store sheetId/url inside the same DB transaction)
-    const sheet = await createClientAccountSheet(name);
+    const token   = makeToken();
+    const orderUrl = `${baseUrl}/client-multi-form/${token}`;
 
     const result = await prisma.$transaction(async (tx) => {
-      // 1) Create account (now includes sheet mapping)
+      // 1. Create ClientAccount
       const account = await tx.clientAccount.create({
         data: {
           name,
-          balance: opening,
+          balance:  opening,
           isActive: true,
-          googleSheetId: sheet.spreadsheetId,
-          googleSheetUrl: sheet.spreadsheetUrl,
         },
-        select: { id: true, balance: true },
+        select: { id: true, balance: true, createdAt: true },
       });
 
-      // 2) Ledger credit (audit)
+      // 2. Opening balance ledger entry
       if (opening.greaterThan(0)) {
         await tx.accountLedger.create({
           data: {
             accountId: account.id,
-            type: LedgerType.CREDIT,
-            amount: opening,
-            note: "Opening balance",
+            type:      LedgerType.CREDIT,
+            amount:    opening,
+            note:      "Opening balance",
           },
         });
       }
 
-      // 3) Link token
+      // 3. Create the permanent link token
       await tx.clientAccountLink.create({
         data: {
           token,
           accountId: account.id,
-          isActive: true,
+          isActive:  true,
         },
       });
 
-      return {
-        accountId: account.id,
-        token,
-        balance: account.balance.toString(),
-        url: `${baseUrl}/client-multi-form/${token}`,
-        sheetUrl: sheet.spreadsheetUrl,
-      };
+      return { accountId: account.id, createdAt: account.createdAt };
     });
 
-    return NextResponse.json({ ok: true, ...result });
+    // 4. Generate Excel ledger (outside transaction — file system op)
+    const excelFilename = await createClientLedger({
+      accountId:      result.accountId,
+      accountName:    name,
+      openingBalance: Number(opening),
+      token,
+      orderUrl,
+      createdAt:      result.createdAt,
+    });
+
+    // 5. Store excel filename in DB (for re-download later)
+    await prisma.clientAccount.update({
+      where: { id: result.accountId },
+      data:  { googleSheetId: excelFilename }, // reusing this column to store filename
+    });
+
+    return NextResponse.json({
+      ok:             true,
+      accountId:      result.accountId,
+      token,
+      balance:        opening.toString(),
+      url:            orderUrl,
+      excelFilename,
+      downloadUrl:    `${baseUrl}/api/client-account-links/download/${result.accountId}`,
+    });
+
   } catch (e: any) {
-  console.error("client-account-links error:", {
-    message: e?.message,
-    google: e?.response?.data,
-  });
-  return NextResponse.json(
-    { error: e?.response?.data?.error?.message || e?.message || "Failed" },
-    { status: 500 }
-  );
-}
+    console.error("client-account-links error:", e);
+    return NextResponse.json({ error: e?.message || "Failed" }, { status: 500 });
+  }
 }
