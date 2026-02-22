@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRef, useMemo, useState } from "react";
 
 export default function ClientMultiForm({
   token,
@@ -13,9 +13,11 @@ export default function ClientMultiForm({
   accountName: string;
   balance: number;
 }) {
-  const [loading, setLoading] = useState(false);
-  const [ok, setOk] = useState<{ orderId: string } | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const formRef                     = useRef<HTMLFormElement>(null);
+  const [loading, setLoading]       = useState(false);
+  const [submitted, setSubmitted]   = useState(false); // blocks double submit
+  const [ok, setOk]                 = useState<{ orderId: string } | null>(null);
+  const [err, setErr]               = useState<string | null>(null);
 
   const shortOrder = useMemo(() => {
     if (!ok?.orderId) return "";
@@ -26,50 +28,56 @@ export default function ClientMultiForm({
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (exhausted) return;
+    if (exhausted || submitted) return; // prevent double submit
 
     setLoading(true);
+    setSubmitted(true); // lock immediately
     setErr(null);
 
     const form = new FormData(e.currentTarget);
 
     const payload = {
-      token, // identifies ClientAccountLink
-      // order details
-      fullName: form.get("fullName"),
-      address: form.get("address"),
-      city: form.get("city"),
-      state: form.get("state"),
-      postalCode: form.get("postalCode"),
-      country: form.get("country"),
-      email: form.get("email"),
-      phone: form.get("phone"),
-      remitterName: form.get("remitterName") || accountName, // optional
-      currency: form.get("currency") || "INR",
+      token,
+      fullName:     form.get("fullName"),
+      address:      form.get("address"),
+      city:         form.get("city"),
+      state:        form.get("state"),
+      postalCode:   form.get("postalCode"),
+      country:      form.get("country"),
+      email:        form.get("email"),
+      phone:        form.get("phone"),
+      remitterName: form.get("remitterName") || accountName,
+      currency:     form.get("currency") || "INR",
     };
 
-    const res = await fetch("/api/client-multi-form-submit", {
-      method: "POST",
+    const res  = await fetch("/api/client-multi-form-submit", {
+      method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body:    JSON.stringify(payload),
     });
-
     const data = await res.json();
 
     if (!res.ok) {
       setErr(data?.error || "Something went wrong");
-      setOk(null);
+      setSubmitted(false); // allow retry on error
     } else {
       setOk({ orderId: data.orderId });
+      // ✅ Clear the form fields
+      formRef.current?.reset();
     }
 
     setLoading(false);
   }
 
+  function handleSubmitAnother() {
+    setOk(null);
+    setSubmitted(false);
+    setErr(null);
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex items-start justify-center p-6">
       <div className="w-full max-w-3xl">
-        {/* Account Banner */}
         <div className="bg-slate-900/70 border border-slate-800 rounded-2xl shadow-xl p-6">
           <h2 className="text-2xl font-semibold">Client Multi Order Form</h2>
           <p className="text-sm text-slate-400 mt-1">
@@ -86,7 +94,7 @@ export default function ClientMultiForm({
             <div className="mt-4 rounded-2xl border border-red-700/40 bg-red-500/10 p-4">
               <div className="font-semibold text-red-300">❌ Balance exhausted</div>
               <div className="text-sm text-slate-300 mt-1">
-                Please contact accounts team to add funds..
+                Please contact accounts team to add funds.
               </div>
             </div>
           )}
@@ -98,15 +106,21 @@ export default function ClientMultiForm({
               <div className="text-sm text-slate-200 mt-1">
                 Order: <span className="font-bold">#{shortOrder}</span>
               </div>
-              <div className="text-xs text-slate-400 mt-2 break-all">Internal ID: {ok.orderId}</div>
-              <div className="text-xs text-slate-500 mt-2">
-                You can submit another order using the same link.
+              <div className="text-xs text-slate-400 mt-2 break-all">
+                Internal ID: {ok.orderId}
               </div>
+              <button
+                onClick={handleSubmitAnother}
+                className="mt-3 text-sm text-blue-400 underline underline-offset-2"
+              >
+                Submit another order →
+              </button>
             </div>
           )}
 
-          <form onSubmit={onSubmit} className="mt-6 space-y-6">
-            <fieldset disabled={loading || exhausted} className={exhausted ? "opacity-60" : ""}>
+          <form ref={formRef} onSubmit={onSubmit} className="mt-6 space-y-6">
+            {/* Disable while loading OR after successful submit (until they click "submit another") */}
+            <fieldset disabled={loading || exhausted || !!ok} className={(exhausted || !!ok) ? "opacity-60" : ""}>
               <Section title="Customer Details">
                 <Grid>
                   <Field label="Customer Full Name">
@@ -153,17 +167,18 @@ export default function ClientMultiForm({
               </Section>
             </fieldset>
 
-            <div className="flex items-center gap-3">
-              <button
-                disabled={loading || exhausted}
-                type="submit"
-                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed font-semibold"
-              >
-                {loading ? "Submitting..." : "Submit Order"}
-              </button>
-
-              {err && <p className="text-sm text-red-400">{err}</p>}
-            </div>
+            {!ok && (
+              <div className="flex items-center gap-3">
+                <button
+                  disabled={loading || exhausted}
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed font-semibold"
+                >
+                  {loading ? "Submitting..." : "Submit Order"}
+                </button>
+                {err && <p className="text-sm text-red-400">{err}</p>}
+              </div>
+            )}
           </form>
         </div>
 
