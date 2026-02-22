@@ -1,7 +1,7 @@
 "use client";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { Home, Link, FileText, Users, Package, Image as ImageIcon, Settings } from "lucide-react";
+import { Home, Link, FileText, Users, Package, Image as ImageIcon, Settings, BookOpen } from "lucide-react";
 
 type Role = "ADMIN" | "MANAGER" | "SALES" | "ACCOUNTS" | "PACKAGING";
 
@@ -10,8 +10,9 @@ const ALL_MENU = [
   { name: "ORDER INITIATION", path: "/dashboard/client-forms",   icon: Link,      roles: ["ADMIN","MANAGER","SALES","ACCOUNTS"] },
   { name: "ORDER ENTRY",      path: "/dashboard/order-entry",    icon: FileText,  roles: ["ADMIN","MANAGER","SALES"] },
   { name: "PRODUCT MASTER",   path: "/dashboard/product-master", icon: Package,   roles: ["ADMIN","MANAGER","SALES"] },
-  { name: "PARTY MASTER",     path: "/dashboard/party",          icon: Users,     roles: ["ADMIN","MANAGER"] },
+  { name: "LEDGER",           path: "/dashboard/ledger",         icon: BookOpen,  roles: ["ADMIN","MANAGER","ACCOUNTS"] },
   { name: "PURCHASE BILL",    path: "/dashboard/purchase",       icon: FileText,  roles: ["ADMIN","MANAGER","ACCOUNTS"] },
+  { name: "PARTY MASTER",     path: "/dashboard/party",          icon: Users,     roles: ["ADMIN","MANAGER"] },
   { name: "OCR (GEMINI)",     path: "/dashboard/ocr",            icon: ImageIcon, roles: ["ADMIN","MANAGER"] },
   { name: "SETUP",            path: "/dashboard/setup",          icon: Settings,  roles: ["ADMIN"] },
 ];
@@ -44,7 +45,6 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
       background: "var(--surface-1)", borderRight: "1px solid var(--border)",
       display: "flex", flexDirection: "column",
     }}>
-      {/* Logo */}
       <div style={{ padding: "1.25rem", borderBottom: "1px solid var(--border)" }}>
         <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
           UNNATI PHARMAX
@@ -52,7 +52,6 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
         <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 2 }}>ERP System</div>
       </div>
 
-      {/* Nav */}
       <nav style={{ flex: 1, padding: "0.75rem", display: "flex", flexDirection: "column", gap: 2 }}>
         {menu.map(item => {
           const Icon   = item.icon;
@@ -66,7 +65,6 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
         })}
       </nav>
 
-      {/* User + logout */}
       <div style={{ padding: "0.75rem", borderTop: "1px solid var(--border)" }}>
         <div style={{ padding: "0.75rem", borderRadius: 12, background: "var(--surface-2)", marginBottom: "0.5rem" }}>
           <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>{userName}</div>
@@ -78,10 +76,7 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
             {userRole}
           </div>
         </div>
-        <button
-          onClick={logout} disabled={loggingOut}
-          className="btn btn-secondary" style={{ width: "100%", fontSize: "0.8125rem" }}
-        >
+        <button onClick={logout} disabled={loggingOut} className="btn btn-secondary" style={{ width: "100%", fontSize: "0.8125rem" }}>
           {loggingOut ? "Signing out…" : "Sign Out"}
         </button>
       </div>

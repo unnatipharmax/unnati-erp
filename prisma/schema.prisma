@@ -116,6 +116,15 @@ model OrderInitiation {
   currency        String
   status          OrderStatus @default(INITIATED)
   orderValue      Decimal?    @db.Decimal(12, 2)
+
+  // ── Accounts / Payment fields ─────────────────────────────────────
+  inrAmount        Decimal?   @db.Decimal(12, 2)
+  dollarAmount     Decimal?   @db.Decimal(12, 2)
+  paymentDepositDate DateTime?
+  grsNumber        String?
+  exchangeRate     Decimal?   @db.Decimal(10, 4)
+  // ─────────────────────────────────────────────────────────────────
+
   clientFormLink  ClientFormLink?
   orderEntry      OrderEntry?
   createdAt       DateTime    @default(now())
