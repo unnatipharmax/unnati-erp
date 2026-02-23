@@ -1,0 +1,8 @@
+-- AlterTable
+ALTER TABLE "PurchaseItem" ADD COLUMN     "cgstAmount" DOUBLE PRECISION,
+ADD COLUMN     "cgstPercent" DOUBLE PRECISION,
+ADD COLUMN     "igstAmount" DOUBLE PRECISION,
+ADD COLUMN     "igstPercent" DOUBLE PRECISION,
+ADD COLUMN     "sgstAmount" DOUBLE PRECISION,
+ADD COLUMN     "sgstPercent" DOUBLE PRECISION,
+ADD COLUMN     "taxableAmount" DOUBLE PRECISION;

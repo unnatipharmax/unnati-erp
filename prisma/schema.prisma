@@ -58,16 +58,23 @@ model Email {
 }
 
 model Product {
-  id            String           @id @default(uuid())
-  name          String
-  manufacturer  String?
-  hsn           String?
-  pack          String?
-  mrp           Float?
-  gstPercent    Float?
-  isActive      Boolean          @default(true)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id           String  @id @default(uuid())
+  name         String
+  manufacturer String?
+  hsn          String?
+  pack         String?
+  mrp          Float?
+  gstPercent   Float?
+  // ── New fields ──────────────────────────────
+  composition  String?   // e.g. "LEVONORGESTREL TAB 1.5"
+  batchNo      String?   // e.g. "DH250092B"
+  mfgDate      String?   // stored as string e.g. "Jul-25"
+  expDate      String?   // stored as string e.g. "Jun-27"
+  // ────────────────────────────────────────────
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
   PurchaseItems PurchaseItem[]
   orderItems    OrderEntryItem[]
 }
@@ -84,18 +91,34 @@ model PurchaseBill {
 }
 
 model PurchaseItem {
-  id         String       @id @default(uuid())
-  productId  String
-  purchaseId String
-  batch      String?
-  expiry     String?
-  quantity   Int
-  rate       Float
-  discount   Float?
-  gstPercent Float?
-  mrp        Float?
-  product    Product      @relation(fields: [productId], references: [id])
-  purchase   PurchaseBill @relation(fields: [purchaseId], references: [id])
+  id            String       @id @default(uuid())
+  productId     String
+  purchaseId    String
+  batch         String?
+  expiry        String?
+  quantity      Int
+  rate          Float        // purchase rate — INR unit = rate * 1.15
+  discount      Float?
+  // GST breakdown — stored separately for CA/accounting purposes
+  gstPercent    Float?       // total GST % e.g. 5 or 18
+  cgstPercent   Float?       // CGST % e.g. 2.5 or 9
+  sgstPercent   Float?       // SGST % e.g. 2.5 or 9
+  igstPercent   Float?       // IGST % if interstate (= gstPercent)
+  taxableAmount Float?       // taxable value before GST
+  cgstAmount    Float?       // actual CGST rupee amount from bill
+  sgstAmount    Float?       // actual SGST rupee amount from bill
+  igstAmount    Float?       // actual IGST rupee amount from bill
+  mrp           Float?
+  product       Product      @relation(fields: [productId], references: [id])
+  purchase      PurchaseBill @relation(fields: [purchaseId], references: [id])
+}
+
+// ── Invoice sequence counter ───────────────────────────────────────────────
+// One row per financial year e.g. "2526" → last used sequence number
+model InvoiceSequence {
+  id           String @id @default(uuid())
+  financialYear String @unique  // e.g. "2526" for FY 2025-26
+  lastNumber   Int    @default(0)
 }
 
 model OrderInitiation {
@@ -117,13 +140,16 @@ model OrderInitiation {
   status          OrderStatus @default(INITIATED)
   orderValue      Decimal?    @db.Decimal(12, 2)
 
-  // ── Accounts / Payment fields ─────────────────────────────────────
-  inrAmount        Decimal?   @db.Decimal(12, 2)
-  dollarAmount     Decimal?   @db.Decimal(12, 2)
+  // ── Accounts / Payment fields ──────────────────────────────────────────
+  inrAmount          Decimal?  @db.Decimal(12, 2)
+  dollarAmount       Decimal?  @db.Decimal(12, 2)
   paymentDepositDate DateTime?
-  grsNumber        String?
-  exchangeRate     Decimal?   @db.Decimal(10, 4)
-  // ─────────────────────────────────────────────────────────────────
+  grsNumber          String?
+  exchangeRate       Decimal?  @db.Decimal(10, 4)
+
+  // ── Invoice fields (set when packaging generates invoice) ──────────────
+  invoiceNo          String?   @unique  // e.g. "E-2526-001"
+  invoiceGeneratedAt DateTime?
 
   clientFormLink  ClientFormLink?
   orderEntry      OrderEntry?
@@ -135,18 +161,19 @@ model OrderInitiation {
   @@index([status])
   @@index([email])
   @@index([accountId])
+  @@index([invoiceNo])
 }
 
 model ClientFormLink {
-  id          String    @id @default(uuid())
-  token       String    @unique
-  isUsed      Boolean   @default(false)
+  id          String           @id @default(uuid())
+  token       String           @unique
+  isUsed      Boolean          @default(false)
   expiresAt   DateTime
   createdById String?
   usedAt      DateTime?
-  orderId     String?   @unique
+  orderId     String?          @unique
   order       OrderInitiation? @relation(fields: [orderId], references: [id])
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime         @default(now())
 
   @@index([isUsed])
   @@index([expiresAt])

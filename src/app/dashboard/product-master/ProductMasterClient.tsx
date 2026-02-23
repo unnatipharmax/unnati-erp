@@ -1,241 +1,165 @@
 "use client";
-
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 
 type Product = {
-  id:           string;
-  name:         string;
-  manufacturer: string | null;
-  hsn:          string | null;
-  pack:         string | null;
-  mrp:          number | null;
-  gstPercent:   number | null;
-  createdAt:    string;
+  id: string; name: string; manufacturer: string | null;
+  hsn: string | null; pack: string | null; mrp: number | null;
+  gstPercent: number | null; composition: string | null;
+  batchNo: string | null; mfgDate: string | null; expDate: string | null;
+  latestRate: number | null; inrUnit: number | null; createdAt: string;
 };
 
-type FormState = {
-  name: string; manufacturer: string; hsn: string;
-  pack: string; mrp: string; gstPercent: string;
+const EMPTY = {
+  name: "", manufacturer: "", hsn: "", pack: "",
+  mrp: "", gstPercent: "", composition: "",
+  batchNo: "", mfgDate: "", expDate: "",
 };
 
-const emptyForm: FormState = { name: "", manufacturer: "", hsn: "", pack: "", mrp: "", gstPercent: "" };
+export default function ProductMasterClient() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [search,   setSearch]   = useState("");
+  const [modal,    setModal]    = useState<"add" | "edit" | null>(null);
+  const [editing,  setEditing]  = useState<Product | null>(null);
+  const [form,     setForm]     = useState({ ...EMPTY });
+  const [saving,   setSaving]   = useState(false);
+  const [err,      setErr]      = useState("");
 
-// ── Add Product Modal ─────────────────────────────────────────────────────────
-function AddProductModal({ onClose, onAdded }: { onClose: () => void; onAdded: (p: Product) => void }) {
-  const [form, setForm]       = useState<FormState>(emptyForm);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr]         = useState<string | null>(null);
+  async function load() {
+    setLoading(true);
+    const res = await fetch("/api/products");
+    const data = await res.json();
+    setProducts(data.products ?? []);
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
 
-  function set(k: keyof FormState, v: string) { setForm(f => ({ ...f, [k]: v })); if (err) setErr(null); }
+  function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })); }
 
-  async function handleSave() {
+  function openAdd() {
+    setForm({ ...EMPTY }); setEditing(null); setErr(""); setModal("add");
+  }
+  function openEdit(p: Product) {
+    setForm({
+      name: p.name, manufacturer: p.manufacturer ?? "",
+      hsn: p.hsn ?? "", pack: p.pack ?? "",
+      mrp: p.mrp?.toString() ?? "", gstPercent: p.gstPercent?.toString() ?? "",
+      composition: p.composition ?? "", batchNo: p.batchNo ?? "",
+      mfgDate: p.mfgDate ?? "", expDate: p.expDate ?? "",
+    });
+    setEditing(p); setErr(""); setModal("edit");
+  }
+
+  async function save() {
     if (!form.name.trim()) { setErr("Product name is required"); return; }
-    setLoading(true); setErr(null);
-    const res  = await fetch("/api/products", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name:         form.name.trim(),
-        manufacturer: form.manufacturer.trim() || null,
-        hsn:          form.hsn.trim()          || null,
-        pack:         form.pack.trim()          || null,
-        mrp:          form.mrp        ? Number(form.mrp)        : null,
-        gstPercent:   form.gstPercent ? Number(form.gstPercent) : null,
-      }),
+    setSaving(true); setErr("");
+    const url    = editing ? `/api/products/${editing.id}` : "/api/products";
+    const method = editing ? "PATCH" : "POST";
+    const res  = await fetch(url, {
+      method, headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
     });
     const data = await res.json();
-    if (!res.ok) { setErr(data?.error || "Failed"); setLoading(false); }
-    else onAdded({ ...data, mrp: data.mrp ? Number(data.mrp) : null, gstPercent: data.gstPercent ? Number(data.gstPercent) : null, createdAt: new Date().toISOString() });
+    if (!res.ok) { setErr(data?.error || "Save failed"); setSaving(false); return; }
+    setModal(null);
+    setSaving(false);
+    load();
   }
 
-  return (
-    <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal">
-        <div className="modal-header">
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 8, background: "rgba(59,130,246,0.15)",
-              border: "1px solid rgba(59,130,246,0.3)", display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2.5">
-                <path d="M12 5v14M5 12h14" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <div>
-              <h3 style={{ margin: 0 }}>Add New Product</h3>
-              <p style={{ margin: 0, fontSize: "0.75rem" }}>Saved to Product Master instantly</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="btn btn-ghost btn-icon" title="Close (Esc)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round"/>
-            </svg>
-          </button>
-        </div>
-
-        <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-          <div>
-            <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Product Name *</label>
-            <input autoFocus value={form.name} onChange={e => set("name", e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleSave()} placeholder="e.g. TADALAFIL 20MG" />
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-            {([
-              ["manufacturer", "Manufacturer", "e.g. Centurion"],
-              ["hsn",          "HSN Code",     "e.g. 3004"],
-              ["pack",         "Pack",         "e.g. 10 tablets"],
-              ["mrp",          "MRP (₹)",      "0.00"],
-              ["gstPercent",   "GST %",        "12"],
-            ] as [keyof FormState, string, string][]).map(([key, label, placeholder]) => (
-              <div key={key}>
-                <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>{label}</label>
-                <input value={form[key]} onChange={e => set(key, e.target.value)}
-                  placeholder={placeholder}
-                  inputMode={["mrp","gstPercent"].includes(key) ? "decimal" : undefined as any} />
-              </div>
-            ))}
-          </div>
-
-          {err && (
-            <div className="alert alert-error">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01" strokeLinecap="round"/>
-              </svg>
-              {err}
-            </div>
-          )}
-        </div>
-
-        <div className="modal-footer">
-          <button onClick={handleSave} disabled={loading} className="btn btn-primary" style={{ flex: 1 }}>
-            {loading ? "Adding…" : "Add Product"}
-          </button>
-          <button onClick={onClose} disabled={loading} className="btn btn-secondary">Cancel</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Main Client Component ─────────────────────────────────────────────────────
-export default function ProductMasterClient({ initialProducts }: { initialProducts: Product[] }) {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
-  const [showModal, setShowModal] = useState(false);
-  const [search, setSearch]       = useState("");
-  const [deleting, setDeleting]   = useState<string | null>(null);
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    if (!q) return products;
-    return products.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      (p.manufacturer ?? "").toLowerCase().includes(q) ||
-      (p.hsn ?? "").toLowerCase().includes(q)
-    );
-  }, [products, search]);
-
-  function handleAdded(p: Product) {
-    setProducts(prev => [p, ...prev]);
-    setShowModal(false);
-  }
-
-  async function handleDelete(id: string) {
+  async function del(id: string) {
     if (!confirm("Delete this product?")) return;
-    setDeleting(id);
     await fetch(`/api/products/${id}`, { method: "DELETE" });
-    setProducts(prev => prev.filter(p => p.id !== id));
-    setDeleting(null);
+    load();
   }
 
-  return (
-    <>
-      {showModal && <AddProductModal onClose={() => setShowModal(false)} onAdded={handleAdded} />}
+  const filtered = products.filter(p =>
+    [p.name, p.manufacturer, p.hsn, p.composition, p.batchNo]
+      .some(v => v?.toLowerCase().includes(search.toLowerCase()))
+  );
 
-      {/* Toolbar */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.25rem", flexWrap: "wrap" }}>
-        <input
-          placeholder="Search by name, manufacturer, HSN…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{ maxWidth: 340 }}
-        />
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
-            {filtered.length} product{filtered.length !== 1 ? "s" : ""}
-          </span>
-          <button onClick={() => setShowModal(true)} className="btn btn-primary">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M12 5v14M5 12h14" strokeLinecap="round"/>
-            </svg>
-            Add Product
-          </button>
+  return (
+    <div>
+      {/* ── Header ── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem", flexWrap: "wrap", gap: "0.75rem" }}>
+        <div>
+          <h1>Product Master</h1>
+          <p style={{ marginTop: "0.25rem" }}>{products.length} products</p>
+        </div>
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search name, composition, batch..."
+            style={{ padding: "0.5rem 0.75rem", minWidth: 240, fontSize: "0.875rem" }}
+          />
+          <button onClick={openAdd} className="btn btn-primary">+ Add Product</button>
         </div>
       </div>
 
-      {/* Table */}
-      {filtered.length === 0 ? (
+      {/* ── Table ── */}
+      {loading ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 48, borderRadius: 10 }} />)}
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="card" style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
-          {search ? `No products matching "${search}"` : "No products yet. Add your first product above."}
+          {search ? "No products match your search." : "No products yet. Add your first product."}
         </div>
       ) : (
-        <div className="table-wrapper">
-          <table>
+        <div className="table-wrapper" style={{ overflowX: "auto" }}>
+          <table style={{ minWidth: 1100 }}>
             <thead>
               <tr>
-                <th>#</th>
-                <th>Product Name</th>
+                <th>Name</th>
+                <th>Composition</th>
                 <th>Manufacturer</th>
                 <th>HSN</th>
                 <th>Pack</th>
-                <th>MRP (₹)</th>
-                <th>GST %</th>
-                <th>Added On</th>
+                <th>Batch No</th>
+                <th>Mfg Date</th>
+                <th>Exp Date</th>
+                <th style={{ textAlign: "right" }}>MRP</th>
+                <th style={{ textAlign: "right" }}>GST %</th>
+                <th style={{ textAlign: "right" }}>Purchase Rate</th>
+                <th style={{ textAlign: "right" }}>INR Unit (+15%)</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p, i) => (
+              {filtered.map(p => (
                 <tr key={p.id}>
-                  <td style={{ color: "var(--text-muted)", fontSize: "0.8125rem" }}>{i + 1}</td>
                   <td style={{ fontWeight: 600 }}>{p.name}</td>
-                  <td style={{ color: "var(--text-secondary)" }}>{p.manufacturer ?? "—"}</td>
-                  <td>
-                    {p.hsn
-                      ? <span className="badge badge-gray">{p.hsn}</span>
+                  <td style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>{p.composition ?? <span style={{ color: "var(--text-muted)" }}>—</span>}</td>
+                  <td style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>{p.manufacturer ?? <span style={{ color: "var(--text-muted)" }}>—</span>}</td>
+                  <td style={{ fontFamily: "monospace", fontSize: "0.8rem" }}>{p.hsn ?? "—"}</td>
+                  <td>{p.pack ?? "—"}</td>
+                  <td style={{ fontFamily: "monospace", fontSize: "0.8rem" }}>
+                    {p.batchNo
+                      ? <span className="badge badge-blue" style={{ fontSize: "0.7rem" }}>{p.batchNo}</span>
                       : <span style={{ color: "var(--text-muted)" }}>—</span>}
                   </td>
-                  <td style={{ color: "var(--text-secondary)" }}>{p.pack ?? "—"}</td>
-                  <td style={{ fontVariantNumeric: "tabular-nums" }}>
-                    {p.mrp != null
-                      ? <span className="badge badge-amber">₹{p.mrp.toLocaleString("en-IN")}</span>
-                      : <span style={{ color: "var(--text-muted)" }}>—</span>}
+                  <td style={{ fontSize: "0.8rem" }}>{p.mfgDate ?? "—"}</td>
+                  <td style={{ fontSize: "0.8rem" }}>
+                    {p.expDate
+                      ? <span className="badge badge-amber" style={{ fontSize: "0.7rem" }}>{p.expDate}</span>
+                      : "—"}
+                  </td>
+                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                    {p.mrp != null ? `₹${p.mrp}` : "—"}
+                  </td>
+                  <td style={{ textAlign: "right" }}>{p.gstPercent != null ? `${p.gstPercent}%` : "—"}</td>
+                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-secondary)" }}>
+                    {p.latestRate != null ? `₹${p.latestRate.toFixed(2)}` : <span style={{ color: "var(--text-muted)" }}>—</span>}
+                  </td>
+                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                    {p.inrUnit != null
+                      ? <span className="badge badge-green" style={{ fontSize: "0.75rem" }}>₹{p.inrUnit.toFixed(2)}</span>
+                      : <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>No purchase</span>}
                   </td>
                   <td>
-                    {p.gstPercent != null
-                      ? <span className="badge badge-blue">{p.gstPercent}%</span>
-                      : <span style={{ color: "var(--text-muted)" }}>—</span>}
-                  </td>
-                  <td style={{ color: "var(--text-muted)", fontSize: "0.8125rem" }}>
-                    {new Date(p.createdAt).toLocaleDateString("en-IN")}
-                  </td>
-                  <td>
-                    <button
-                      onClick={() => handleDelete(p.id)}
-                      disabled={deleting === p.id}
-                      className="btn btn-danger btn-sm btn-icon"
-                      title="Delete product"
-                    >
-                      {deleting === p.id ? (
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="animate-spin">
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/>
-                          <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
-                        </svg>
-                      ) : (
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      )}
-                    </button>
+                    <div style={{ display: "flex", gap: "0.375rem" }}>
+                      <button onClick={() => openEdit(p)} className="btn btn-secondary btn-sm">Edit</button>
+                      <button onClick={() => del(p.id)} className="btn btn-sm" style={{ color: "#f87171", background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)" }}>Delete</button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -243,6 +167,93 @@ export default function ProductMasterClient({ initialProducts }: { initialProduc
           </table>
         </div>
       )}
-    </>
+
+      {/* ── Add / Edit Modal ── */}
+      {modal && (
+        <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) setModal(null); }}>
+          <div className="modal" style={{ maxWidth: 640, width: "100%" }}>
+            <div className="modal-header">
+              <h3>{modal === "add" ? "Add Product" : "Edit Product"}</h3>
+              <button onClick={() => setModal(null)} style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "1.25rem", cursor: "pointer" }}>✕</button>
+            </div>
+            <div className="modal-body">
+              {err && <div className="alert alert-error" style={{ marginBottom: "1rem" }}>{err}</div>}
+
+              {/* Row 1 */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
+                <div>
+                  <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Product Name *</label>
+                  <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. MORNING PILLS" />
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Composition</label>
+                  <input value={form.composition} onChange={e => set("composition", e.target.value)} placeholder="e.g. LEVONORGESTREL TAB 1.5" />
+                </div>
+              </div>
+
+              {/* Row 2 */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
+                <div>
+                  <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Manufacturer</label>
+                  <input value={form.manufacturer} onChange={e => set("manufacturer", e.target.value)} placeholder="e.g. HEALING PHARMA" />
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>HSN Code</label>
+                  <input value={form.hsn} onChange={e => set("hsn", e.target.value)} placeholder="e.g. 30059060" />
+                </div>
+              </div>
+
+              {/* Row 3 — Batch / Mfg / Exp */}
+              <div style={{ background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.12)", borderRadius: 10, padding: "0.75rem", marginBottom: "0.75rem" }}>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginBottom: "0.5rem", fontWeight: 600 }}>Batch & Dates</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
+                  <div>
+                    <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Batch No</label>
+                    <input value={form.batchNo} onChange={e => set("batchNo", e.target.value)} placeholder="e.g. DH250092B" />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Mfg Date</label>
+                    <input value={form.mfgDate} onChange={e => set("mfgDate", e.target.value)} placeholder="e.g. Jul-25" />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Exp Date</label>
+                    <input value={form.expDate} onChange={e => set("expDate", e.target.value)} placeholder="e.g. Jun-27" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 4 */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "0.75rem" }}>
+                <div>
+                  <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Pack / Unit</label>
+                  <input value={form.pack} onChange={e => set("pack", e.target.value)} placeholder="e.g. 1TAB" />
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>MRP (₹)</label>
+                  <input value={form.mrp} onChange={e => set("mrp", e.target.value)} inputMode="decimal" placeholder="0.00" />
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>GST %</label>
+                  <input value={form.gstPercent} onChange={e => set("gstPercent", e.target.value)} inputMode="decimal" placeholder="5" />
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>INR Unit Rate</label>
+                  <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", padding: "0.5rem 0" }}>
+                    Auto from purchase bill + 15%
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button onClick={() => setModal(null)} className="btn btn-secondary">Cancel</button>
+              <button onClick={save} disabled={saving} className="btn btn-primary">
+                {saving ? "Saving…" : modal === "add" ? "Add Product" : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
