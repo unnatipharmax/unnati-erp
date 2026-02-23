@@ -1,3 +1,5 @@
+// src/app/api/orders/[id]/payment/route.ts
+// PATCH — save payment details for an order (accounts team)
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../../lib/prisma";
 import { getSession } from "../../../../../lib/auth";
@@ -28,11 +30,26 @@ export async function PATCH(
         : null;
     }
 
+    // Auto-advance to PAYMENT_VERIFIED when all key payment fields are filled
+    const hasPayment = (data.inrAmount || body.inrAmount) &&
+                       (data.dollarAmount || body.dollarAmount) &&
+                       (data.grsNumber || body.grsNumber);
+    if (hasPayment) {
+      // Only advance if currently INITIATED or SALES_UPDATED (don't go backward)
+      const current = await prisma.orderInitiation.findUnique({
+        where: { id }, select: { status: true }
+      });
+      if (current && ["INITIATED","SALES_UPDATED"].includes(current.status)) {
+        data.status = "PAYMENT_VERIFIED";
+      }
+    }
+
     const order = await prisma.orderInitiation.update({
       where: { id },
       data,
       select: {
         id: true,
+        status:             true,
         inrAmount:          true,
         dollarAmount:       true,
         exchangeRate:       true,
@@ -47,6 +64,7 @@ export async function PATCH(
       dollarAmount:       order.dollarAmount     ? Number(order.dollarAmount)     : null,
       exchangeRate:       order.exchangeRate     ? Number(order.exchangeRate)     : null,
       paymentDepositDate: order.paymentDepositDate?.toISOString().split("T")[0] ?? null,
+      statusChanged:      data.status === "PAYMENT_VERIFIED",
     });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Failed" }, { status: 500 });

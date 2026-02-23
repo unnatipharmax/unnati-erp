@@ -84,6 +84,7 @@ function GSTInvoice({ order, onClose }: { order: Order; onClose: () => void }) {
           `}</style>
 
           <table>
+            <tbody>
             {/* Title */}
             <tr><td colSpan={14} style={{ textAlign: "center", fontWeight: "bold", fontSize: "11pt", padding: 4, borderBottom: "1px solid #000" }}>GST INVOICE</td></tr>
 
@@ -308,6 +309,7 @@ function GSTInvoice({ order, onClose }: { order: Order; onClose: () => void }) {
                 Authorized Signatory
               </td>
             </tr>
+            </tbody>
           </table>
         </div>
       </div>
