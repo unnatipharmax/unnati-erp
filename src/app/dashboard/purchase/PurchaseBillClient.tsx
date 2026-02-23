@@ -74,9 +74,8 @@ function Field({
         placeholder={placeholder ?? `Enter ${label.toLowerCase()}`}
         style={{
           fontFamily: mono ? "monospace" : undefined,
-          fontSize:   mono ? "0.8rem"    : undefined,
-          padding: "0.4rem 0.6rem",
           fontSize: "0.8rem",
+          padding: "0.4rem 0.6rem",
         }}
       />
     </div>
