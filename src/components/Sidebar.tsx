@@ -1,7 +1,7 @@
 "use client";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { Home, Link, FileText, Users, Package, Image as ImageIcon, Settings, BookOpen, Box } from "lucide-react";
+import { Home, Link, FileText, Users, Package, Image as ImageIcon, Settings, BookOpen, Box, ClipboardList, Wallet } from "lucide-react";
 
 type Role = "ADMIN" | "MANAGER" | "SALES" | "ACCOUNTS" | "PACKAGING";
 
@@ -11,6 +11,8 @@ const ALL_MENU = [
   { name: "ORDER ENTRY",      path: "/dashboard/order-entry",    icon: FileText,  roles: ["ADMIN","MANAGER","SALES"] },
   { name: "LEDGER",           path: "/dashboard/ledger",         icon: BookOpen,  roles: ["ADMIN","MANAGER","ACCOUNTS"] },
   { name: "PACKAGING",        path: "/dashboard/packaging",      icon: Box,       roles: ["ADMIN","MANAGER","PACKAGING"] },
+  { name: "QUOTATION",        path: "/dashboard/quotation",      icon: ClipboardList, roles: ["ADMIN","MANAGER","SALES"] },
+  { name: "EXPENSES",         path: "/dashboard/expenses",       icon: Wallet,        roles: ["ADMIN","MANAGER","ACCOUNTS"] },
   { name: "PARTY MASTER",     path: "/dashboard/party",          icon: Users,     roles: ["ADMIN","MANAGER"] },
   { name: "PRODUCT MASTER",   path: "/dashboard/product-master", icon: Package,   roles: ["ADMIN","MANAGER","SALES","PACKAGING"] },
   { name: "SETUP",            path: "/dashboard/setup",          icon: Settings,  roles: ["ADMIN"] },

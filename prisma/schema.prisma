@@ -192,6 +192,7 @@ model OrderInitiation {
   invoiceNo          String?   @unique  // e.g. "E-2526-001"
   invoiceGeneratedAt DateTime?
   trackingNo         String?            // postal tracking number added during packaging
+  licenseNo          String?            // drug license number added during packaging
 
   clientFormLink  ClientFormLink?
   orderEntry      OrderEntry?
@@ -295,6 +296,20 @@ model ClientAccountLink {
 enum LedgerType {
   CREDIT
   DEBIT
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  category    String   // PERSONAL | STATIONARY | MONTHLY | YEARLY
+  description String
+  amount      Float
+  expenseDate DateTime @default(now())
+  paymentMode String?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@index([category])
+  @@index([expenseDate])
 }
 
 model AccountLedger {
