@@ -51,7 +51,7 @@ export async function GET(
   }
 
   const billsWithBalance = bills.map(b => {
-    const itemsTotal = b.items.reduce((s: number, i) => {
+    const itemsTotal = (b.items as any[]).reduce((s: number, i: any) => {
       const base = i.taxableAmount != null ? Number(i.taxableAmount) : i.rate * i.quantity;
       const gst  = (i.cgstAmount ? Number(i.cgstAmount) : 0)
                  + (i.sgstAmount ? Number(i.sgstAmount) : 0)
