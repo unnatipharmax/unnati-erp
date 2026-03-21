@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   if (!session || !["ADMIN", "MANAGER", "PACKAGING"].includes(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { orderId } = await req.json();
+  const { orderId, trackingNo, licenseNo } = await req.json();
   if (!orderId)
     return NextResponse.json({ error: "orderId required" }, { status: 400 });
 
@@ -35,8 +35,24 @@ export async function POST(req: Request) {
   if (!order)
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
-  // If already has invoice, return existing
+  // If already has invoice, still update trackingNo/licenseNo and return existing
   if (order.invoiceNo) {
+    if (trackingNo) {
+      try {
+        await prisma.$executeRawUnsafe(
+          `UPDATE "OrderInitiation" SET "trackingNo" = $1 WHERE id = $2`,
+          trackingNo, orderId
+        );
+      } catch { /* column may not exist yet */ }
+    }
+    if (licenseNo) {
+      try {
+        await prisma.$executeRawUnsafe(
+          `UPDATE "OrderInitiation" SET "licenseNo" = $1 WHERE id = $2`,
+          licenseNo, orderId
+        );
+      } catch { /* column may not exist yet */ }
+    }
     return NextResponse.json({ invoiceNo: order.invoiceNo, existing: true });
   }
 
@@ -68,6 +84,24 @@ export async function POST(req: Request) {
       status: "PACKING",
     },
   });
+
+  // Save trackingNo and licenseNo via raw SQL (columns added after initial prisma generate)
+  if (trackingNo) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `UPDATE "OrderInitiation" SET "trackingNo" = $1 WHERE id = $2`,
+        trackingNo, orderId
+      );
+    } catch { /* column may not exist yet */ }
+  }
+  if (licenseNo) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `UPDATE "OrderInitiation" SET "licenseNo" = $1 WHERE id = $2`,
+        licenseNo, orderId
+      );
+    } catch { /* column may not exist yet */ }
+  }
 
   return NextResponse.json({ invoiceNo, existing: false });
 }

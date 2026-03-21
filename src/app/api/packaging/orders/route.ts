@@ -49,6 +49,24 @@ export async function GET() {
     },
   });
 
+  // Fetch trackingNo and licenseNo separately (columns added after initial prisma generate)
+  const orderIds = orders.map(o => o.id);
+  let trackingMap: Record<string, string | null> = {};
+  let licenseMap: Record<string, string | null> = {};
+  if (orderIds.length > 0) {
+    try {
+      const placeholders = orderIds.map((_: string, i: number) => `$${i + 1}`).join(",");
+      const rows = await prisma.$queryRawUnsafe<{ id: string; trackingNo: string | null; licenseNo: string | null }[]>(
+        `SELECT id, "trackingNo", "licenseNo" FROM "OrderInitiation" WHERE id IN (${placeholders})`,
+        ...orderIds
+      );
+      for (const r of rows) {
+        trackingMap[r.id] = r.trackingNo ?? null;
+        licenseMap[r.id] = r.licenseNo ?? null;
+      }
+    } catch { /* columns may not exist yet */ }
+  }
+
   return NextResponse.json({
     orders: orders.map(o => {
       const entry = o.orderEntry;
@@ -96,6 +114,8 @@ export async function GET() {
         createdAt:       o.createdAt.toISOString(),
         shipmentMode:    entry?.shipmentMode ?? null,
         shippingPrice:   entry ? Number(entry.shippingPrice) : 0,
+        trackingNo:      trackingMap[o.id] ?? null,
+        licenseNo:       licenseMap[o.id] ?? null,
         items,
         totalInr:        Math.round(totalInr * 100) / 100,
         totalUsd:        o.dollarAmount ? Number(o.dollarAmount) : null,

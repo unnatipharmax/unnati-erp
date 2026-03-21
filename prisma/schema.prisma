@@ -41,6 +41,7 @@ model Party {
   emails            Email[]
   phones            Phone[]
   PurchaseBills     PurchaseBill[]
+  payments          PartyPayment[]
 }
 
 model Phone {
@@ -99,6 +100,35 @@ model PurchaseBill {
   createdAt   DateTime       @default(now())
   party       Party          @relation(fields: [partyId], references: [id])
   items       PurchaseItem[]
+  allocations PartyPaymentAllocation[]
+}
+
+model PartyPayment {
+  id          String                   @id @default(uuid())
+  partyId     String
+  party       Party                    @relation(fields: [partyId], references: [id])
+  amount      Float
+  paymentDate DateTime                 @default(now())
+  mode        String?
+  reference   String?
+  notes       String?
+  createdAt   DateTime                 @default(now())
+  allocations PartyPaymentAllocation[]
+
+  @@index([partyId])
+}
+
+model PartyPaymentAllocation {
+  id        String       @id @default(uuid())
+  paymentId String
+  payment   PartyPayment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  billId    String
+  bill      PurchaseBill @relation(fields: [billId], references: [id])
+  amount    Float
+  createdAt DateTime     @default(now())
+
+  @@index([paymentId])
+  @@index([billId])
 }
 
 model PurchaseItem {
@@ -161,6 +191,7 @@ model OrderInitiation {
   // ── Invoice fields (set when packaging generates invoice) ──────────────
   invoiceNo          String?   @unique  // e.g. "E-2526-001"
   invoiceGeneratedAt DateTime?
+  trackingNo         String?            // postal tracking number added during packaging
 
   clientFormLink  ClientFormLink?
   orderEntry      OrderEntry?

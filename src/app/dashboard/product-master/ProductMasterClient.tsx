@@ -1,6 +1,290 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmtDate(s: string) {
+  return new Date(s).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+function fmtNum(n: number, dec = 2) {
+  return n.toLocaleString("en-IN", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
+
+// ── Product Ledger Types ──────────────────────────────────────────────────────
+type LedgerEntry = {
+  id: string; date: string; billNo: string; particulars: string;
+  type: "purchase" | "sale";
+  receive: number | null; issue: number | null; balance: number;
+  rate: number; amount: number;
+};
+type LedgerData = {
+  product: { id: string; name: string; composition: string | null; manufacturer: string | null; pack: string | null; mrp: number | null; hsn: string | null };
+  from: string; to: string;
+  entries: LedgerEntry[];
+  summary: {
+    openingQty: number; openingVal: number;
+    totalReceiveQty: number; totalReceiveVal: number;
+    totalIssueQty: number; totalIssueVal: number;
+    closingQty: number; closingVal: number;
+  };
+};
+
+// ── Financial year helper ─────────────────────────────────────────────────────
+function currentFY() {
+  const now = new Date();
+  const y   = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  return { from: `${y}-04-01`, to: `${y + 1}-03-31` };
+}
+
+// ── Product Ledger Overlay ────────────────────────────────────────────────────
+function ProductLedgerOverlay({
+  productId, productName, onClose,
+}: { productId: string; productName: string; onClose: () => void }) {
+  const fy = currentFY();
+  const [from,    setFrom]    = useState(fy.from);
+  const [to,      setTo]      = useState(fy.to);
+  const [data,    setData]    = useState<LedgerData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err,     setErr]     = useState("");
+
+  async function load(f = from, t = to) {
+    setLoading(true); setErr("");
+    const res  = await fetch(`/api/products/${productId}/ledger?from=${f}&to=${t}`);
+    const json = await res.json();
+    if (!res.ok) { setErr(json?.error || "Failed to load"); setLoading(false); return; }
+    setData(json); setLoading(false);
+  }
+
+  useEffect(() => { load(); }, [productId]);
+
+  const COL = "130px 100px 1fr 80px 80px 80px 80px 90px";
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 1000,
+      background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)",
+      display: "flex", alignItems: "stretch",
+    }}>
+      <div style={{ flex: 1 }} onClick={onClose} />
+      <div style={{
+        width: "min(1180px, 97vw)", background: "var(--surface-1)",
+        borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column",
+        overflowY: "auto",
+      }}>
+        {/* ── Header ── */}
+        <div style={{
+          padding: "1rem 1.5rem 0", borderBottom: "1px solid var(--border)",
+          position: "sticky", top: 0, background: "var(--surface-1)", zIndex: 10,
+        }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+                <h2 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}>{productName}</h2>
+                <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", background: "rgba(255,255,255,0.06)", padding: "2px 8px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Stock Ledger
+                </span>
+              </div>
+              {data && (
+                <div style={{ fontSize: "0.77rem", color: "var(--text-muted)", marginTop: "0.2rem" }}>
+                  {data.product.composition && <span>{data.product.composition} · </span>}
+                  {data.product.manufacturer && <span>{data.product.manufacturer} · </span>}
+                  {data.product.pack && <span>Pack: {data.product.pack}</span>}
+                </div>
+              )}
+            </div>
+            <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "1.5rem", cursor: "pointer", lineHeight: 1 }}>✕</button>
+          </div>
+
+          {/* Date filter */}
+          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", paddingBottom: "0.75rem", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>Period:</span>
+            <input type="date" value={from} onChange={e => setFrom(e.target.value)}
+              style={{ padding: "0.3rem 0.5rem", fontSize: "0.82rem", borderRadius: 6 }} />
+            <span style={{ color: "var(--text-muted)" }}>to</span>
+            <input type="date" value={to} onChange={e => setTo(e.target.value)}
+              style={{ padding: "0.3rem 0.5rem", fontSize: "0.82rem", borderRadius: 6 }} />
+            <button onClick={() => load(from, to)} className="btn btn-secondary btn-sm" style={{ fontSize: "0.78rem" }}>
+              Apply
+            </button>
+            <button onClick={() => { const f = currentFY(); setFrom(f.from); setTo(f.to); load(f.from, f.to); }}
+              className="btn btn-secondary btn-sm" style={{ fontSize: "0.78rem" }}>
+              Current FY
+            </button>
+          </div>
+        </div>
+
+        {/* ── Summary bar (Marg-style) ── */}
+        {data && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "1px solid var(--border)", background: "var(--surface-2)" }}>
+            {[
+              { label: "Opening Balance", qty: data.summary.openingQty, val: data.summary.openingVal, color: "var(--text-secondary)" },
+              { label: "Purchase (P/R)",  qty: data.summary.totalReceiveQty, val: data.summary.totalReceiveVal, color: "#93c5fd" },
+              { label: "Sales (S/R)",     qty: data.summary.totalIssueQty,   val: data.summary.totalIssueVal,   color: "#fca5a5" },
+              { label: "Closing Balance", qty: data.summary.closingQty, val: data.summary.closingVal, color: "#fcd34d" },
+            ].map(({ label, qty, val, color }) => (
+              <div key={label} style={{ padding: "0.7rem 1.25rem", borderRight: "1px solid var(--border)" }}>
+                <div style={{ fontSize: "0.67rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.2rem" }}>{label}</div>
+                <div style={{ display: "flex", gap: "1rem", alignItems: "baseline" }}>
+                  <span style={{ fontWeight: 700, fontSize: "1.1rem", color, fontFamily: "monospace" }}>
+                    {qty.toLocaleString("en-IN")}
+                  </span>
+                  <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)", fontFamily: "monospace" }}>
+                    ₹{fmtNum(Math.abs(val))}
+                  </span>
+                </div>
+                <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: "0.1rem" }}>units · value</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Ledger table ── */}
+        <div style={{ flex: 1 }}>
+          {loading ? (
+            <div style={{ padding: "2rem 1.5rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {[1,2,3,4,5].map(i => <div key={i} className="skeleton" style={{ height: 36, borderRadius: 6 }} />)}
+            </div>
+          ) : err ? (
+            <div className="alert alert-error" style={{ margin: "1.5rem" }}>{err}</div>
+          ) : !data || data.entries.length === 0 ? (
+            <div style={{ padding: "4rem 2rem", textAlign: "center", color: "var(--text-muted)" }}>
+              <div style={{ fontSize: "2rem", marginBottom: "0.75rem", opacity: 0.3 }}>📦</div>
+              <div style={{ fontWeight: 600 }}>No transactions in this period</div>
+            </div>
+          ) : (
+            <>
+              {/* Column header */}
+              <div style={{
+                display: "grid", gridTemplateColumns: COL,
+                padding: "0.45rem 1.25rem",
+                background: "var(--surface-2)",
+                borderBottom: "2px solid var(--border)",
+                fontSize: "0.68rem", fontWeight: 700, color: "var(--text-muted)",
+                textTransform: "uppercase", letterSpacing: "0.05em",
+                position: "sticky", top: "calc(var(--hdr,0px))",
+              }}>
+                <span>Bill No</span>
+                <span>Date</span>
+                <span>Particulars</span>
+                <span style={{ textAlign: "right" }}>Rate</span>
+                <span style={{ textAlign: "right" }}>Amount</span>
+                <span style={{ textAlign: "right", color: "#93c5fd" }}>Receive</span>
+                <span style={{ textAlign: "right", color: "#fca5a5" }}>Issue</span>
+                <span style={{ textAlign: "right", color: "#fcd34d" }}>Balance</span>
+              </div>
+
+              {/* Opening row */}
+              {data.summary.openingQty !== 0 && (
+                <div style={{
+                  display: "grid", gridTemplateColumns: COL,
+                  padding: "0.45rem 1.25rem",
+                  background: "rgba(0,0,0,0.15)", borderBottom: "1px solid var(--border)",
+                  fontSize: "0.8rem",
+                }}>
+                  <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>—</span>
+                  <span style={{ color: "var(--text-muted)" }}>—</span>
+                  <span style={{ fontStyle: "italic", color: "var(--text-muted)" }}>Opening Balance</span>
+                  <span></span><span></span><span></span><span></span>
+                  <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#fcd34d" }}>
+                    {data.summary.openingQty.toLocaleString("en-IN")}
+                  </span>
+                </div>
+              )}
+
+              {/* Ledger rows */}
+              {data.entries.map((entry, idx) => (
+                <div
+                  key={entry.id}
+                  style={{
+                    display: "grid", gridTemplateColumns: COL,
+                    padding: "0.45rem 1.25rem",
+                    borderBottom: "1px solid var(--border)",
+                    background: entry.type === "purchase"
+                      ? idx % 2 === 0 ? "rgba(147,197,253,0.03)" : "rgba(147,197,253,0.06)"
+                      : idx % 2 === 0 ? "rgba(252,165,165,0.03)" : "rgba(252,165,165,0.06)",
+                    alignItems: "center",
+                  }}
+                >
+                  {/* Bill No */}
+                  <span style={{ fontFamily: "monospace", fontSize: "0.76rem", fontWeight: 600, color: "var(--text-primary)" }}>
+                    {entry.billNo}
+                  </span>
+
+                  {/* Date */}
+                  <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)", whiteSpace: "nowrap" }}>
+                    {fmtDate(entry.date)}
+                  </span>
+
+                  {/* Particulars */}
+                  <span style={{
+                    fontSize: "0.8rem",
+                    color: entry.type === "purchase" ? "#93c5fd" : "#fca5a5",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {entry.particulars}
+                  </span>
+
+                  {/* Rate */}
+                  <span style={{ textAlign: "right", fontFamily: "monospace", fontSize: "0.76rem", color: "var(--text-secondary)" }}>
+                    ₹{fmtNum(entry.rate)}
+                  </span>
+
+                  {/* Amount */}
+                  <span style={{ textAlign: "right", fontFamily: "monospace", fontSize: "0.76rem", color: "var(--text-secondary)" }}>
+                    ₹{fmtNum(entry.amount)}
+                  </span>
+
+                  {/* Receive */}
+                  <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: entry.receive ? 700 : 400, color: entry.receive ? "#93c5fd" : "var(--text-muted)" }}>
+                    {entry.receive != null ? entry.receive.toLocaleString("en-IN") : "—"}
+                  </span>
+
+                  {/* Issue */}
+                  <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: entry.issue ? 700 : 400, color: entry.issue ? "#fca5a5" : "var(--text-muted)" }}>
+                    {entry.issue != null ? entry.issue.toLocaleString("en-IN") : "—"}
+                  </span>
+
+                  {/* Balance */}
+                  <span style={{
+                    textAlign: "right", fontFamily: "monospace", fontWeight: 700,
+                    color: entry.balance > 0 ? "#fcd34d" : entry.balance < 0 ? "#f87171" : "var(--text-muted)",
+                  }}>
+                    {entry.balance.toLocaleString("en-IN")}
+                  </span>
+                </div>
+              ))}
+
+              {/* Closing balance footer */}
+              <div style={{
+                display: "grid", gridTemplateColumns: COL,
+                padding: "0.65rem 1.25rem",
+                background: "var(--surface-2)",
+                borderTop: "2px solid var(--border)",
+                position: "sticky", bottom: 0,
+              }}>
+                <span></span><span></span>
+                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-secondary)" }}>Closing Balance</span>
+                <span></span>
+                <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, fontSize: "0.82rem", color: "var(--text-secondary)" }}>
+                  ₹{fmtNum(Math.abs(data.summary.totalReceiveVal + data.summary.openingVal - data.summary.totalIssueVal))}
+                </span>
+                <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#93c5fd" }}>
+                  {data.summary.totalReceiveQty.toLocaleString("en-IN")}
+                </span>
+                <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#fca5a5" }}>
+                  {data.summary.totalIssueQty.toLocaleString("en-IN")}
+                </span>
+                <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, fontSize: "1rem", color: "#fcd34d" }}>
+                  {data.summary.closingQty.toLocaleString("en-IN")}
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type Group = { id: string; name: string };
 
 type Product = {
@@ -111,8 +395,9 @@ export default function ProductMasterClient() {
   const [modal,    setModal]    = useState<"add" | "edit" | null>(null);
   const [editing,  setEditing]  = useState<Product | null>(null);
   const [form,     setForm]     = useState({ ...EMPTY });
-  const [saving,   setSaving]   = useState(false);
-  const [err,      setErr]      = useState("");
+  const [saving,       setSaving]       = useState(false);
+  const [err,          setErr]          = useState("");
+  const [ledgerProduct, setLedgerProduct] = useState<{ id: string; name: string } | null>(null);
 
   async function load() {
     setLoading(true);
@@ -266,6 +551,7 @@ export default function ProductMasterClient() {
                   </td>
                   <td>
                     <div style={{ display: "flex", gap: "0.375rem" }}>
+                      <button onClick={() => setLedgerProduct({ id: p.id, name: p.name })} className="btn btn-secondary btn-sm" style={{ fontSize: "0.72rem" }}>📊 Ledger</button>
                       <button onClick={() => openEdit(p)} className="btn btn-secondary btn-sm">Edit</button>
                       <button onClick={() => del(p.id)} className="btn btn-sm" style={{ color: "#f87171", background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)" }}>Delete</button>
                     </div>
@@ -375,6 +661,15 @@ export default function ProductMasterClient() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Product Ledger Overlay ── */}
+      {ledgerProduct && (
+        <ProductLedgerOverlay
+          productId={ledgerProduct.id}
+          productName={ledgerProduct.name}
+          onClose={() => setLedgerProduct(null)}
+        />
       )}
     </div>
   );
