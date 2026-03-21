@@ -23,7 +23,7 @@ export default async function LedgerPage() {
     <div style={{ padding: "2rem" }}>
       <div style={{ marginBottom: "1.5rem" }}>
         <h1>Accounts Ledger</h1>
-        <p>Select a client account to enter payment details for each order.</p>
+        <p>Manage payment details for multi-order accounts and single orders.</p>
       </div>
       <LedgerClient
         accounts={accounts.map(a => ({

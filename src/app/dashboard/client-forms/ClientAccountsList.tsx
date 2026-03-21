@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react";
 
+const PAGE_SIZE = 6;
+
 type Account = { id: string; name: string; balance: string; createdAt: string; token: string | null; };
 
 export default function ClientAccountsList() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading]   = useState(true);
   const [copied, setCopied]     = useState<string | null>(null);
+  const [page, setPage]         = useState(1);
 
   useEffect(() => {
     fetch("/api/client-accounts").then(r => r.json())
@@ -40,9 +43,26 @@ export default function ClientAccountsList() {
     </div>
   );
 
+  const totalPages  = Math.ceil(accounts.length / PAGE_SIZE);
+  const paged       = accounts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
+    .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+    .reduce<(number | "…")[]>((acc, p, idx, arr) => {
+      if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("…");
+      acc.push(p);
+      return acc;
+    }, []);
+
   return (
     <div style={{ marginTop: "2rem" }}>
-      <h2 style={{ marginBottom: "1rem" }}>All Multi-Order Accounts</h2>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
+        <h2 style={{ margin: 0 }}>All Multi-Order Accounts</h2>
+        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+          {accounts.length} account{accounts.length !== 1 ? "s" : ""}
+        </span>
+      </div>
+
       <div className="table-wrapper">
         <table>
           <thead>
@@ -55,7 +75,7 @@ export default function ClientAccountsList() {
             </tr>
           </thead>
           <tbody>
-            {accounts.map(acc => (
+            {paged.map(acc => (
               <tr key={acc.id}>
                 <td style={{ fontWeight: 600, color: "var(--text-primary)" }}>{acc.name}</td>
                 <td>
@@ -86,6 +106,55 @@ export default function ClientAccountsList() {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem", marginTop: "1rem" }}>
+          <button
+            onClick={() => setPage(p => p - 1)}
+            disabled={page === 1}
+            style={{
+              padding: "0.25rem 0.625rem", borderRadius: 6, border: "1px solid var(--border)",
+              background: "transparent", color: "var(--text-muted)", cursor: page === 1 ? "not-allowed" : "pointer",
+              opacity: page === 1 ? 0.35 : 1, fontSize: "0.8rem",
+            }}
+          >
+            ←
+          </button>
+
+          {pages.map((p, i) =>
+            p === "…" ? (
+              <span key={`e-${i}`} style={{ padding: "0 0.25rem", color: "var(--text-muted)", fontSize: "0.8rem" }}>…</span>
+            ) : (
+              <button
+                key={p}
+                onClick={() => setPage(p as number)}
+                style={{
+                  padding: "0.25rem 0.625rem", borderRadius: 6, fontSize: "0.8rem", fontWeight: 500,
+                  border: p === page ? "none" : "1px solid var(--border)",
+                  background: p === page ? "var(--text-secondary)" : "transparent",
+                  color: p === page ? "#fff" : "var(--text-muted)",
+                  cursor: "pointer",
+                }}
+              >
+                {p}
+              </button>
+            )
+          )}
+
+          <button
+            onClick={() => setPage(p => p + 1)}
+            disabled={page === totalPages}
+            style={{
+              padding: "0.25rem 0.625rem", borderRadius: 6, border: "1px solid var(--border)",
+              background: "transparent", color: "var(--text-muted)", cursor: page === totalPages ? "not-allowed" : "pointer",
+              opacity: page === totalPages ? 0.35 : 1, fontSize: "0.8rem",
+            }}
+          >
+            →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

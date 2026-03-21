@@ -396,7 +396,7 @@ export default function PurchaseBillClient() {
                     </svg>
                     Scanning with Gemini…
                   </span>
-                ) : "✨ Scan Bill with AI"}
+                ) : "Scan Bill with AI"}
               </button>
             )}
 

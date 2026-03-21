@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/aksh6/Downloads/unnati-erp/src/app/dashboard -type f -name *packaging* -o -name *purchase*)"
+    ]
+  }
+}

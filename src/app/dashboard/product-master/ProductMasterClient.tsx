@@ -1,5 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+
+type Group = { id: string; name: string };
 
 type Product = {
   id: string; name: string; manufacturer: string | null;
@@ -7,16 +9,103 @@ type Product = {
   gstPercent: number | null; composition: string | null;
   batchNo: string | null; mfgDate: string | null; expDate: string | null;
   latestRate: number | null; inrUnit: number | null; createdAt: string;
+  minMargin: number | null; maxMargin: number | null;
+  groupId: string | null; groupName: string | null;
 };
 
 const EMPTY = {
   name: "", manufacturer: "", hsn: "", pack: "",
   mrp: "", gstPercent: "", composition: "",
   batchNo: "", mfgDate: "", expDate: "",
+  minMargin: "", maxMargin: "", groupId: "",
 };
 
+// ── Group dropdown with inline "Add New" ──────────────────────────────────────
+function GroupSelect({
+  groups, value, onChange, onGroupCreated,
+}: {
+  groups: Group[];
+  value: string;
+  onChange: (id: string) => void;
+  onGroupCreated: (g: Group) => void;
+}) {
+  const [adding, setAdding]   = useState(false);
+  const [newName, setNewName] = useState("");
+  const [saving, setSaving]   = useState(false);
+  const [err, setErr]         = useState("");
+  const inputRef              = useRef<HTMLInputElement>(null);
+
+  async function createGroup() {
+    if (!newName.trim()) return;
+    setSaving(true); setErr("");
+    const res  = await fetch("/api/product-groups", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName.trim() }),
+    });
+    const json = await res.json();
+    if (!res.ok) { setErr(json?.error || "Failed"); setSaving(false); return; }
+    onGroupCreated(json.group);
+    onChange(json.group.id);
+    setNewName(""); setAdding(false); setSaving(false);
+  }
+
+  useEffect(() => {
+    if (adding) inputRef.current?.focus();
+  }, [adding]);
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+        <select
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          style={{ flex: 1, fontSize: "0.875rem", padding: "0.5rem 0.6rem" }}
+        >
+          <option value="">— No Group —</option>
+          {groups.map(g => (
+            <option key={g.id} value={g.id}>{g.name}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={() => { setAdding(a => !a); setErr(""); setNewName(""); }}
+          className="btn btn-secondary btn-sm"
+          style={{ whiteSpace: "nowrap", fontSize: "0.75rem" }}
+        >
+          {adding ? "✕ Cancel" : "+ New"}
+        </button>
+      </div>
+
+      {adding && (
+        <div style={{ marginTop: "0.5rem", display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <input
+            ref={inputRef}
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") createGroup(); }}
+            placeholder="e.g. Anti Cancer"
+            style={{ flex: 1, fontSize: "0.8rem", padding: "0.4rem 0.6rem" }}
+          />
+          <button
+            type="button"
+            onClick={createGroup}
+            disabled={saving || !newName.trim()}
+            className="btn btn-primary btn-sm"
+            style={{ fontSize: "0.78rem" }}
+          >
+            {saving ? "…" : "Add"}
+          </button>
+        </div>
+      )}
+      {err && <div style={{ fontSize: "0.75rem", color: "#f87171", marginTop: "0.25rem" }}>{err}</div>}
+    </div>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
 export default function ProductMasterClient() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [groups,   setGroups]   = useState<Group[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [search,   setSearch]   = useState("");
   const [modal,    setModal]    = useState<"add" | "edit" | null>(null);
@@ -27,11 +116,17 @@ export default function ProductMasterClient() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch("/api/products");
-    const data = await res.json();
-    setProducts(data.products ?? []);
+    const [prodRes, grpRes] = await Promise.all([
+      fetch("/api/products"),
+      fetch("/api/product-groups"),
+    ]);
+    const prodData = await prodRes.json();
+    const grpData  = await grpRes.json();
+    setProducts(prodData.products ?? []);
+    setGroups(grpData.groups ?? []);
     setLoading(false);
   }
+
   useEffect(() => { load(); }, []);
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })); }
@@ -46,6 +141,9 @@ export default function ProductMasterClient() {
       mrp: p.mrp?.toString() ?? "", gstPercent: p.gstPercent?.toString() ?? "",
       composition: p.composition ?? "", batchNo: p.batchNo ?? "",
       mfgDate: p.mfgDate ?? "", expDate: p.expDate ?? "",
+      minMargin: p.minMargin?.toString() ?? "",
+      maxMargin: p.maxMargin?.toString() ?? "",
+      groupId: p.groupId ?? "",
     });
     setEditing(p); setErr(""); setModal("edit");
   }
@@ -61,8 +159,7 @@ export default function ProductMasterClient() {
     });
     const data = await res.json();
     if (!res.ok) { setErr(data?.error || "Save failed"); setSaving(false); return; }
-    setModal(null);
-    setSaving(false);
+    setModal(null); setSaving(false);
     load();
   }
 
@@ -73,7 +170,7 @@ export default function ProductMasterClient() {
   }
 
   const filtered = products.filter(p =>
-    [p.name, p.manufacturer, p.hsn, p.composition, p.batchNo]
+    [p.name, p.manufacturer, p.hsn, p.composition, p.batchNo, p.groupName]
       .some(v => v?.toLowerCase().includes(search.toLowerCase()))
   );
 
@@ -83,12 +180,12 @@ export default function ProductMasterClient() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem", flexWrap: "wrap", gap: "0.75rem" }}>
         <div>
           <h1>Product Master</h1>
-          <p style={{ marginTop: "0.25rem" }}>{products.length} products</p>
+          <p style={{ marginTop: "0.25rem" }}>{products.length} products · {groups.length} groups</p>
         </div>
         <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
           <input
             value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search name, composition, batch..."
+            placeholder="Search name, composition, group..."
             style={{ padding: "0.5rem 0.75rem", minWidth: 240, fontSize: "0.875rem" }}
           />
           <button onClick={openAdd} className="btn btn-primary">+ Add Product</button>
@@ -106,19 +203,21 @@ export default function ProductMasterClient() {
         </div>
       ) : (
         <div className="table-wrapper" style={{ overflowX: "auto" }}>
-          <table style={{ minWidth: 1100 }}>
+          <table style={{ minWidth: 1300 }}>
             <thead>
               <tr>
                 <th>Name</th>
+                <th>Group</th>
                 <th>Composition</th>
                 <th>Manufacturer</th>
                 <th>HSN</th>
                 <th>Pack</th>
                 <th>Batch No</th>
-                <th>Mfg Date</th>
-                <th>Exp Date</th>
+                <th>Mfg / Exp</th>
                 <th style={{ textAlign: "right" }}>MRP</th>
                 <th style={{ textAlign: "right" }}>GST %</th>
+                <th style={{ textAlign: "right" }}>Min %</th>
+                <th style={{ textAlign: "right" }}>Max %</th>
                 <th style={{ textAlign: "right" }}>Purchase Rate</th>
                 <th style={{ textAlign: "right" }}>INR Unit (+15%)</th>
                 <th></th>
@@ -128,6 +227,11 @@ export default function ProductMasterClient() {
               {filtered.map(p => (
                 <tr key={p.id}>
                   <td style={{ fontWeight: 600 }}>{p.name}</td>
+                  <td>
+                    {p.groupName
+                      ? <span className="badge badge-blue" style={{ fontSize: "0.7rem" }}>{p.groupName}</span>
+                      : <span style={{ color: "var(--text-muted)" }}>—</span>}
+                  </td>
                   <td style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>{p.composition ?? <span style={{ color: "var(--text-muted)" }}>—</span>}</td>
                   <td style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>{p.manufacturer ?? <span style={{ color: "var(--text-muted)" }}>—</span>}</td>
                   <td style={{ fontFamily: "monospace", fontSize: "0.8rem" }}>{p.hsn ?? "—"}</td>
@@ -137,9 +241,8 @@ export default function ProductMasterClient() {
                       ? <span className="badge badge-blue" style={{ fontSize: "0.7rem" }}>{p.batchNo}</span>
                       : <span style={{ color: "var(--text-muted)" }}>—</span>}
                   </td>
-                  <td style={{ fontSize: "0.8rem" }}>{p.mfgDate ?? "—"}</td>
-                  <td style={{ fontSize: "0.8rem" }}>
-                    {p.expDate
+                  <td style={{ fontSize: "0.8rem", whiteSpace: "nowrap" }}>
+                    {p.mfgDate ?? "—"} / {p.expDate
                       ? <span className="badge badge-amber" style={{ fontSize: "0.7rem" }}>{p.expDate}</span>
                       : "—"}
                   </td>
@@ -147,6 +250,12 @@ export default function ProductMasterClient() {
                     {p.mrp != null ? `₹${p.mrp}` : "—"}
                   </td>
                   <td style={{ textAlign: "right" }}>{p.gstPercent != null ? `${p.gstPercent}%` : "—"}</td>
+                  <td style={{ textAlign: "right", color: "var(--text-secondary)" }}>
+                    {p.minMargin != null ? `${p.minMargin}%` : <span style={{ color: "var(--text-muted)" }}>—</span>}
+                  </td>
+                  <td style={{ textAlign: "right", color: "var(--text-secondary)" }}>
+                    {p.maxMargin != null ? `${p.maxMargin}%` : <span style={{ color: "var(--text-muted)" }}>—</span>}
+                  </td>
                   <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-secondary)" }}>
                     {p.latestRate != null ? `₹${p.latestRate.toFixed(2)}` : <span style={{ color: "var(--text-muted)" }}>—</span>}
                   </td>
@@ -171,7 +280,7 @@ export default function ProductMasterClient() {
       {/* ── Add / Edit Modal ── */}
       {modal && (
         <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) setModal(null); }}>
-          <div className="modal" style={{ maxWidth: 640, width: "100%" }}>
+          <div className="modal" style={{ maxWidth: 680, width: "100%" }}>
             <div className="modal-header">
               <h3>{modal === "add" ? "Add Product" : "Edit Product"}</h3>
               <button onClick={() => setModal(null)} style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "1.25rem", cursor: "pointer" }}>✕</button>
@@ -179,7 +288,7 @@ export default function ProductMasterClient() {
             <div className="modal-body">
               {err && <div className="alert alert-error" style={{ marginBottom: "1rem" }}>{err}</div>}
 
-              {/* Row 1 */}
+              {/* Row 1: Name + Composition */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
                 <div>
                   <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Product Name *</label>
@@ -191,7 +300,7 @@ export default function ProductMasterClient() {
                 </div>
               </div>
 
-              {/* Row 2 */}
+              {/* Row 2: Manufacturer + HSN */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
                 <div>
                   <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Manufacturer</label>
@@ -203,7 +312,18 @@ export default function ProductMasterClient() {
                 </div>
               </div>
 
-              {/* Row 3 — Batch / Mfg / Exp */}
+              {/* Row 3: Group */}
+              <div style={{ marginBottom: "0.75rem" }}>
+                <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Group / Category</label>
+                <GroupSelect
+                  groups={groups}
+                  value={form.groupId}
+                  onChange={id => set("groupId", id)}
+                  onGroupCreated={g => setGroups(prev => [...prev, g].sort((a, b) => a.name.localeCompare(b.name)))}
+                />
+              </div>
+
+              {/* Row 4: Batch + Mfg + Exp */}
               <div style={{ background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.12)", borderRadius: 10, padding: "0.75rem", marginBottom: "0.75rem" }}>
                 <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginBottom: "0.5rem", fontWeight: 600 }}>Batch & Dates</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
@@ -222,8 +342,8 @@ export default function ProductMasterClient() {
                 </div>
               </div>
 
-              {/* Row 4 */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "0.75rem" }}>
+              {/* Row 5: Pack + MRP + GST + Min Margin + Max Margin */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: "0.75rem" }}>
                 <div>
                   <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Pack / Unit</label>
                   <input value={form.pack} onChange={e => set("pack", e.target.value)} placeholder="e.g. 1TAB" />
@@ -237,10 +357,12 @@ export default function ProductMasterClient() {
                   <input value={form.gstPercent} onChange={e => set("gstPercent", e.target.value)} inputMode="decimal" placeholder="5" />
                 </div>
                 <div>
-                  <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>INR Unit Rate</label>
-                  <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", padding: "0.5rem 0" }}>
-                    Auto from purchase bill + 15%
-                  </div>
+                  <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Min Margin %</label>
+                  <input value={form.minMargin} onChange={e => set("minMargin", e.target.value)} inputMode="decimal" placeholder="e.g. 10" />
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Max Margin %</label>
+                  <input value={form.maxMargin} onChange={e => set("maxMargin", e.target.value)} inputMode="decimal" placeholder="e.g. 30" />
                 </div>
               </div>
             </div>

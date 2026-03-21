@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import PurchaseBillPanel from "./PurchaseBillPanel";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type Item = {
@@ -1027,6 +1028,7 @@ function OrderCard({
 }) {
   const [generating, setGenerating] = useState(false);
   const [err, setErr] = useState("");
+  const [stockStatus, setStockStatus] = useState<"unset" | "in_stock" | "not_in_stock">("unset");
 
   async function generateInvoice() {
     setGenerating(true);
@@ -1068,14 +1070,34 @@ function OrderCard({
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
           {hasInvoice ? (
             <button onClick={() => onViewDocs(order)} className="btn btn-primary btn-sm">
               📄 View Documents
             </button>
+          ) : stockStatus === "unset" ? (
+            <>
+              <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginRight: 2 }}>Stock status:</span>
+              <button onClick={() => setStockStatus("in_stock")} className="btn btn-primary btn-sm">
+                In Stock
+              </button>
+              <button onClick={() => setStockStatus("not_in_stock")} className="btn btn-secondary btn-sm">
+                Not In Stock
+              </button>
+            </>
+          ) : stockStatus === "in_stock" ? (
+            <>
+              <button onClick={generateInvoice} disabled={generating} className="btn btn-primary btn-sm">
+                {generating ? "Generating…" : "Generate Invoice"}
+              </button>
+              <button onClick={() => setStockStatus("unset")} className="btn btn-secondary btn-sm" style={{ fontSize: "0.75rem" }}>
+                ← Change
+              </button>
+            </>
           ) : (
-            <button onClick={generateInvoice} disabled={generating} className="btn btn-primary btn-sm">
-              {generating ? "Generating…" : " Generate Invoice"}
+            /* not_in_stock — show only a reset option; bill panel is below */
+            <button onClick={() => setStockStatus("unset")} className="btn btn-secondary btn-sm" style={{ fontSize: "0.75rem" }}>
+              ← Change Status
             </button>
           )}
         </div>
@@ -1085,6 +1107,11 @@ function OrderCard({
         <div className="alert alert-error" style={{ marginBottom: "0.5rem", padding: "0.25rem 0.75rem", fontSize: "0.8rem" }}>
           {err}
         </div>
+      )}
+
+      {/* Inline purchase bill upload when not in stock */}
+      {!hasInvoice && stockStatus === "not_in_stock" && (
+        <PurchaseBillPanel onSaved={() => setStockStatus("in_stock")} />
       )}
 
       {/* Items preview */}

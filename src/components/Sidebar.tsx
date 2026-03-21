@@ -10,7 +10,6 @@ const ALL_MENU = [
   { name: "ORDER INITIATION", path: "/dashboard/client-forms",   icon: Link,      roles: ["ADMIN","MANAGER","SALES","ACCOUNTS"] },
   { name: "ORDER ENTRY",      path: "/dashboard/order-entry",    icon: FileText,  roles: ["ADMIN","MANAGER","SALES"] },
   { name: "LEDGER",           path: "/dashboard/ledger",         icon: BookOpen,  roles: ["ADMIN","MANAGER","ACCOUNTS"] },
-  { name: "PURCHASE BILL",    path: "/dashboard/purchase",       icon: FileText,  roles: ["ADMIN","MANAGER","ACCOUNTS","PACKAGING"] },
   { name: "PACKAGING",        path: "/dashboard/packaging",      icon: Box,       roles: ["ADMIN","MANAGER","PACKAGING"] },
   { name: "PARTY MASTER",     path: "/dashboard/party",          icon: Users,     roles: ["ADMIN","MANAGER"] },
   { name: "PRODUCT MASTER",   path: "/dashboard/product-master", icon: Package,   roles: ["ADMIN","MANAGER","SALES","PACKAGING"] },

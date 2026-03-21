@@ -16,6 +16,8 @@ export async function GET() {
       id: true, name: true, manufacturer: true, hsn: true,
       pack: true, mrp: true, gstPercent: true,
       composition: true, batchNo: true, mfgDate: true, expDate: true,
+      minMargin: true, maxMargin: true,
+      group: { select: { id: true, name: true } },
       createdAt: true,
       // Latest purchase rate for INR Unit calculation
       PurchaseItems: {
@@ -39,6 +41,10 @@ export async function GET() {
       batchNo:      p.batchNo,
       mfgDate:      p.mfgDate,
       expDate:      p.expDate,
+      minMargin:    p.minMargin,
+      maxMargin:    p.maxMargin,
+      groupId:      p.group?.id   ?? null,
+      groupName:    p.group?.name ?? null,
       createdAt:    p.createdAt.toISOString(),
       // Latest purchase rate
       latestRate:   p.PurchaseItems[0]?.rate ?? null,
@@ -57,7 +63,8 @@ export async function POST(req: Request) {
 
   const body = await req.json();
   const { name, manufacturer, hsn, pack, mrp, gstPercent,
-          composition, batchNo, mfgDate, expDate } = body;
+          composition, batchNo, mfgDate, expDate,
+          minMargin, maxMargin, groupId } = body;
 
   if (!name?.trim())
     return NextResponse.json({ error: "Product name is required" }, { status: 400 });
@@ -75,6 +82,9 @@ export async function POST(req: Request) {
         batchNo:      batchNo?.trim()      || null,
         mfgDate:      mfgDate?.trim()      || null,
         expDate:      expDate?.trim()      || null,
+        minMargin:    minMargin    ? Number(minMargin)    : null,
+        maxMargin:    maxMargin    ? Number(maxMargin)    : null,
+        ...(groupId ? { group: { connect: { id: groupId } } } : {}),
       },
     });
     return NextResponse.json({ product }, { status: 201 });

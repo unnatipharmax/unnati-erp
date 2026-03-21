@@ -48,6 +48,7 @@ export default function ClientMultiForm({
       phone:        form.get("phone"),
       remitterName: form.get("remitterName") || accountName,
       currency:     form.get("currency") || "INR",
+      amountPaid:   form.get("amountPaid"),
     };
 
     const res  = await fetch("/api/client-multi-form-submit", {
@@ -155,11 +156,19 @@ export default function ClientMultiForm({
                 </Grid>
               </Section>
 
-              <Section title="Meta (Optional)">
+              <Section title="Order Amount">
                 <Grid>
+                  <Field label="Amount">
+                    <Input name="amountPaid" placeholder="0.00" type="number" min="0" step="0.01" required />
+                  </Field>
                   <Field label="Currency">
                     <Input name="currency" placeholder="INR" defaultValue="INR" required />
                   </Field>
+                </Grid>
+              </Section>
+
+              <Section title="Meta (Optional)">
+                <Grid>
                   <Field label="Remitter Name (optional)">
                     <Input name="remitterName" placeholder={accountName} />
                   </Field>

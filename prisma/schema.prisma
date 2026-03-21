@@ -57,6 +57,13 @@ model Email {
   party   Party  @relation(fields: [partyId], references: [id])
 }
 
+model ProductGroup {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  products  Product[]
+}
+
 model Product {
   id           String  @id @default(uuid())
   name         String
@@ -70,6 +77,10 @@ model Product {
   batchNo      String?   // e.g. "DH250092B"
   mfgDate      String?   // stored as string e.g. "Jul-25"
   expDate      String?   // stored as string e.g. "Jun-27"
+  minMargin    Float?    // minimum margin %
+  maxMargin    Float?    // maximum margin %
+  groupId      String?
+  group        ProductGroup? @relation(fields: [groupId], references: [id])
   // ────────────────────────────────────────────
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
