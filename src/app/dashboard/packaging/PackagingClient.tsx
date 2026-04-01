@@ -43,6 +43,7 @@ type Order = {
   shippingPrice: number;
   trackingNo: string | null;
   licenseNo: string | null;
+  prescriptionFileName: string | null;
   items: Item[];
   totalInr: number;
   totalUsd: number | null;
@@ -1280,6 +1281,7 @@ function DocumentsOverlay({
   onClose: () => void;
 }) {
   const [doc, setDoc] = useState<"invoice" | "packing" | "form2" | "edf">("invoice");
+  const downloadHref = `/api/packaging/orders/${order.id}/documents`;
 
   const titleMap = {
     invoice: "GST Invoice",
@@ -1350,6 +1352,22 @@ function DocumentsOverlay({
             🖨 Print
           </button>
 
+          <a
+            href={downloadHref}
+            style={{
+              padding: "6px 16px",
+              background: "#2563eb",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              cursor: "pointer",
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            Download Documents
+          </a>
+
           <button
             onClick={onClose}
             style={{
@@ -1363,6 +1381,11 @@ function DocumentsOverlay({
           >
             ✕ Close
           </button>
+          {order.prescriptionFileName && (
+            <span style={{ fontSize: "0.78rem", color: "#bfdbfe" }}>
+              Prescription: {order.prescriptionFileName}
+            </span>
+          )}
         </div>
 
         {/* Print + Style isolation */}
@@ -1512,13 +1535,23 @@ function OrderCard({
             {order.shipmentMode ?? "—"} &nbsp;·&nbsp;
             {new Date(order.createdAt).toLocaleDateString("en-IN")}
           </div>
+          {order.prescriptionFileName && (
+            <div style={{ fontSize: "0.78rem", color: "#60a5fa", marginTop: 4 }}>
+              Prescription attached: {order.prescriptionFileName}
+            </div>
+          )}
         </div>
 
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
           {hasInvoice ? (
+            <>
             <button onClick={() => onViewDocs(order)} className="btn btn-primary btn-sm">
               📄 View Documents
             </button>
+            <a href={`/api/packaging/orders/${order.id}/documents`} className="btn btn-secondary btn-sm">
+              Download Documents
+            </a>
+            </>
           ) : stockStatus === "unset" ? (
             <>
               <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginRight: 2 }}>Stock status:</span>

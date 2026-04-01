@@ -4,7 +4,6 @@ import { useRef, useMemo, useState } from "react";
 
 export default function ClientMultiForm({
   token,
-  accountId,
   accountName,
   balance,
 }: {
@@ -35,26 +34,17 @@ export default function ClientMultiForm({
     setErr(null);
 
     const form = new FormData(e.currentTarget);
-
-    const payload = {
-      token,
-      fullName:     form.get("fullName"),
-      address:      form.get("address"),
-      city:         form.get("city"),
-      state:        form.get("state"),
-      postalCode:   form.get("postalCode"),
-      country:      form.get("country"),
-      email:        form.get("email"),
-      phone:        form.get("phone"),
-      remitterName: form.get("remitterName") || accountName,
-      currency:     form.get("currency") || "INR",
-      amountPaid:   form.get("amountPaid"),
-    };
+    form.set("token", token);
+    if (!String(form.get("remitterName") ?? "").trim()) {
+      form.set("remitterName", accountName);
+    }
+    if (!String(form.get("currency") ?? "").trim()) {
+      form.set("currency", "INR");
+    }
 
     const res  = await fetch("/api/client-multi-form-submit", {
       method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(payload),
+      body:    form,
     });
     const data = await res.json();
 
@@ -171,6 +161,13 @@ export default function ClientMultiForm({
                 <Grid>
                   <Field label="Remitter Name (optional)">
                     <Input name="remitterName" placeholder={accountName} />
+                  </Field>
+                  <Field label="Upload Prescription (optional)">
+                    <Input
+                      name="prescription"
+                      type="file"
+                      accept=".pdf,image/jpeg,image/png,image/webp"
+                    />
                   </Field>
                 </Grid>
               </Section>

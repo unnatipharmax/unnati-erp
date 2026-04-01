@@ -22,26 +22,11 @@ export default function ClientForm({ token }: { token: string }) {
     setErr(null);
 
     const form = new FormData(e.currentTarget);
-
-    const payload = {
-      token,
-      fullName: form.get("fullName"),
-      address: form.get("address"),
-      city: form.get("city"),
-      state: form.get("state"),
-      postalCode: form.get("postalCode"),
-      country: form.get("country"),
-      email: form.get("email"),
-      phone: form.get("phone"),
-      remitterName: form.get("remitterName"),
-      amountPaid: form.get("amountPaid"),
-      currency: form.get("currency"),
-    };
+    form.set("token", token);
 
     const res = await fetch("/api/client-form-submit", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: form,
     });
 
     const data = await res.json();
@@ -154,6 +139,18 @@ export default function ClientForm({ token }: { token: string }) {
                       placeholder="Currency (e.g. INR)"
                       defaultValue="INR or USD"
                       required
+                    />
+                  </Field>
+                </Grid>
+              </Section>
+
+              <Section title="Prescription (Optional)">
+                <Grid>
+                  <Field label="Upload Prescription">
+                    <Input
+                      name="prescription"
+                      type="file"
+                      accept=".pdf,image/jpeg,image/png,image/webp"
                     />
                   </Field>
                 </Grid>

@@ -193,6 +193,9 @@ model OrderInitiation {
   invoiceGeneratedAt DateTime?
   trackingNo         String?            // postal tracking number added during packaging
   licenseNo          String?            // drug license number added during packaging
+  prescriptionOriginalName String?
+  prescriptionStoredName   String?
+  prescriptionMimeType     String?
 
   clientFormLink  ClientFormLink?
   orderEntry      OrderEntry?

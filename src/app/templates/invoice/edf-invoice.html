@@ -63,15 +63,15 @@
     <td colspan="10" class="bold">Full Name :</td>
   </tr>
   <tr>
-    <td colspan="10" class="yellow">Zafiirah GOULAMGHOSS</td>
+    <td colspan="10" class="yellow">{{consignee_name}}</td>
   </tr>
   <tr>
     <td colspan="10">
-      Address : Morcellement Goomany,<br />
-      Pavé d'Amour,<br />
-      Coromandel 71608<br />
-      Pin code / zip code : 71608<br />
-      Country : Mauritus
+      Address : {{consignee_address_line_1}}<br />
+      {{consignee_address_line_2}}<br />
+      {{consignee_city_line}}<br />
+      Pin code / zip code : {{consignee_postal_code}}<br />
+      Country : {{consignee_country}}
     </td>
   </tr>
 </table>
@@ -80,7 +80,7 @@
 <table>
   <tr>
     <td>[ ] Yes</td>
-    <td>[√] No</td>
+    <td>[x] No</td>
     <td colspan="8"></td>
   </tr>
 </table>
@@ -92,15 +92,15 @@
     <td colspan="5" class="bold">Custom Assessable value (INR)*:</td>
   </tr>
   <tr>
-    <td colspan="5"></td>
-    <td colspan="5">2070</td>
+    <td colspan="5">{{total_fob_value_words_inr}}</td>
+    <td colspan="5">{{custom_assessable_value}}</td>
   </tr>
 </table>
 
 <!-- INVOICE DETAILS -->
 <table>
   <tr>
-    <td colspan="10" class="bold">2. Invoice – Wise details of Export Value</td>
+    <td colspan="10" class="bold">2. Invoice Wise details of Export Value</td>
   </tr>
   <tr class="bold center">
     <td>Invoice No.</td>
@@ -115,12 +115,12 @@
     <td>Other Deduction</td>
   </tr>
   <tr class="center">
-    <td>E-000823</td>
-    <td>USD</td>
-    <td>1-Dec-25</td>
-    <td>110</td>
-    <td>23.58099767</td>
-    <td>86.42</td>
+    <td>{{invoice_no}}</td>
+    <td>{{invoice_currency}}</td>
+    <td>{{invoice_date_short}}</td>
+    <td>{{invoice_amount}}</td>
+    <td>{{fob_value}}</td>
+    <td>{{freight}}</td>
     <td></td>
     <td></td>
     <td></td>
@@ -139,7 +139,7 @@
     <td>[ ] Status holder exporters</td>
     <td>[ ] 100% EOU</td>
     <td>[ ] Warehouse export</td>
-    <td colspan="5">[√] others (Specify)- Merchant Exporter</td>
+    <td colspan="5">[x] others (Specify)- Merchant Exporter</td>
   </tr>
 </table>
 
@@ -149,7 +149,7 @@
   </tr>
   <tr>
     <td>[ ] Government</td>
-    <td colspan="9">[√] Non-Government</td>
+    <td colspan="9">[x] Non-Government</td>
   </tr>
 </table>
 
@@ -160,7 +160,7 @@
   <tr>
     <td>[ ] L/C</td>
     <td>[ ] BG</td>
-    <td colspan="8">[√] Others (advance payment, etc. including transfer/remittance to bank account maintained)</td>
+    <td colspan="8">[x] Others (advance payment, etc. including transfer/remittance to bank account maintained)</td>
   </tr>
 </table>
 
@@ -172,7 +172,7 @@
     <td>[ ] Air</td>
     <td>[ ] Land</td>
     <td>[ ] Sea</td>
-    <td>[√] Post/Couriers</td>
+    <td>[x] Post/Couriers</td>
     <td colspan="6">[ ] others</td>
   </tr>
 </table>
@@ -202,8 +202,8 @@
 
 <table>
   <tr>
-    <td colspan="5">DATE-01/12/2025</td>
-    <td colspan="5">01 December 2025</td>
+    <td colspan="5">DATE-{{invoice_date_slash}}</td>
+    <td colspan="5">{{invoice_date_long}}</td>
   </tr>
   <tr>
     <td colspan="5">Name of the post Office:</td>
