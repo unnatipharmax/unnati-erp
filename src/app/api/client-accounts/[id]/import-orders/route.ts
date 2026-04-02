@@ -64,9 +64,11 @@ export async function POST(
     return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
 
   const arrayBuf = await (file as File).arrayBuffer();
+  const uint8    = new Uint8Array(arrayBuf);
 
   const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(arrayBuf as unknown as Buffer);
+  // @ts-ignore – ExcelJS accepts Uint8Array at runtime; @types/node Buffer generics cause a false type error
+  await wb.xlsx.load(uint8);
 
   const ws = wb.worksheets[0];
   if (!ws) return NextResponse.json({ error: "Workbook has no sheets" }, { status: 400 });
