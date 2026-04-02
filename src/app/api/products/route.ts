@@ -17,9 +17,9 @@ export async function GET() {
       pack: true, mrp: true, gstPercent: true,
       composition: true, batchNo: true, mfgDate: true, expDate: true,
       minMargin: true, maxMargin: true,
+      qty: true, unitType: true, unitWeightKg: true,
       group: { select: { id: true, name: true } },
       createdAt: true,
-      // Latest purchase rate for INR Unit calculation
       PurchaseItems: {
         select: { rate: true },
         orderBy: { id: "desc" },
@@ -43,12 +43,13 @@ export async function GET() {
       expDate:      p.expDate,
       minMargin:    p.minMargin,
       maxMargin:    p.maxMargin,
+      qty:          p.qty,
+      unitType:     p.unitType,
+      unitWeightKg: p.unitWeightKg,
       groupId:      p.group?.id   ?? null,
       groupName:    p.group?.name ?? null,
       createdAt:    p.createdAt.toISOString(),
-      // Latest purchase rate
       latestRate:   p.PurchaseItems[0]?.rate ?? null,
-      // INR Unit = purchase rate + 15%
       inrUnit:      p.PurchaseItems[0]?.rate
                       ? Math.round(p.PurchaseItems[0].rate * 1.15 * 100) / 100
                       : null,
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { name, manufacturer, hsn, pack, mrp, gstPercent,
           composition, batchNo, mfgDate, expDate,
-          minMargin, maxMargin, groupId } = body;
+          minMargin, maxMargin, qty, unitType, unitWeightKg, groupId } = body;
 
   if (!name?.trim())
     return NextResponse.json({ error: "Product name is required" }, { status: 400 });
@@ -84,6 +85,9 @@ export async function POST(req: Request) {
         expDate:      expDate?.trim()      || null,
         minMargin:    minMargin    ? Number(minMargin)    : null,
         maxMargin:    maxMargin    ? Number(maxMargin)    : null,
+        qty:          qty          ? Number(qty)          : null,
+        unitType:     unitType?.trim()     || null,
+        unitWeightKg: unitWeightKg ? Number(unitWeightKg) : null,
         ...(groupId ? { group: { connect: { id: groupId } } } : {}),
       },
     });

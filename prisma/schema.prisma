@@ -80,6 +80,9 @@ model Product {
   expDate      String?   // stored as string e.g. "Jun-27"
   minMargin    Float?    // minimum margin %
   maxMargin    Float?    // maximum margin %
+  qty          Int?      // quantity per pack e.g. 10
+  unitType     String?   // unit type e.g. Strip, Tube, Bottle
+  unitWeightKg Float?    // weight per single unit in kg (admin-settable; used for parcel weight calc)
   groupId      String?
   group        ProductGroup? @relation(fields: [groupId], references: [id])
   // ────────────────────────────────────────────
@@ -91,16 +94,26 @@ model Product {
   orderItems    OrderEntryItem[]
 }
 
+enum PurchaseDocumentType {
+  BILL
+  CREDIT_NOTE
+}
+
 model PurchaseBill {
-  id          String         @id @default(uuid())
-  invoiceNo   String?
-  invoiceDate DateTime?
-  partyId     String
-  totalAmount Float?
-  createdAt   DateTime       @default(now())
-  party       Party          @relation(fields: [partyId], references: [id])
-  items       PurchaseItem[]
-  allocations PartyPaymentAllocation[]
+  id                         String                       @id @default(uuid())
+  invoiceNo                  String?
+  invoiceDate                DateTime?
+  partyId                    String
+  documentType               PurchaseDocumentType         @default(BILL)
+  totalAmount                Float?
+  createdAt                  DateTime                     @default(now())
+  party                      Party                        @relation(fields: [partyId], references: [id])
+  items                      PurchaseItem[]
+  allocations                PartyPaymentAllocation[]
+  creditNoteAllocations      PurchaseCreditNoteAllocation[] @relation("CreditNoteSource")
+  adjustedByCreditNotes      PurchaseCreditNoteAllocation[] @relation("AdjustedPurchaseBill")
+
+  @@index([partyId, documentType])
 }
 
 model PartyPayment {
@@ -128,6 +141,19 @@ model PartyPaymentAllocation {
   createdAt DateTime     @default(now())
 
   @@index([paymentId])
+  @@index([billId])
+}
+
+model PurchaseCreditNoteAllocation {
+  id           String       @id @default(uuid())
+  creditNoteId String
+  creditNote   PurchaseBill @relation("CreditNoteSource", fields: [creditNoteId], references: [id], onDelete: Cascade)
+  billId       String
+  bill         PurchaseBill @relation("AdjustedPurchaseBill", fields: [billId], references: [id], onDelete: Cascade)
+  amount       Float
+  createdAt    DateTime     @default(now())
+
+  @@index([creditNoteId])
   @@index([billId])
 }
 
@@ -243,6 +269,8 @@ enum ShipmentMode {
   ITPS
   RMS
   DHL
+  UPS
+  CM
 }
 
 model OrderEntry {
@@ -324,7 +352,6 @@ model AccountLedger {
   note      String?
   orderId   String?
   createdAt DateTime      @default(now())
-
   @@index([accountId])
   @@index([orderId])
 }

@@ -16,9 +16,10 @@ type Item = {
   expDate: string | null;
   quantity: number;
   sellingPrice: number;
-  latestRate: number | null;
-  inrUnit: number | null;
+  latestRate: number | null;   // purchase rate in INR per unit
+  inrUnit: number | null;      // purchase rate + 15% margin
   amount: number | null;
+  stockQty: number | null;     // current stock from Product master
 };
 
 type Order = {
@@ -1629,61 +1630,114 @@ function OrderCard({
         <PurchaseBillPanel onSaved={() => setStockStatus("in_stock")} />
       )}
 
+      {/* ── Stock summary banner ── */}
+      {(() => {
+        const needOrder  = order.items.filter(i => i.stockQty == null || i.stockQty === 0);
+        const lowStock   = order.items.filter(i => i.stockQty != null && i.stockQty > 0 && i.stockQty < i.quantity);
+        const inStock    = order.items.filter(i => i.stockQty != null && i.stockQty >= i.quantity);
+        const hasIssue   = needOrder.length > 0 || lowStock.length > 0;
+        if (!hasIssue) return (
+          <div style={{ marginBottom: "0.5rem", padding: "6px 12px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 8, fontSize: "0.78rem", display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ color: "#10b981", fontWeight: 700 }}>✓ All {inStock.length} items in stock</span>
+          </div>
+        );
+        return (
+          <div style={{ marginBottom: "0.5rem", padding: "6px 12px", background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, fontSize: "0.78rem", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            {needOrder.length > 0 && <span style={{ color: "#ef4444", fontWeight: 700 }}>✕ {needOrder.length} item{needOrder.length > 1 ? "s" : ""} need ordering</span>}
+            {lowStock.length  > 0 && <span style={{ color: "#f97316", fontWeight: 700 }}>⚠ {lowStock.length} item{lowStock.length  > 1 ? "s" : ""} low stock</span>}
+            {inStock.length   > 0 && <span style={{ color: "#10b981" }}>✓ {inStock.length} in stock</span>}
+          </div>
+        );
+      })()}
+
       {/* Items preview */}
       <div style={{ overflowX: "auto" }}>
-        <table style={{ minWidth: 700, fontSize: "0.8rem" }}>
+        <table style={{ minWidth: 820, fontSize: "0.8rem" }}>
           <thead>
             <tr>
               <th style={{ textAlign: "left", padding: "4px 8px" }}>Product</th>
               <th style={{ textAlign: "left", padding: "4px 8px" }}>Batch</th>
               <th style={{ textAlign: "left", padding: "4px 8px" }}>Mfg / Exp</th>
-              <th style={{ textAlign: "right", padding: "4px 8px" }}>Qty</th>
-              <th style={{ textAlign: "right", padding: "4px 8px" }}>Purchase Rate</th>
-              <th style={{ textAlign: "right", padding: "4px 8px" }}>INR Unit (+15%)</th>
-              <th style={{ textAlign: "right", padding: "4px 8px" }}>Amount</th>
+              <th style={{ textAlign: "right", padding: "4px 8px" }}>Qty Ordered</th>
+              <th style={{ textAlign: "center", padding: "4px 8px" }}>Stock</th>
+              <th style={{ textAlign: "right", padding: "4px 8px" }}>Purchase Rate (INR/unit)</th>
+              <th style={{ textAlign: "right", padding: "4px 8px" }}>Selling Rate (INR/unit +15%)</th>
+              <th style={{ textAlign: "right", padding: "4px 8px" }}>Line Total (INR)</th>
             </tr>
           </thead>
 
           <tbody>
-            {order.items.map((item) => (
-              <tr key={item.productId}>
-                <td style={{ padding: "4px 8px" }}>
-                  <div style={{ fontWeight: 600 }}>{item.productName}</div>
-                  {item.composition && <div style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>{item.composition}</div>}
-                </td>
+            {order.items.map((item) => {
+              const stockOk  = item.stockQty != null && item.stockQty >= item.quantity;
+              const stockLow = item.stockQty != null && item.stockQty > 0 && item.stockQty < item.quantity;
+              const stockNil = item.stockQty == null || item.stockQty === 0;
+              return (
+                <tr key={item.productId}>
+                  <td style={{ padding: "4px 8px" }}>
+                    <div style={{ fontWeight: 600 }}>{item.productName}</div>
+                    {item.composition && <div style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>{item.composition}</div>}
+                  </td>
 
-                <td style={{ padding: "4px 8px", fontFamily: "monospace", fontSize: "0.75rem" }}>
-                  {item.batchNo ?? <span style={{ color: "var(--text-muted)" }}>—</span>}
-                </td>
+                  <td style={{ padding: "4px 8px", fontFamily: "monospace", fontSize: "0.75rem" }}>
+                    {item.batchNo ?? <span style={{ color: "var(--text-muted)" }}>—</span>}
+                  </td>
 
-                <td style={{ padding: "4px 8px", fontSize: "0.75rem" }}>
-                  {item.mfgDate ?? "—"} / {item.expDate ?? "—"}
-                </td>
+                  <td style={{ padding: "4px 8px", fontSize: "0.75rem" }}>
+                    {item.mfgDate ?? "—"} / {item.expDate ?? "—"}
+                  </td>
 
-                <td style={{ padding: "4px 8px", textAlign: "right" }}>{item.quantity}</td>
+                  <td style={{ padding: "4px 8px", textAlign: "right", fontWeight: 600 }}>{item.quantity}</td>
 
-                <td style={{ padding: "4px 8px", textAlign: "right", color: "var(--text-secondary)" }}>
-                  {item.latestRate != null ? `₹${item.latestRate.toFixed(2)}` : <span style={{ color: "#f87171" }}>No purchase</span>}
-                </td>
+                  {/* Stock badge */}
+                  <td style={{ padding: "4px 8px", textAlign: "center" }}>
+                    {stockOk ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(16,185,129,0.12)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)", borderRadius: 12, padding: "2px 8px", fontSize: "0.72rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                        ✓ {item.stockQty} in stock
+                      </span>
+                    ) : stockLow ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(249,115,22,0.12)", color: "#f97316", border: "1px solid rgba(249,115,22,0.3)", borderRadius: 12, padding: "2px 8px", fontSize: "0.72rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                        ⚠ {item.stockQty} / need {item.quantity}
+                      </span>
+                    ) : stockNil ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(239,68,68,0.12)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 12, padding: "2px 8px", fontSize: "0.72rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                        ✕ Order Required
+                      </span>
+                    ) : null}
+                  </td>
 
-                <td style={{ padding: "4px 8px", textAlign: "right" }}>
-                  {item.inrUnit != null ? (
-                    <span className="badge badge-green" style={{ fontSize: "0.7rem" }}>
-                      ₹{item.inrUnit.toFixed(2)}
-                    </span>
-                  ) : (
-                    <span style={{ color: "#f87171", fontSize: "0.75rem" }}>Missing</span>
-                  )}
-                </td>
+                  {/* Purchase rate per unit in INR */}
+                  <td style={{ padding: "4px 8px", textAlign: "right" }}>
+                    {item.latestRate != null ? (
+                      <span style={{ fontFamily: "monospace", color: "var(--text-primary)", fontWeight: 600 }}>
+                        ₹{item.latestRate.toFixed(2)}
+                      </span>
+                    ) : (
+                      <span style={{ color: "#f87171", fontSize: "0.75rem" }}>No purchase record</span>
+                    )}
+                  </td>
 
-                <td style={{ padding: "4px 8px", textAlign: "right", fontWeight: 600 }}>{item.amount != null ? `₹${item.amount.toFixed(2)}` : "—"}</td>
-              </tr>
-            ))}
+                  {/* INR selling rate per unit (+15%) */}
+                  <td style={{ padding: "4px 8px", textAlign: "right" }}>
+                    {item.inrUnit != null ? (
+                      <span className="badge badge-green" style={{ fontSize: "0.7rem" }}>
+                        ₹{item.inrUnit.toFixed(2)}
+                      </span>
+                    ) : (
+                      <span style={{ color: "#f87171", fontSize: "0.75rem" }}>—</span>
+                    )}
+                  </td>
+
+                  <td style={{ padding: "4px 8px", textAlign: "right", fontWeight: 600 }}>
+                    {item.amount != null ? `₹${item.amount.toFixed(2)}` : "—"}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
 
           <tfoot>
             <tr style={{ borderTop: "2px solid var(--border)" }}>
-              <td colSpan={6} style={{ padding: "4px 8px", textAlign: "right", fontWeight: 600 }}>
+              <td colSpan={7} style={{ padding: "4px 8px", textAlign: "right", fontWeight: 600 }}>
                 Total INR:
               </td>
               <td style={{ padding: "4px 8px", textAlign: "right", fontWeight: 700 }}>₹{order.totalInr.toFixed(2)}</td>
@@ -1691,7 +1745,7 @@ function OrderCard({
 
             {order.dollarAmount && (
               <tr>
-                <td colSpan={6} style={{ padding: "4px 8px", textAlign: "right", fontWeight: 600 }}>
+                <td colSpan={7} style={{ padding: "4px 8px", textAlign: "right", fontWeight: 600 }}>
                   Total USD:
                 </td>
                 <td style={{ padding: "4px 8px", textAlign: "right", fontWeight: 700 }}>${order.dollarAmount}</td>

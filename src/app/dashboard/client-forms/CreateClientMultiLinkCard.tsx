@@ -14,8 +14,8 @@ export default function CreateClientMultiLinkCard() {
 
   async function onCreate() {
     if (!name.trim()) { setErr("Client name is required"); return; }
-    if (!openingBalance || isNaN(Number(openingBalance)) || Number(openingBalance) <= 0) {
-      setErr("Enter a valid opening balance"); return;
+    if (openingBalance && (isNaN(Number(openingBalance)) || Number(openingBalance) < 0)) {
+      setErr("Opening balance must be a positive number"); return;
     }
     setLoading(true); setErr(null); setResult(null);
     const res  = await fetch("/api/client-account-links", {
@@ -45,7 +45,7 @@ export default function CreateClientMultiLinkCard() {
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           <input placeholder="Client Name (e.g. ABC Distributors)" value={name}
             onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && onCreate()} />
-          <input placeholder="Opening Balance (e.g. 50000)" inputMode="decimal" value={openingBalance}
+          <input placeholder="Opening Balance (optional — e.g. 50000)" inputMode="decimal" value={openingBalance}
             onChange={e => setOpeningBalance(e.target.value)} onKeyDown={e => e.key === "Enter" && onCreate()} />
 
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
@@ -61,7 +61,7 @@ export default function CreateClientMultiLinkCard() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M20 6 9 17l-5-5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            Link created! Opening balance: <strong>₹{Number(result.balance).toLocaleString("en-IN")}</strong>
+            Link created!{Number(result.balance) > 0 ? <> Opening balance: <strong>₹{Number(result.balance).toLocaleString("en-IN")}</strong></> : " No opening balance — add funds when ready."}
           </div>
 
           <div>

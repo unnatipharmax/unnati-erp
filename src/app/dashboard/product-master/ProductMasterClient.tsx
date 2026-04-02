@@ -12,7 +12,7 @@ function fmtNum(n: number, dec = 2) {
 // ── Product Ledger Types ──────────────────────────────────────────────────────
 type LedgerEntry = {
   id: string; date: string; billNo: string; particulars: string;
-  type: "purchase" | "sale";
+  type: "purchase" | "purchase_return" | "sale";
   receive: number | null; issue: number | null; balance: number;
   rate: number; amount: number;
 };
@@ -23,6 +23,8 @@ type LedgerData = {
   summary: {
     openingQty: number; openingVal: number;
     totalReceiveQty: number; totalReceiveVal: number;
+    totalReturnQty: number; totalReturnVal: number;
+    totalSaleQty: number; totalSaleVal: number;
     totalIssueQty: number; totalIssueVal: number;
     closingQty: number; closingVal: number;
   };
@@ -114,11 +116,12 @@ function ProductLedgerOverlay({
 
         {/* ── Summary bar (Marg-style) ── */}
         {data && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "1px solid var(--border)", background: "var(--surface-2)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", borderBottom: "1px solid var(--border)", background: "var(--surface-2)" }}>
             {[
               { label: "Opening Balance", qty: data.summary.openingQty, val: data.summary.openingVal, color: "var(--text-secondary)" },
-              { label: "Purchase (P/R)",  qty: data.summary.totalReceiveQty, val: data.summary.totalReceiveVal, color: "#93c5fd" },
-              { label: "Sales (S/R)",     qty: data.summary.totalIssueQty,   val: data.summary.totalIssueVal,   color: "#fca5a5" },
+              { label: "Purchase", qty: data.summary.totalReceiveQty, val: data.summary.totalReceiveVal, color: "#93c5fd" },
+              { label: "Purchase Return", qty: data.summary.totalReturnQty, val: data.summary.totalReturnVal, color: "#fb923c" },
+              { label: "Sales", qty: data.summary.totalSaleQty, val: data.summary.totalSaleVal, color: "#fca5a5" },
               { label: "Closing Balance", qty: data.summary.closingQty, val: data.summary.closingVal, color: "#fcd34d" },
             ].map(({ label, qty, val, color }) => (
               <div key={label} style={{ padding: "0.7rem 1.25rem", borderRight: "1px solid var(--border)" }}>
@@ -200,7 +203,9 @@ function ProductLedgerOverlay({
                     borderBottom: "1px solid var(--border)",
                     background: entry.type === "purchase"
                       ? idx % 2 === 0 ? "rgba(147,197,253,0.03)" : "rgba(147,197,253,0.06)"
-                      : idx % 2 === 0 ? "rgba(252,165,165,0.03)" : "rgba(252,165,165,0.06)",
+                      : entry.type === "purchase_return"
+                        ? idx % 2 === 0 ? "rgba(251,146,60,0.03)" : "rgba(251,146,60,0.06)"
+                        : idx % 2 === 0 ? "rgba(252,165,165,0.03)" : "rgba(252,165,165,0.06)",
                     alignItems: "center",
                   }}
                 >
@@ -217,7 +222,7 @@ function ProductLedgerOverlay({
                   {/* Particulars */}
                   <span style={{
                     fontSize: "0.8rem",
-                    color: entry.type === "purchase" ? "#93c5fd" : "#fca5a5",
+                    color: entry.type === "purchase" ? "#93c5fd" : entry.type === "purchase_return" ? "#fb923c" : "#fca5a5",
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   }}>
                     {entry.particulars}
@@ -270,7 +275,7 @@ function ProductLedgerOverlay({
                 <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#93c5fd" }}>
                   {data.summary.totalReceiveQty.toLocaleString("en-IN")}
                 </span>
-                <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#fca5a5" }}>
+                <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#fb923c" }}>
                   {data.summary.totalIssueQty.toLocaleString("en-IN")}
                 </span>
                 <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, fontSize: "1rem", color: "#fcd34d" }}>
@@ -294,14 +299,23 @@ type Product = {
   batchNo: string | null; mfgDate: string | null; expDate: string | null;
   latestRate: number | null; inrUnit: number | null; createdAt: string;
   minMargin: number | null; maxMargin: number | null;
+  qty: number | null; unitType: string | null; unitWeightKg: number | null;
   groupId: string | null; groupName: string | null;
 };
+
+// Default unit weights per type (kg per single unit)
+const DEFAULT_UNIT_WEIGHTS: Record<string, number> = {
+  Strip: 0.00823,
+  Tube:  0.0395,
+};
+
+const UNIT_TYPES = ["Strip","Tube","Bottle","Sachet","Vial","Ampoule","Box","Inhaler","Cream","Ointment","Syrup","Drops","Spray","Injection","Patch","Tablet","Capsule"];
 
 const EMPTY = {
   name: "", manufacturer: "", hsn: "", pack: "",
   mrp: "", gstPercent: "", composition: "",
   batchNo: "", mfgDate: "", expDate: "",
-  minMargin: "", maxMargin: "", groupId: "",
+  minMargin: "", maxMargin: "", qty: "", unitType: "", unitWeightKg: "", groupId: "",
 };
 
 // ── Group dropdown with inline "Add New" ──────────────────────────────────────
@@ -428,6 +442,9 @@ export default function ProductMasterClient() {
       mfgDate: p.mfgDate ?? "", expDate: p.expDate ?? "",
       minMargin: p.minMargin?.toString() ?? "",
       maxMargin: p.maxMargin?.toString() ?? "",
+      qty: p.qty?.toString() ?? "",
+      unitType: p.unitType ?? "",
+      unitWeightKg: p.unitWeightKg?.toString() ?? "",
       groupId: p.groupId ?? "",
     });
     setEditing(p); setErr(""); setModal("edit");
@@ -488,7 +505,7 @@ export default function ProductMasterClient() {
         </div>
       ) : (
         <div className="table-wrapper" style={{ overflowX: "auto" }}>
-          <table style={{ minWidth: 1300 }}>
+          <table style={{ minWidth: 1400 }}>
             <thead>
               <tr>
                 <th>Name</th>
@@ -497,6 +514,7 @@ export default function ProductMasterClient() {
                 <th>Manufacturer</th>
                 <th>HSN</th>
                 <th>Pack</th>
+                <th>Qty / Type</th>
                 <th>Batch No</th>
                 <th>Mfg / Exp</th>
                 <th style={{ textAlign: "right" }}>MRP</th>
@@ -521,6 +539,13 @@ export default function ProductMasterClient() {
                   <td style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>{p.manufacturer ?? <span style={{ color: "var(--text-muted)" }}>—</span>}</td>
                   <td style={{ fontFamily: "monospace", fontSize: "0.8rem" }}>{p.hsn ?? "—"}</td>
                   <td>{p.pack ?? "—"}</td>
+                  <td>
+                    {(p.qty != null || p.unitType) ? (
+                      <span className="badge badge-blue" style={{ fontSize: "0.72rem" }}>
+                        {p.qty != null ? `${p.qty} ` : ""}{p.unitType ?? ""}
+                      </span>
+                    ) : <span style={{ color: "var(--text-muted)" }}>—</span>}
+                  </td>
                   <td style={{ fontFamily: "monospace", fontSize: "0.8rem" }}>
                     {p.batchNo
                       ? <span className="badge badge-blue" style={{ fontSize: "0.7rem" }}>{p.batchNo}</span>
@@ -628,7 +653,53 @@ export default function ProductMasterClient() {
                 </div>
               </div>
 
-              {/* Row 5: Pack + MRP + GST + Min Margin + Max Margin */}
+              {/* Row 5: Qty + Unit Type + Unit Weight */}
+              <div style={{ background: "rgba(99,102,241,0.05)", border: "1px solid rgba(99,102,241,0.15)", borderRadius: 10, padding: "0.75rem", marginBottom: "0.75rem" }}>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginBottom: "0.5rem", fontWeight: 600 }}>Quantity, Type & Weight</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", gap: "0.75rem" }}>
+                  <div>
+                    <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Quantity</label>
+                    <input value={form.qty} onChange={e => set("qty", e.target.value)} inputMode="numeric" placeholder="e.g. 10" />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Unit Type</label>
+                    <select value={form.unitType} onChange={e => {
+                      const t = e.target.value;
+                      set("unitType", t);
+                      // Auto-fill weight only if admin hasn't manually set it
+                      if (!form.unitWeightKg && DEFAULT_UNIT_WEIGHTS[t]) {
+                        set("unitWeightKg", String(DEFAULT_UNIT_WEIGHTS[t]));
+                      }
+                    }} style={{ width: "100%", fontSize: "0.875rem", padding: "0.5rem 0.6rem" }}>
+                      <option value="">— Select type —</option>
+                      {UNIT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>
+                      Unit Weight (kg)
+                      {form.unitType && DEFAULT_UNIT_WEIGHTS[form.unitType] && (
+                        <span style={{ color: "var(--text-muted)", marginLeft: 4 }}>
+                          · default {DEFAULT_UNIT_WEIGHTS[form.unitType]}
+                        </span>
+                      )}
+                    </label>
+                    <input
+                      value={form.unitWeightKg}
+                      onChange={e => set("unitWeightKg", e.target.value)}
+                      inputMode="decimal"
+                      placeholder={form.unitType && DEFAULT_UNIT_WEIGHTS[form.unitType]
+                        ? String(DEFAULT_UNIT_WEIGHTS[form.unitType])
+                        : "kg per unit"}
+                    />
+                  </div>
+                </div>
+                <div style={{ marginTop: "0.5rem", fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                  Strip default: 0.00823 kg · Tube default: 0.0395 kg · Used for parcel weight calculation in quotations
+                </div>
+              </div>
+
+              {/* Row 6: Pack + MRP + GST + Min Margin + Max Margin */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: "0.75rem" }}>
                 <div>
                   <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Pack / Unit</label>

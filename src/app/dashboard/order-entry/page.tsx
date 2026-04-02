@@ -6,10 +6,12 @@ const PAGE_SIZE = 9;
 export default async function OrderEntryHomePage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; error?: string; q?: string }>;
 }) {
   const params = await searchParams;
-  const page = Math.max(1, parseInt(params?.page || "1", 10));
+  const page       = Math.max(1, parseInt(params?.page || "1", 10));
+  const notFound   = params?.error === "not-found";
+  const searchedQ  = params?.q ?? "";
 
   // Left panel: only INITIATED orders, desc
   const initiatedOrders = await prisma.orderInitiation.findMany({
@@ -77,13 +79,15 @@ export default async function OrderEntryHomePage({
           {/* Search / navigate */}
           <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5">
             <form action="/dashboard/order-entry/go">
-              <label className="block text-xs text-slate-400">Order</label>
+              <label className="block text-xs text-slate-400">Search Order</label>
               <input
                 name="orderId"
                 list="orders-datalist"
-                placeholder="Paste/Select Order ID"
-                className="w-full mt-1 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-slate-100 placeholder:text-slate-600 outline-none focus:ring-1 focus:ring-slate-600"
+                defaultValue={notFound ? searchedQ : ""}
+                placeholder="Order ID, name, email or phone…"
+                className={`w-full mt-1 rounded-xl border bg-slate-950/60 px-3 py-2 text-slate-100 placeholder:text-slate-600 outline-none focus:ring-1 focus:ring-slate-600 ${notFound ? "border-red-500/60" : "border-slate-800"}`}
                 required
+                autoComplete="off"
               />
               <datalist id="orders-datalist">
                 {allOrdersForDatalist.map((o) => (
@@ -94,6 +98,12 @@ export default async function OrderEntryHomePage({
                   />
                 ))}
               </datalist>
+
+              {notFound && (
+                <p className="text-xs text-red-400 mt-1">
+                  No order found for <span className="font-semibold">&quot;{searchedQ}&quot;</span>. Try the full Order ID, name, email or phone.
+                </p>
+              )}
 
               <div className="mt-3 flex gap-3">
                 <button
@@ -111,7 +121,7 @@ export default async function OrderEntryHomePage({
               </div>
 
               <p className="text-xs text-slate-500 mt-2">
-                Tip: You can paste the Order ID that you got after client form submit.
+                Tip: Search by Order ID, customer name, email or phone number.
               </p>
             </form>
           </div>

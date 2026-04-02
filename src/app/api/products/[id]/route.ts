@@ -17,14 +17,18 @@ export async function PATCH(
   const body = await req.json();
 
   const data: any = {};
-  const strFields = ["name","manufacturer","hsn","pack","composition","batchNo","mfgDate","expDate"];
-  const numFields = ["mrp","gstPercent","minMargin","maxMargin"];
+  const strFields = ["name","manufacturer","hsn","pack","composition","batchNo","mfgDate","expDate","unitType"];
+  const numFields = ["mrp","gstPercent","minMargin","maxMargin","unitWeightKg"];
+  const intFields = ["qty"];
 
   for (const f of strFields) {
     if (body[f] !== undefined) data[f] = body[f]?.toString().trim() || null;
   }
   for (const f of numFields) {
     if (body[f] !== undefined) data[f] = body[f] ? Number(body[f]) : null;
+  }
+  for (const f of intFields) {
+    if (body[f] !== undefined) data[f] = body[f] ? parseInt(body[f], 10) : null;
   }
   if (body.groupId !== undefined) {
     data.group = body.groupId

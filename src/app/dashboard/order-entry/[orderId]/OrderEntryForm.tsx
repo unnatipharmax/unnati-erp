@@ -274,7 +274,7 @@ export default function OrderEntryForm({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Field label="Shipment Mode">
             <select value={shipmentMode} onChange={e => setShipmentMode(e.target.value)} className={selectCls}>
-              {["EMS","ITPS","RMS","DHL"].map(m => <option key={m}>{m}</option>)}
+              {["EMS","ITPS","RMS","DHL","UPS","CM"].map(m => <option key={m}>{m}</option>)}
             </select>
           </Field>
 

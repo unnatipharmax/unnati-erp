@@ -1,6 +1,7 @@
 // src/app/dashboard/client-forms/page.tsx
 import CreateClientLinkCard      from "./CreateClientLinkCard";
 import CreateClientMultiLinkCard from "./CreateClientMultiLinkCard";
+import ExcelImportCard           from "./ExcelImportCard";
 import ClientAccountsList        from "./ClientAccountsList";
 
 export default function ClientFormsPage() {
@@ -12,6 +13,11 @@ export default function ClientFormsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <CreateClientLinkCard />
         <CreateClientMultiLinkCard />
+      </div>
+
+      {/* Excel bulk import */}
+      <div style={{ marginTop: "1.5rem", display: "grid", gridTemplateColumns: "1fr" }}>
+        <ExcelImportCard />
       </div>
 
       {/* ✅ Persistent list — download button always available here */}

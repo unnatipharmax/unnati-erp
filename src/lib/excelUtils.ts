@@ -31,6 +31,7 @@ function dat(cell: ExcelJS.Cell, value: ExcelJS.CellValue, opts: { fmt?: string;
 export type OrderRow = {
   orderId:       string;
   fullName:      string;
+  remitterName?: string | null;
   address:       string;
   city:          string;
   state:         string;
@@ -97,6 +98,7 @@ export async function generateLedgerBuffer(params: {
     { col: "U", header: "GRS NUMBER",             bg: C.orange, width: 13.0  },
     { col: "V", header: "DOLLAR AMOUNT",          bg: C.orange, width: 13.0  },
     { col: "W", header: "INR AMOUNT",             bg: C.orange, width: 13.0  },
+    { col: "X", header: "REMITTER NAME",          bg: C.amber,  width: 20.0  },
   ];
 
   // Set widths + write headers
@@ -207,6 +209,9 @@ export async function generateLedgerBuffer(params: {
     ws.getCell(`W${row}`).border    = thin;
     ws.getCell(`W${row}`).alignment = { horizontal: "right" };
     ws.getCell(`W${row}`).numFmt    = "#,##0.00";
+
+    // X — Remitter Name
+    dat(ws.getCell(`X${row}`), o.remitterName ?? "");
 
     ws.getRow(row).height = 13.2;
     srNo++;

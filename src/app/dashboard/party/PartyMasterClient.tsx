@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import CreditNoteEntryTab from "./CreditNoteEntryTab";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Party = {
@@ -21,7 +22,7 @@ type LedgerItem = {
 };
 
 type LedgerEntry = {
-  id: string; kind: "bill" | "payment";
+  id: string; kind: "bill" | "payment" | "creditNote";
   date: string; particulars: string; vchType: string; vchNo: string | null;
   debit: number | null; credit: number | null;
   balance: number; balanceType: "Dr" | "Cr";
@@ -41,15 +42,15 @@ type LedgerData = {
   };
   entries: LedgerEntry[];
   summary: {
-    billCount: number; paymentCount: number;
-    totalCredit: number; totalDebit: number;
+    billCount: number; paymentCount: number; creditNoteCount: number;
+    totalCredit: number; totalDebit: number; totalCreditNotes: number;
     closingBalance: number; balanceType: "Dr" | "Cr";
   };
 };
 
 type BillBalance = {
   id: string; invoiceNo: string | null; invoiceDate: string | null;
-  createdAt: string; billAmount: number; paidAmount: number; outstanding: number;
+  createdAt: string; billAmount: number; paidAmount: number; creditNoteAdjusted: number; outstanding: number;
 };
 
 const EMPTY = {
@@ -619,7 +620,7 @@ function LedgerTab({ data, reload }: { data: LedgerData; reload: () => void }) {
 function LedgerOverlay({
   partyId, partyName, onClose,
 }: { partyId: string; partyName: string; onClose: () => void }) {
-  const [tab,     setTab]     = useState<"ledger" | "payment">("ledger");
+  const [tab,     setTab]     = useState<"ledger" | "payment" | "creditNote">("ledger");
   const [data,    setData]    = useState<LedgerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [err,     setErr]     = useState("");
@@ -690,9 +691,11 @@ function LedgerOverlay({
               {[
                 { label: "Total Purchases (Cr)", value: fmt(data.summary.totalCredit), color: "#93c5fd" },
                 { label: "Total Payments (Dr)", value: fmt(data.summary.totalDebit), color: "#fca5a5" },
+                { label: "Credit Notes", value: fmt(data.summary.totalCreditNotes), color: "#fb923c" },
                 { label: "Balance", value: `${fmt(Math.abs(data.summary.closingBalance))} ${data.summary.balanceType}`, color: "#fcd34d" },
                 { label: "Bills", value: `${data.summary.billCount}`, color: "var(--text-secondary)" },
                 { label: "Payments", value: `${data.summary.paymentCount}`, color: "var(--text-secondary)" },
+                { label: "CN Count", value: `${data.summary.creditNoteCount}`, color: "var(--text-secondary)" },
               ].map(({ label, value, color }) => (
                 <div key={label} style={{ display: "flex", flexDirection: "column", gap: "0.1rem" }}>
                   <span style={{ fontSize: "0.65rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>

@@ -51,12 +51,31 @@ export async function GET() {
     },
   });
 
+  // Collect unique product IDs from all orders, then fetch current stock qty
+  // via raw SQL to avoid stale-Prisma-client type errors (qty was recently added).
+  const productIds = [
+    ...new Set(
+      orders.flatMap(o =>
+        (o.orderEntry?.items ?? []).map(i => i.product.id)
+      )
+    ),
+  ];
+
+  const stockMap: Record<string, number | null> = {};
+  if (productIds.length > 0) {
+    const rows = await prisma.$queryRaw<{ id: string; qty: number | null }[]>`
+      SELECT id, qty FROM "Product" WHERE id = ANY(${productIds}::text[])
+    `;
+    for (const r of rows) stockMap[r.id] = r.qty ?? null;
+  }
+
   return NextResponse.json({
     orders: orders.map(o => {
       const entry = o.orderEntry;
-      const items = entry?.items.map(i => {
+      const items = (entry?.items ?? []).map(i => {
         const rate    = i.product.PurchaseItems[0]?.rate ?? null;
-        const inrUnit = rate ? Math.round(rate * 1.15 * 100) / 100 : null;
+        const rateNum = rate != null ? Number(rate) : null;
+        const inrUnit = rateNum != null ? Math.round(rateNum * 1.15 * 100) / 100 : null;
         return {
           productId:    i.product.id,
           productName:  i.product.name,
@@ -69,12 +88,13 @@ export async function GET() {
           mfgDate:      i.product.mfgDate,
           expDate:      i.product.expDate,
           quantity:     i.quantity,
-          sellingPrice: Number(i.sellingPrice),   // USD selling price
-          latestRate:   rate,
-          inrUnit,                                 // purchase rate + 15%
-          amount:       inrUnit ? Math.round(inrUnit * i.quantity * 100) / 100 : null,
+          sellingPrice: Number(i.sellingPrice),       // USD selling price
+          latestRate:   rateNum,                      // purchase rate in INR per unit
+          inrUnit,                                    // purchase rate + 15% margin
+          amount:       inrUnit != null ? Math.round(inrUnit * i.quantity * 100) / 100 : null,
+          stockQty:     stockMap[i.product.id] ?? null, // current stock from Product master
         };
-      }) ?? [];
+      });
 
       const totalInr = items.reduce((s, i) => s + (i.amount ?? 0), 0);
 
@@ -89,7 +109,7 @@ export async function GET() {
         state:           o.state,
         postalCode:      o.postalCode,
         country:         o.country,
-        remitterName:    o.remitterName,       // → Buyer's reference
+        remitterName:    o.remitterName,
         amountPaid:      Number(o.amountPaid),
         currency:        o.currency,
         exchangeRate:    o.exchangeRate ? Number(o.exchangeRate) : 84,

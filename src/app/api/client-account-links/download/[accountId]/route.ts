@@ -20,7 +20,7 @@ export async function GET(
           orderBy: { createdAt: "asc" },
           select: {
             id: true, orderValue: true, status: true,
-            fullName: true, address: true, city: true,
+            fullName: true, remitterName: true, address: true, city: true,
             state: true, postalCode: true, country: true, createdAt: true,
             inrAmount: true, dollarAmount: true,
             exchangeRate: true, grsNumber: true, paymentDepositDate: true,
@@ -64,7 +64,8 @@ export async function GET(
 
       return {
         orderId: o.id, orderDate: o.createdAt.toLocaleDateString("en-IN"),
-        fullName: o.fullName, address: o.address, city: o.city,
+        fullName: o.fullName, remitterName: o.remitterName ?? "",
+        address: o.address, city: o.city,
         state: o.state, postalCode: o.postalCode, country: o.country,
         trackingNo: null, brandName, quantity, unitPrice,
         shipmentMode:  hasEntry ? o.orderEntry!.shipmentMode : "—",
