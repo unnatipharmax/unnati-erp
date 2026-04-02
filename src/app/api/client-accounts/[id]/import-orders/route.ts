@@ -64,10 +64,9 @@ export async function POST(
     return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
 
   const arrayBuf = await (file as File).arrayBuffer();
-  const buffer   = Buffer.from(arrayBuf);
 
   const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(buffer);
+  await wb.xlsx.load(arrayBuf as unknown as Buffer);
 
   const ws = wb.worksheets[0];
   if (!ws) return NextResponse.json({ error: "Workbook has no sheets" }, { status: 400 });
