@@ -300,17 +300,37 @@ model OrderEntryItem {
 }
 
 model ClientAccount {
-  id             String              @id @default(uuid())
-  name           String
-  balance        Decimal             @db.Decimal(12, 2) @default(0)
-  googleSheetId  String?
-  googleSheetUrl String?
-  isActive       Boolean             @default(true)
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-  links          ClientAccountLink[]
-  orders         OrderInitiation[]
-  ledger         AccountLedger[]
+  id                String              @id @default(uuid())
+  name              String
+  balance           Decimal             @db.Decimal(12, 2) @default(0)
+  address           String?
+  gstNumber         String?
+  drugLicenseNumber String?
+  notes             String?
+  googleSheetId     String?
+  googleSheetUrl    String?
+  isActive          Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  links             ClientAccountLink[]
+  orders            OrderInitiation[]
+  ledger            AccountLedger[]
+  phones            ClientPhone[]
+  emails            ClientEmail[]
+}
+
+model ClientPhone {
+  id        String        @id @default(uuid())
+  phone     String
+  accountId String
+  account   ClientAccount @relation(fields: [accountId], references: [id])
+}
+
+model ClientEmail {
+  id        String        @id @default(uuid())
+  email     String
+  accountId String
+  account   ClientAccount @relation(fields: [accountId], references: [id])
 }
 
 model ClientAccountLink {

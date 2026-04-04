@@ -6,6 +6,7 @@ import {
   preparePrescriptionUpload,
   savePrescriptionUpload,
 } from "../../../lib/prescriptions";
+import { sendOrderConfirmation } from "../../../lib/email";
 
 export const runtime = "nodejs"; // keep Prisma + crypto stable on dev
 
@@ -103,6 +104,13 @@ export async function POST(req: Request) {
         where: { token },
         data: { orderId: order.id },
       });
+
+      // 4) Send confirmation emails (best-effort — never block the response)
+      sendOrderConfirmation({
+        orderId:     order.id,
+        clientEmail: email,
+        clientName:  fullName,
+      }).catch(e => console.error("Confirmation email error:", e));
 
       return NextResponse.json({ orderId: order.id });
     } catch (innerError) {
