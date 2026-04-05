@@ -47,6 +47,12 @@ export async function GET(req: Request) {
       inrAmount: true,
       trackingNo: true,
       licenseNo: true,
+      prescriptionOriginalName: true,
+      dosagePerDay: true,
+      totalDosages: true,
+      dosageStartDate: true,
+      dosageReminderDate: true,
+      dosageReminderSent: true,
       createdAt: true,
       orderEntry: {
         select: {
@@ -73,7 +79,10 @@ export async function GET(req: Request) {
       exchangeRate: o.exchangeRate ? Number(o.exchangeRate) : null,
       dollarAmount: o.dollarAmount ? Number(o.dollarAmount) : null,
       inrAmount:    o.inrAmount    ? Number(o.inrAmount)    : null,
-      invoiceGeneratedAt: o.invoiceGeneratedAt?.toISOString() ?? null,
+      invoiceGeneratedAt:  o.invoiceGeneratedAt?.toISOString() ?? null,
+      prescriptionFileName: o.prescriptionOriginalName ?? null,
+      dosageStartDate:     o.dosageStartDate?.toISOString().split("T")[0] ?? null,
+      dosageReminderDate:  o.dosageReminderDate?.toISOString().split("T")[0] ?? null,
       createdAt: o.createdAt.toISOString(),
       orderEntry: o.orderEntry ? {
         ...o.orderEntry,

@@ -33,6 +33,12 @@ type Invoice = {
   inrAmount:          number | null;
   trackingNo:         string | null;
   licenseNo:          string | null;
+  prescriptionFileName: string | null;
+  dosagePerDay:        number | null;
+  totalDosages:        number | null;
+  dosageStartDate:     string | null;
+  dosageReminderDate:  string | null;
+  dosageReminderSent:  boolean;
   createdAt:          string;
   orderEntry: {
     shipmentMode:  string;
@@ -66,7 +72,7 @@ function EditModal({ invoice, onClose, onSaved }: {
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [tab, setTab] = useState<"client" | "invoice" | "shipping" | "payment">("client");
+  const [tab, setTab] = useState<"client" | "invoice" | "shipping" | "payment" | "dosage">("client");
   const [saving, setSaving] = useState(false);
   const [err, setErr]       = useState("");
   const [success, setSuccess] = useState("");
@@ -92,6 +98,43 @@ function EditModal({ invoice, onClose, onSaved }: {
   const [shippingPrice, setShippingPrice] = useState(String(invoice.orderEntry?.shippingPrice ?? 0));
   const [notes,         setNotes]         = useState(invoice.orderEntry?.notes ?? "");
   const [items,         setItems]         = useState<Item[]>(invoice.orderEntry?.items ?? []);
+
+  // Form state — dosage
+  const [dosagePerDay,    setDosagePerDay]    = useState(String(invoice.dosagePerDay    ?? ""));
+  const [totalDosages,    setTotalDosages]    = useState(String(invoice.totalDosages    ?? ""));
+  const [dosageStartDate, setDosageStartDate] = useState(isoDateVal(invoice.dosageStartDate));
+  const [dosageSaving,    setDosageSaving]    = useState(false);
+  const [dosageSuccess,   setDosageSuccess]   = useState("");
+
+  // Computed preview
+  const perDay = parseInt(dosagePerDay) || 0;
+  const total  = parseInt(totalDosages) || 0;
+  const daysSupply = perDay > 0 && total > 0 ? Math.floor(total / perDay) : 0;
+  const reminderDay = daysSupply > 7 ? daysSupply - 7 : daysSupply;
+  function previewReminderDate() {
+    if (!dosageStartDate || daysSupply === 0) return null;
+    const d = new Date(dosageStartDate);
+    d.setDate(d.getDate() + reminderDay);
+    return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  }
+
+  async function saveDosage() {
+    if (!dosagePerDay || !totalDosages) { setErr("Dosage per day and total dosages are required"); return; }
+    setDosageSaving(true); setErr(""); setDosageSuccess("");
+    const res  = await fetch(`/api/orders/${invoice.id}/dosage`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        dosagePerDay:    Number(dosagePerDay),
+        totalDosages:    Number(totalDosages),
+        dosageStartDate: dosageStartDate || null,
+      }),
+    });
+    const data = await res.json();
+    setDosageSaving(false);
+    if (!res.ok) { setErr(data?.error || "Failed to save dosage"); return; }
+    setDosageSuccess(`Reminder scheduled for ${data.dosageReminderDate} (${data.daysSupply} day supply, reminder 7 days early).`);
+    onSaved();
+  }
 
   // Form state — payment
   const [amountPaid,   setAmountPaid]   = useState(String(invoice.amountPaid));
@@ -140,6 +183,7 @@ function EditModal({ invoice, onClose, onSaved }: {
     ["invoice",  "🧾 Invoice & Shipping"],
     ["shipping", "📦 Items"],
     ["payment",  "💰 Payment"],
+    ["dosage",   invoice.prescriptionFileName ? "💊 Dosage Reminder" : "💊 Dosage"],
   ];
 
   return (
@@ -298,6 +342,73 @@ function EditModal({ invoice, onClose, onSaved }: {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── Dosage Reminder ── */}
+          {tab === "dosage" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
+              {invoice.prescriptionFileName ? (
+                <div style={{ padding: "0.6rem 0.875rem", borderRadius: 6, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", fontSize: "0.8rem", color: "#818cf8" }}>
+                  📋 Prescription: <strong>{invoice.prescriptionFileName}</strong>
+                </div>
+              ) : (
+                <div style={{ padding: "0.6rem 0.875rem", borderRadius: 6, background: "rgba(251,146,60,0.1)", border: "1px solid rgba(251,146,60,0.3)", fontSize: "0.8rem", color: "#fb923c" }}>
+                  ⚠️ No prescription on file for this order. You can still set a dosage reminder.
+                </div>
+              )}
+
+              {invoice.dosageReminderSent && (
+                <div style={{ padding: "0.6rem 0.875rem", borderRadius: 6, background: "rgba(110,231,183,0.1)", border: "1px solid rgba(110,231,183,0.3)", fontSize: "0.8rem", color: "#6ee7b7" }}>
+                  ✅ Reminder email already sent on {invoice.dosageReminderDate}.
+                </div>
+              )}
+
+              {dosageSuccess && <div className="alert alert-success" style={{ fontSize: "0.82rem" }}>{dosageSuccess}</div>}
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem" }}>
+                <div>
+                  <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 3 }}>
+                    Total Dosages Ordered <span style={{ color: "#f87171" }}>*</span>
+                  </label>
+                  <input type="number" min="1" value={totalDosages} onChange={e => setTotalDosages(e.target.value)} placeholder="e.g. 30" />
+                  <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: 3 }}>Total units in this order</div>
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 3 }}>
+                    Dosages Per Day <span style={{ color: "#f87171" }}>*</span>
+                  </label>
+                  <input type="number" min="1" value={dosagePerDay} onChange={e => setDosagePerDay(e.target.value)} placeholder="e.g. 1" />
+                  <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: 3 }}>Units client takes daily</div>
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 3 }}>Medication Start Date</label>
+                  <input type="date" value={dosageStartDate} onChange={e => setDosageStartDate(e.target.value)} />
+                  <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: 3 }}>Defaults to today if empty</div>
+                </div>
+              </div>
+
+              {/* Live preview */}
+              {daysSupply > 0 && (
+                <div style={{ padding: "0.875rem 1rem", borderRadius: 8, background: "var(--surface-2)", border: "1px solid var(--border)", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem", fontSize: "0.82rem" }}>
+                  <div>
+                    <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>Supply Duration</div>
+                    <div style={{ fontWeight: 700, color: "#818cf8", fontFamily: "monospace" }}>{daysSupply} days</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>Reminder Sent</div>
+                    <div style={{ fontWeight: 700, color: "#fcd34d" }}>7 days before run-out</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>Reminder Date</div>
+                    <div style={{ fontWeight: 700, color: "#6ee7b7", fontFamily: "monospace" }}>{previewReminderDate() ?? "—"}</div>
+                  </div>
+                </div>
+              )}
+
+              <button onClick={saveDosage} disabled={dosageSaving || !dosagePerDay || !totalDosages} className="btn btn-primary" style={{ alignSelf: "flex-start" }}>
+                {dosageSaving ? "Saving…" : "Save Dosage Reminder"}
+              </button>
             </div>
           )}
 

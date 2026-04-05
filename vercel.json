@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/dosage-reminders/cron",
+      "schedule": "0 7 * * *"
+    }
+  ]
+}

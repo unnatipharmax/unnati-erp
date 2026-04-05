@@ -78,36 +78,13 @@ function GSTInvoiceDoc({ order }: { order: Order }) {
 
   const mode = order.shipmentMode ?? "EMS";
   const shipLabel = `By Air through ${mode}`;
-  const isItps = mode === "ITPS";
-  const isEms  = mode === "EMS";
 
   // INR total from items
   const inrTotal = order.items.reduce((s, i) => s + (i.amount ?? 0), 0);
 
   function dollarToWords(n: number): string {
-    const ones = [
-      "",
-      "ONE",
-      "TWO",
-      "THREE",
-      "FOUR",
-      "FIVE",
-      "SIX",
-      "SEVEN",
-      "EIGHT",
-      "NINE",
-      "TEN",
-      "ELEVEN",
-      "TWELVE",
-      "THIRTEEN",
-      "FOURTEEN",
-      "FIFTEEN",
-      "SIXTEEN",
-      "SEVENTEEN",
-      "EIGHTEEN",
-      "NINETEEN",
-    ];
-    const tens = ["", "", "TWENTY", "THIRTY", "FORTY", "FIFTY", "SIXTY", "SEVENTY", "EIGHTY", "NINETY"];
+    const ones = ["","ONE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT","NINE","TEN","ELEVEN","TWELVE","THIRTEEN","FOURTEEN","FIFTEEN","SIXTEEN","SEVENTEEN","EIGHTEEN","NINETEEN"];
+    const tens = ["","","TWENTY","THIRTY","FORTY","FIFTY","SIXTY","SEVENTY","EIGHTY","NINETY"];
     if (n === 0) return "ZERO";
     const int = Math.floor(n);
     if (int < 20) return ones[int];
@@ -119,336 +96,195 @@ function GSTInvoiceDoc({ order }: { order: Order }) {
   const usdWords = order.dollarAmount != null ? dollarToWords(order.dollarAmount) + " DOLLAR" : "";
 
   return (
-    <div id="gst-invoice-print" style={{ fontFamily: "Arial, sans-serif", fontSize: "8.5pt", color: "#000" }}>
+    <div id="gst-invoice-print" style={{ fontFamily: "'Arial', sans-serif", fontSize: "8.5pt", color: "#111", background: "#fff" }}>
       <style>{`
-        #gst-invoice-print table { width: 100%; border-collapse: collapse; }
-        #gst-invoice-print td, #gst-invoice-print th {
-          border: 1px solid #000; padding: 2px 3px; vertical-align: top; font-size: 8pt;
-        }
-        #gst-invoice-print th { background: #f2f2f2; font-weight: bold; text-align: center; font-size: 8pt; }
+        #gst-invoice-print { padding: 0; }
+        #gst-invoice-print .inv-border { border: 2px solid #c8960c; border-radius: 4px; overflow: hidden; }
+        #gst-invoice-print .inv-header { background: #fef9e7; border-bottom: 2px solid #c8960c; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }
+        #gst-invoice-print .inv-header-logo { height: 52px; width: auto; object-fit: contain; }
+        #gst-invoice-print .inv-header-company { text-align: right; color: #111; }
+        #gst-invoice-print .inv-header-company .co-name { font-size: 15pt; font-weight: 800; letter-spacing: 0.04em; color: #7a5c00; }
+        #gst-invoice-print .inv-header-company .co-addr { font-size: 7pt; color: #555; margin-top: 2px; line-height: 1.4; }
+        #gst-invoice-print .inv-title-bar { background: #fffbeb; padding: 5px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e8d080; }
+        #gst-invoice-print .inv-title-text { font-size: 11pt; font-weight: 800; color: #7a5c00; letter-spacing: 0.08em; }
+        #gst-invoice-print .inv-title-meta { font-size: 8pt; color: #333; text-align: right; line-height: 1.6; }
+        #gst-invoice-print .inv-section { display: flex; border-bottom: 1px solid #e8d080; }
+        #gst-invoice-print .inv-section .col { flex: 1; padding: 7px 10px; border-right: 1px solid #e8d080; }
+        #gst-invoice-print .inv-section .col:last-child { border-right: none; }
+        #gst-invoice-print .inv-section .col-label { font-size: 6.5pt; color: #888; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+        #gst-invoice-print .inv-section .col-value { font-size: 8pt; color: #111; font-weight: 600; line-height: 1.5; }
+        #gst-invoice-print .inv-section .col-value .co-buyer { font-weight: 800; font-size: 9pt; }
+        #gst-invoice-print table.goods-table { width: 100%; border-collapse: collapse; }
+        #gst-invoice-print table.goods-table td,
+        #gst-invoice-print table.goods-table th { border: 1px solid #e8d080; padding: 3px 4px; vertical-align: middle; font-size: 7.5pt; }
+        #gst-invoice-print table.goods-table thead tr { background: #fef3c7; }
+        #gst-invoice-print table.goods-table thead th { color: #7a5c00; font-weight: 800; text-align: center; font-size: 7pt; padding: 4px 3px; border-color: #c8960c; }
+        #gst-invoice-print table.goods-table tbody tr:nth-child(even) { background: #fffdf0; }
+        #gst-invoice-print .totals-row td { padding: 3px 6px; font-size: 7.5pt; border: 1px solid #e8d080; }
+        #gst-invoice-print .totals-row.highlight td { background: #fef3c7; color: #7a5c00; font-weight: 800; font-size: 9pt; border-color: #c8960c; }
+        #gst-invoice-print .words-row { background: #fff9c4; border-top: 1px solid #e8d080; padding: 5px 10px; font-size: 8pt; font-weight: 700; color: #333; }
+        #gst-invoice-print .decl-row { padding: 3px 10px; font-size: 7pt; color: #444; border-top: 1px solid #f0e8b0; }
+        #gst-invoice-print .footer-bar { background: #fef9e7; padding: 7px 14px; display: flex; justify-content: space-between; align-items: flex-end; border-top: 2px solid #c8960c; }
+        #gst-invoice-print .footer-licenses { font-size: 7pt; color: #333; line-height: 1.7; }
+        #gst-invoice-print .footer-sig { text-align: right; font-size: 7.5pt; color: #7a5c00; font-weight: 700; }
       `}</style>
 
-      <table>
-        <tbody>
-          {/* Title */}
-          <tr>
-            <td colSpan={14} style={{ textAlign: "center", fontWeight: "bold", fontSize: "11pt", padding: 4, borderBottom: "1px solid #000" }}>
-              GST INVOICE
-            </td>
-          </tr>
+      <div className="inv-border">
+        {/* ── Header: Logo + Company ── */}
+        <div className="inv-header">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Unnati Pharmax" className="inv-header-logo" />
+          <div className="inv-header-company">
+            <div className="co-name">UNNATI PHARMAX</div>
+            <div className="co-addr">
+              Ground Floor, House No 307/4, Guru Vandana Apartment,<br />
+              Kakasaheb Cholkar Marg, Lakadganj, Nagpur – 440008, Maharashtra<br />
+              GST: 27FNXPP3883B1ZA &nbsp;|&nbsp; PAN: FNXPP3883B
+            </div>
+          </div>
+        </div>
 
-          {/* NAME & ADDRESS | Invoice No */}
-          <tr>
-            <td colSpan={7} style={{ fontWeight: "bold", padding: "2px 4px" }}>
-              NAME &amp; ADDRESS
-            </td>
-            <td colSpan={3} style={{ padding: "2px 4px" }}>
-              Invoice No.
-            </td>
-            <td colSpan={4} style={{ padding: "2px 4px", fontWeight: "bold" }}>
-              {order.invoiceNo}
-            </td>
-          </tr>
+        {/* ── Title bar ── */}
+        <div className="inv-title-bar">
+          <span className="inv-title-text">GST INVOICE</span>
+          <div className="inv-title-meta">
+            <span><b>Invoice No:</b> {order.invoiceNo ?? "—"}</span><br />
+            <span><b>Date:</b> {today}</span><br />
+            <span><b>Ref:</b> {order.id.slice(0, 8).toUpperCase()}</span>
+          </div>
+        </div>
 
-          <tr>
-            <td colSpan={7} rowSpan={5} style={{ verticalAlign: "top", padding: 4 }}>
-              <div style={{ fontWeight: "bold", fontSize: "10.5pt", marginBottom: 2 }}>UNNATI PHARMAX</div>
-              <div style={{ fontSize: "7.5pt" }}>Ground Floor House No 307/4, Guru Vandana Apartment, Kakasaheb</div>
-              <div style={{ fontSize: "7.5pt" }}>Cholkar Marg, Lakadganj, Nagpur, NAGPUR, MAHARASHTRA, 440008</div>
-            </td>
-            <td colSpan={3} style={{ padding: "2px 4px" }}>
-              Date
-            </td>
-            <td colSpan={4} style={{ padding: "2px 4px" }}>
-              {today}
-            </td>
-          </tr>
+        {/* ── Consignee | Buyer | Shipping ── */}
+        <div className="inv-section">
+          <div className="col" style={{ flex: 2 }}>
+            <div className="col-label">Consignee</div>
+            <div className="col-value">
+              <div className="co-buyer">{order.fullName}</div>
+              <div>{order.address}</div>
+              {order.city && <div>{order.city}{order.state ? `, ${order.state}` : ""} {order.postalCode}</div>}
+              <div><b>Country:</b> {order.country}</div>
+            </div>
+          </div>
+          <div className="col" style={{ flex: 1 }}>
+            <div className="col-label">Buyer&apos;s Reference</div>
+            <div className="col-value" style={{ fontWeight: 800, fontSize: "9pt" }}>{order.remitterName}</div>
+          </div>
+          <div className="col" style={{ flex: 1 }}>
+            <div className="col-label">Shipping Details</div>
+            <div className="col-value">
+              <div>{shipLabel}</div>
+              <div><b>Pre-carrier:</b> Mumbai</div>
+              <div><b>Port of Loading:</b> Mumbai</div>
+              <div><b>Origin:</b> INDIA</div>
+              <div><b>Destination:</b> {order.country.toUpperCase()}</div>
+            </div>
+          </div>
+        </div>
 
-          <tr>
-            <td colSpan={3} style={{ padding: "2px 4px" }}>
-              Email Order
-            </td>
-            <td colSpan={4} style={{ padding: "2px 4px" }}>
-              {order.id.slice(0, 8).toUpperCase()}
-            </td>
-          </tr>
-
-          <tr>
-            <td colSpan={3} style={{ padding: "2px 4px" }}>
-              Other Reference (s)
-            </td>
-            <td colSpan={4} style={{ padding: "2px 4px" }}></td>
-          </tr>
-          <tr>
-            <td colSpan={7} style={{ padding: 2 }}></td>
-          </tr>
-          <tr>
-            <td colSpan={7} style={{ padding: 2 }}></td>
-          </tr>
-
-          {/* Consignee | Buyer reference */}
-          <tr>
-            <td colSpan={7} style={{ fontWeight: "bold", padding: "2px 4px" }}>
-              Consignee
-            </td>
-            <td colSpan={7} style={{ fontWeight: "bold", padding: "2px 4px" }}>
-              Buyer's reference ( S )
-            </td>
-          </tr>
-
-          <tr>
-            <td colSpan={7} rowSpan={4} style={{ verticalAlign: "top", padding: 4 }}>
-              <div>
-                <b>Full Name :</b> {order.fullName}
-              </div>
-              <div>
-                <b>Address :</b> {order.address}
-              </div>
-              {order.city && (
-                <div style={{ paddingLeft: 52 }}>
-                  {order.city}
-                  {order.state ? `, ${order.state}` : ""} {order.postalCode}
-                </div>
-              )}
-              <div>
-                <b>Country :</b> {order.country}
-              </div>
-            </td>
-
-            <td colSpan={7} rowSpan={4} style={{ verticalAlign: "middle", textAlign: "center", padding: 6, fontWeight: "bold" }}>
-              {order.remitterName}
-            </td>
-          </tr>
-          <tr></tr>
-          <tr></tr>
-          <tr></tr>
-
-          {/* Place / Origin / Final */}
-          <tr>
-            <td colSpan={3} style={{ padding: "2px 4px" }}>
-              <div style={{ fontSize: "7.5pt" }}>Place of Receipt by</div>
-              <div>&nbsp;</div>
-            </td>
-            <td colSpan={4} style={{ padding: "2px 4px", textAlign: "center" }}>
-              <div style={{ fontSize: "7.5pt" }}>Country of Origin:</div>
-              <div style={{ fontWeight: "bold" }}>INDIA</div>
-            </td>
-            <td colSpan={3} style={{ padding: "2px 4px" }}></td>
-            <td colSpan={4} style={{ padding: "2px 4px", textAlign: "right", verticalAlign: "top" }}>
-              <div style={{ fontSize: "7.5pt" }}>Country of Final Des.</div>
-              <div style={{ fontWeight: "bold" }}>{order.country.toUpperCase()}</div>
-            </td>
-          </tr>
-
-          {/* Shipping row */}
-          <tr>
-            <td colSpan={2} style={{ padding: "2px 4px", fontSize: "7.5pt" }}>
-              {shipLabel}
-            </td>
-            <td colSpan={2} style={{ padding: "2px 4px" }}>
-              <div style={{ fontSize: "7.5pt" }}>Pre-carrier:</div>
-              <div>Mumbai</div>
-            </td>
-            <td colSpan={3} style={{ padding: "2px 4px" }}>
-              <div style={{ fontSize: "7.5pt" }}>Port of Loading:</div>
-              <div>Mumbai</div>
-            </td>
-            <td colSpan={7} style={{ padding: "2px 4px" }}>
-              <div style={{ fontSize: "7.5pt" }}>Terms of Delivery and payment</div>
-            </td>
-          </tr>
-
-          {/* Port of discharge / Final Destination */}
-          <tr>
-            <td colSpan={4} style={{ padding: "2px 4px" }}>
-              <span style={{ fontSize: "7.5pt" }}>Port of Discharge: &mdash;&mdash;&mdash;</span>
-            </td>
-            <td colSpan={3} style={{ padding: "2px 4px" }}>
-              <span style={{ fontSize: "7.5pt" }}>Final Destination:</span>
-              <span style={{ fontWeight: "bold" }}> {order.country.toUpperCase()}</span>
-            </td>
-            <td colSpan={7} style={{ padding: "2px 4px" }}>
-              <span style={{ fontSize: "7.5pt" }}>{order.country.toUpperCase()}</span>
-            </td>
-          </tr>
-
-          {/* Goods table */}
-          <tr>
-            <td colSpan={14} style={{ textAlign: "center", fontWeight: "bold", background: "#f5f5f5", padding: 3 }}>
-              Description of Goods
-            </td>
-          </tr>
-
-          <tr style={{ background: "#f5f5f5" }}>
-            <th style={{ width: 24 }}>Sr.No</th>
-            <th style={{ width: 24, fontSize: "7pt" }}>No Par cel</th>
-            <th style={{ width: 95 }}>Products</th>
-            <th style={{ width: 100 }}>Composition</th>
-            <th style={{ width: 85 }}>Mfg Name</th>
-            <th style={{ width: 50 }}>HSN Code</th>
-            <th style={{ width: 34 }}>Packing</th>
-            <th style={{ width: 22 }}>GST</th>
-            <th style={{ width: 56 }}>Batch No</th>
-            <th style={{ width: 36 }}>Mfg date</th>
-            <th style={{ width: 32 }}>Exp Date</th>
-            <th style={{ width: 28 }}>Unit</th>
-            <th style={{ width: 32 }}>INR Unit</th>
-            <th style={{ width: 50 }}>Amount</th>
-          </tr>
-
-          {order.items.map((item, idx) => (
-            <tr key={item.productId}>
-              <td style={{ textAlign: "center" }}>{idx + 1}</td>
-              <td style={{ textAlign: "center" }}>{idx + 1}</td>
-              <td style={{ fontWeight: 600 }}>{item.productName}</td>
-              <td>{item.composition ?? ""}</td>
-              <td>{item.manufacturer ?? ""}</td>
-              <td style={{ textAlign: "center" }}>{item.hsn ?? ""}</td>
-              <td style={{ textAlign: "center" }}>{item.pack ?? ""}</td>
-              <td style={{ textAlign: "center" }}>{item.gstPercent != null ? `${item.gstPercent}%` : ""}</td>
-              <td>{item.batchNo ?? ""}</td>
-              <td style={{ textAlign: "center" }}>{item.mfgDate ?? ""}</td>
-              <td style={{ textAlign: "center" }}>{item.expDate ?? ""}</td>
-              <td style={{ textAlign: "right" }}>{item.quantity}</td>
-              <td style={{ textAlign: "right" }}>{item.inrUnit?.toFixed(2) ?? ""}</td>
-              <td style={{ textAlign: "right" }}>{item.amount?.toFixed(2) ?? ""}</td>
+        {/* ── Goods Table ── */}
+        <table className="goods-table">
+          <thead>
+            <tr>
+              <th style={{ width: 22 }}>Sr.</th>
+              <th style={{ width: 22 }}>Pcl</th>
+              <th style={{ minWidth: 90 }}>Product</th>
+              <th style={{ minWidth: 95 }}>Composition</th>
+              <th style={{ minWidth: 80 }}>Manufacturer</th>
+              <th style={{ width: 46 }}>HSN</th>
+              <th style={{ width: 36 }}>Pack</th>
+              <th style={{ width: 28 }}>GST</th>
+              <th style={{ width: 56 }}>Batch No</th>
+              <th style={{ width: 38 }}>Mfg</th>
+              <th style={{ width: 36 }}>Exp</th>
+              <th style={{ width: 30 }}>Qty</th>
+              <th style={{ width: 38 }}>INR/Unit</th>
+              <th style={{ width: 50 }}>Amount</th>
             </tr>
-          ))}
+          </thead>
+          <tbody>
+            {order.items.map((item, idx) => (
+              <tr key={item.productId}>
+                <td style={{ textAlign: "center" }}>{idx + 1}</td>
+                <td style={{ textAlign: "center" }}>{idx + 1}</td>
+                <td style={{ fontWeight: 700 }}>{item.productName}</td>
+                <td>{item.composition ?? ""}</td>
+                <td>{item.manufacturer ?? ""}</td>
+                <td style={{ textAlign: "center" }}>{item.hsn ?? ""}</td>
+                <td style={{ textAlign: "center" }}>{item.pack ?? ""}</td>
+                <td style={{ textAlign: "center" }}>{item.gstPercent != null ? `${item.gstPercent}%` : ""}</td>
+                <td>{item.batchNo ?? ""}</td>
+                <td style={{ textAlign: "center" }}>{item.mfgDate ?? ""}</td>
+                <td style={{ textAlign: "center" }}>{item.expDate ?? ""}</td>
+                <td style={{ textAlign: "right" }}>{item.quantity}</td>
+                <td style={{ textAlign: "right" }}>{item.inrUnit?.toFixed(2) ?? ""}</td>
+                <td style={{ textAlign: "right", fontWeight: 700 }}>{item.amount?.toFixed(2) ?? ""}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
 
-          {/* Totals block — mirrors PDF layout exactly */}
-          {/* Row 1: No Of Shipment | Licenses (rowspan 8) | Sub Total | inrTotal */}
-          <tr>
-            <td colSpan={2} rowSpan={2} style={{ verticalAlign: "top", padding: "2px 4px", fontSize: "7.5pt" }}>
-              <b>No Of</b><br /><b>Shipment</b>
-            </td>
+        {/* ── Totals ── */}
+        <table className="goods-table" style={{ marginTop: 0 }}>
+          <tbody>
+            <tr className="totals-row">
+              <td colSpan={12} style={{ textAlign: "right", fontWeight: 700 }}>Sub Total (INR)</td>
+              <td colSpan={2} style={{ textAlign: "right", fontWeight: 700 }}>{inrTotal.toFixed(2)}</td>
+            </tr>
+            <tr className="totals-row">
+              <td colSpan={12} style={{ textAlign: "right" }}>Shipping Charges (ITPS)</td>
+              <td colSpan={2} style={{ textAlign: "right" }}>Included</td>
+            </tr>
+            <tr className="totals-row">
+              <td colSpan={12} style={{ textAlign: "right" }}>Shipping Charges (EMS)</td>
+              <td colSpan={2} style={{ textAlign: "right", fontWeight: 700 }}>
+                {order.shippingPrice > 0 ? order.shippingPrice.toFixed(2) : "—"}
+              </td>
+            </tr>
+            <tr className="totals-row">
+              <td colSpan={12} style={{ textAlign: "right" }}>Round Off</td>
+              <td colSpan={2} style={{ textAlign: "right" }}></td>
+            </tr>
+            <tr className="totals-row highlight">
+              <td colSpan={11} style={{ textAlign: "right" }}>TOTAL AMOUNT</td>
+              <td style={{ textAlign: "center", fontSize: "8pt" }}>INR</td>
+              <td colSpan={2} style={{ textAlign: "right", fontSize: "11pt" }}>
+                {order.inrAmount ? Math.round(order.inrAmount).toLocaleString("en-IN") : ""}
+              </td>
+            </tr>
+            <tr className="totals-row highlight">
+              <td colSpan={11} style={{ textAlign: "right" }}>TOTAL AMOUNT</td>
+              <td style={{ textAlign: "center", fontSize: "8pt" }}>USD</td>
+              <td colSpan={2} style={{ textAlign: "right", fontSize: "13pt", fontWeight: 800 }}>
+                {order.dollarAmount ?? ""}
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-            <td colSpan={8} rowSpan={8} style={{ verticalAlign: "bottom", padding: 4 }}>
-              <div style={{ marginBottom: 2 }}><b>Licenses</b></div>
-              <div style={{ fontSize: "7.5pt" }}>20B &nbsp; MH-NG2-526036</div>
-              <div style={{ fontSize: "7.5pt" }}>21B &nbsp; MH-NAG-526037</div>
-              <div style={{ fontSize: "7.5pt" }}><b>GST No</b> &nbsp; 27FNXPP3883B1ZA</div>
-              <div style={{ fontSize: "7.5pt" }}><b>PAN</b> &nbsp; FNXPP3883B</div>
-            </td>
+        {/* ── Amount in words ── */}
+        <div className="words-row">
+          Amount in Words: {usdWords}
+        </div>
 
-            <td colSpan={2} style={{ padding: "2px 4px", fontSize: "7.5pt" }}>Sub Total</td>
-            <td colSpan={2} style={{ textAlign: "right", fontWeight: "bold" }}>
-              {inrTotal.toFixed(2)}
-            </td>
-          </tr>
+        {/* ── Declarations ── */}
+        <div className="decl-row">We declare that this Invoice shows the actual price of the goods described and that all particulars are true and correct.</div>
+        <div className="decl-row">Export under LUT without payment of GST at 0%.</div>
+        <div className="decl-row">Country of Origin: INDIA &nbsp;|&nbsp; Port of Loading: Mumbai &nbsp;|&nbsp; Final Destination: {order.country.toUpperCase()}</div>
+        <div className="decl-row">Total No. of Packages: {order.items.length} &nbsp;|&nbsp; Shipment Mode: ITPS / EMS</div>
 
-          {/* Row 2: Shipping Charges (ITPS) — always shown, blank amount (ITPS is included) */}
-          <tr>
-            <td colSpan={2} style={{ padding: "2px 4px", fontSize: "7.5pt" }}>
-              Shipping Charges (ITPS)
-            </td>
-            <td colSpan={2} style={{ textAlign: "right" }}></td>
-          </tr>
-
-          {/* Row 3: Included */}
-          <tr>
-            <td colSpan={2} style={{ padding: "2px 4px", border: "none" }}></td>
-            <td colSpan={2} style={{ padding: "2px 4px", fontSize: "7.5pt" }}>Included</td>
-            <td colSpan={2}></td>
-          </tr>
-
-          {/* Row 4: Shipping Charges (EMS) — dynamic amount */}
-          <tr>
-            <td colSpan={2} style={{ padding: "2px 4px", border: "none" }}></td>
-            <td colSpan={2} style={{ padding: "2px 4px", fontSize: "7.5pt" }}>
-              Shipping Charges (EMS)
-            </td>
-            <td colSpan={2} style={{ textAlign: "right", fontWeight: "bold" }}>
-              {order.shippingPrice > 0 ? order.shippingPrice.toFixed(2) : ""}
-            </td>
-          </tr>
-
-          {/* Row 5: Rs */}
-          <tr>
-            <td colSpan={2} style={{ padding: "2px 4px", border: "none" }}></td>
-            <td colSpan={2} style={{ padding: "2px 4px", fontSize: "7.5pt" }}>Rs</td>
-            <td colSpan={2}></td>
-          </tr>
-
-          {/* Row 6: Total */}
-          <tr>
-            <td colSpan={2} style={{ padding: "2px 4px", border: "none" }}></td>
-            <td colSpan={2} style={{ padding: "2px 4px", fontSize: "7.5pt" }}>Total</td>
-            <td colSpan={2}></td>
-          </tr>
-
-          {/* Row 7: Round Off */}
-          <tr>
-            <td colSpan={2} style={{ padding: "2px 4px", border: "none" }}></td>
-            <td colSpan={2} style={{ padding: "2px 4px", fontSize: "7.5pt" }}>Round Off</td>
-            <td colSpan={2}></td>
-          </tr>
-
-          {/* Row 8: Total Amount INR */}
-          <tr>
-            <td colSpan={2} style={{ padding: "2px 4px", border: "none" }}></td>
-            <td colSpan={2} style={{ padding: "2px 4px", fontWeight: "bold", fontSize: "7.5pt" }}>Total Amount</td>
-            <td style={{ padding: "2px 4px", fontWeight: "bold", textAlign: "right", fontSize: "7.5pt" }}>INR</td>
-            <td style={{ textAlign: "right", fontWeight: "bold", fontSize: "11pt", padding: "2px 4px" }}>
-              {order.inrAmount ? Math.round(order.inrAmount).toLocaleString("en-IN") : ""}
-            </td>
-          </tr>
-
-          {/* USD row */}
-          <tr>
-            <td colSpan={11} style={{ border: "none" }}></td>
-            <td colSpan={2} style={{ padding: "2px 4px", fontWeight: "bold", textAlign: "right", fontSize: "7.5pt" }}>USD</td>
-            <td style={{ textAlign: "right", fontWeight: "bold", fontSize: "14pt", padding: "2px 4px" }}>
-              {order.dollarAmount ?? ""}
-            </td>
-          </tr>
-
-          {/* Amount in words */}
-          <tr>
-            <td colSpan={14} style={{ padding: "3px 5px", fontSize: "8pt", background: "#ffff99" }}>
-              Amount ( In Words ) - {usdWords}
-            </td>
-          </tr>
-
-          {/* Declarations */}
-          <tr>
-            <td colSpan={14} style={{ padding: "2px 5px", fontSize: "7.5pt" }}>
-              Described and that all particulars are true and correct.
-            </td>
-          </tr>
-          <tr>
-            <td colSpan={14} style={{ padding: "2px 5px", fontSize: "7.5pt" }}>
-              Export under lut without payment of gst at 0%
-            </td>
-          </tr>
-          <tr>
-            <td colSpan={14} style={{ padding: "2px 5px", fontSize: "7.5pt" }}>
-              We declare that this Invoice shows actual price of goods
-            </td>
-          </tr>
-          <tr>
-            <td colSpan={14} style={{ padding: "2px 5px", fontSize: "7.5pt" }}>
-              described and that all particulars are true and correct.
-            </td>
-          </tr>
-
-          {/* Total packages — count = number of distinct product lines */}
-          <tr>
-            <td colSpan={4} style={{ padding: "3px 5px", fontWeight: "bold", fontSize: "8pt" }}>
-              Total Number and kind of packages
-            </td>
-            <td colSpan={10} style={{ padding: "3px 5px", fontSize: "8pt", fontWeight: "bold" }}>
-              ITPS &nbsp; EMS &nbsp; {order.items.length}
-            </td>
-          </tr>
-
-          {/* Signature */}
-          <tr>
-            <td colSpan={14} style={{ height: 50, padding: "4px 8px", verticalAlign: "bottom", textAlign: "right", fontSize: "8.5pt" }}>
-              Authorized Signatory
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        {/* ── Footer: Licenses + Signature ── */}
+        <div className="footer-bar">
+          <div className="footer-licenses">
+            <b>Licenses:</b> 20B: MH-NG2-526036 &nbsp;|&nbsp; 21B: MH-NAG-526037<br />
+            <b>GST No:</b> 27FNXPP3883B1ZA &nbsp;|&nbsp; <b>PAN:</b> FNXPP3883B
+          </div>
+          <div className="footer-sig">
+            <div style={{ height: 36 }}></div>
+            For UNNATI PHARMAX<br />
+            Authorized Signatory
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -461,89 +297,101 @@ function PackingListDoc({ order }: { order: Order }) {
   const country = (order.country ?? "").toUpperCase() || "—";
 
   return (
-    <div style={{ padding: "10px 0" }}>
+    <div id="packing-list-print" style={{ fontFamily: "'Arial', sans-serif", fontSize: "9pt", color: "#111", background: "#fff" }}>
       <style>{`
-        .pl table { width: 100%; border-collapse: collapse; font-size: 10pt; }
-        .pl td, .pl th { border: 1px solid #000; padding: 6px 6px; vertical-align: middle; }
-        .pl .title { font-weight: 700; text-align: center; font-size: 13pt; }
-        .pl .yellow { background: #ffeb3b; font-weight: 700; text-align: center; }
-        .pl th { font-weight: 700; text-align: center; background: #fff; }
+        #packing-list-print .pl-border { border: 2px solid #c8960c; border-radius: 4px; overflow: hidden; }
+        #packing-list-print .pl-header { background: #fef9e7; border-bottom: 2px solid #c8960c; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }
+        #packing-list-print .pl-header-logo { height: 48px; width: auto; object-fit: contain; }
+        #packing-list-print .pl-header-company { text-align: right; color: #111; }
+        #packing-list-print .pl-header-company .co-name { font-size: 14pt; font-weight: 800; letter-spacing: 0.04em; color: #7a5c00; }
+        #packing-list-print .pl-header-company .co-addr { font-size: 7pt; color: #555; margin-top: 2px; line-height: 1.4; }
+        #packing-list-print .pl-title-bar { background: #fffbeb; padding: 5px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e8d080; }
+        #packing-list-print .pl-title-text { font-size: 12pt; font-weight: 800; color: #7a5c00; letter-spacing: 0.1em; }
+        #packing-list-print .pl-meta { display: flex; gap: 32px; font-size: 8.5pt; color: #555; font-weight: 700; }
+        #packing-list-print .pl-meta .meta-val { background: #fff3b0; padding: 2px 10px; border-radius: 3px; border: 1px solid #c8960c; font-size: 9pt; color: #111; }
+        #packing-list-print table.pl-table { width: 100%; border-collapse: collapse; }
+        #packing-list-print table.pl-table td,
+        #packing-list-print table.pl-table th { border: 1px solid #e8d080; padding: 5px 6px; vertical-align: middle; }
+        #packing-list-print table.pl-table thead tr { background: #fef3c7; }
+        #packing-list-print table.pl-table thead th { color: #7a5c00; font-weight: 800; text-align: center; font-size: 8pt; letter-spacing: 0.03em; border-color: #c8960c; }
+        #packing-list-print table.pl-table tbody tr:nth-child(even) { background: #fffdf0; }
+        #packing-list-print table.pl-table tbody td { font-weight: 600; }
+        #packing-list-print .pl-footer { background: #fef9e7; padding: 6px 14px; font-size: 7.5pt; color: #444; border-top: 2px solid #c8960c; display: flex; justify-content: space-between; align-items: flex-end; }
+        #packing-list-print .pl-footer .sig { text-align: right; color: #7a5c00; font-weight: 700; font-size: 8pt; }
       `}</style>
 
-      <div className="pl">
-        <table>
+      <div className="pl-border">
+        {/* ── Header ── */}
+        <div className="pl-header">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Unnati Pharmax" className="pl-header-logo" />
+          <div className="pl-header-company">
+            <div className="co-name">UNNATI PHARMAX</div>
+            <div className="co-addr">
+              Ground Floor, House No 307/4, Guru Vandana Apartment,<br />
+              Kakasaheb Cholkar Marg, Lakadganj, Nagpur – 440008, Maharashtra
+            </div>
+          </div>
+        </div>
+
+        {/* ── Title bar ── */}
+        <div className="pl-title-bar">
+          <span className="pl-title-text">PACKING LIST</span>
+          <div className="pl-meta">
+            <span>Invoice No: <span className="meta-val">{order.invoiceNo ?? "—"}</span></span>
+            <span>Date: <span className="meta-val">{dateStr}</span></span>
+          </div>
+        </div>
+
+        {/* ── Table ── */}
+        <table className="pl-table">
+          <thead>
+            <tr>
+              <th style={{ width: 40 }}>SR.NO</th>
+              <th style={{ minWidth: 160 }}>CUSTOMER NAME</th>
+              <th>PRODUCT NAME</th>
+              <th style={{ width: 76 }}>PACKING</th>
+              <th style={{ minWidth: 140 }}>MANUFACTURER</th>
+              <th style={{ width: 100 }}>BATCH NO</th>
+              <th style={{ width: 80 }}>EXP DATE</th>
+              <th style={{ width: 46 }}>QTY</th>
+              <th style={{ width: 100 }}>TRACKING NO</th>
+              <th style={{ width: 70 }}>SHIPPING</th>
+              <th style={{ width: 90 }}>COUNTRY</th>
+            </tr>
+          </thead>
           <tbody>
-            <tr>
-              <td colSpan={11} className="title">
-                Packing List
-              </td>
-            </tr>
-
-            <tr>
-              <td colSpan={2} style={{ fontWeight: 700, textAlign: "center" }}>
-                Invoice No.
-              </td>
-              <td colSpan={9} className="yellow">
-                {order.invoiceNo ?? "—"}
-              </td>
-            </tr>
-
-            <tr>
-              <td colSpan={2} style={{ fontWeight: 700, textAlign: "center" }}>
-                Date :-
-              </td>
-              <td colSpan={9} className="yellow">
-                {dateStr}
-              </td>
-            </tr>
-
-            <tr>
-              <th style={{ width: 60 }}>SR.NO</th>
-              <th style={{ width: 220 }}>CUSTOMER NAME</th>
-              <th>Product Name</th>
-              <th style={{ width: 80 }}>packing</th>
-              <th style={{ width: 180 }}>
-                <i>Manufacturer</i>
-              </th>
-              <th style={{ width: 120 }}>Batch No</th>
-              <th style={{ width: 90 }}>Exp date</th>
-              <th style={{ width: 60 }}>QTY</th>
-              <th style={{ width: 110 }}><u>Tracking No</u></th>
-              <th style={{ width: 90 }}>Shipping</th>
-              <th style={{ width: 110 }}>country</th>
-            </tr>
-
             {order.items.map((it, idx) => (
               <tr key={it.productId}>
-                <td style={{ textAlign: "center", fontWeight: 700 }}>{idx + 1}</td>
+                <td style={{ textAlign: "center" }}>{idx + 1}</td>
 
                 {idx === 0 && (
-                  <td rowSpan={order.items.length} style={{ textAlign: "center", fontWeight: 700 }}>
-                    Full Name : {order.fullName}
+                  <td rowSpan={order.items.length} style={{ textAlign: "center", verticalAlign: "middle" }}>
+                    {order.fullName}
                   </td>
                 )}
 
-                <td style={{ textAlign: "center", fontWeight: 700 }}>{it.productName}</td>
-                <td style={{ textAlign: "center", fontWeight: 700 }}>{(it.pack ?? "").toUpperCase()}</td>
-                <td style={{ textAlign: "center", fontWeight: 700 }}>{(it.manufacturer ?? "").toUpperCase()}</td>
-                <td style={{ textAlign: "center", fontWeight: 700 }}>{(it.batchNo ?? "").toUpperCase()}</td>
-                <td style={{ textAlign: "center", fontWeight: 700 }}>{it.expDate ?? ""}</td>
-                <td style={{ textAlign: "center", fontWeight: 700 }}>{it.quantity.toFixed(2)}</td>
+                <td style={{ textAlign: "center" }}>{it.productName}</td>
+                <td style={{ textAlign: "center" }}>{(it.pack ?? "").toUpperCase()}</td>
+                <td style={{ textAlign: "center" }}>{(it.manufacturer ?? "").toUpperCase()}</td>
+                <td style={{ textAlign: "center" }}>{(it.batchNo ?? "").toUpperCase()}</td>
+                <td style={{ textAlign: "center" }}>{it.expDate ?? ""}</td>
+                <td style={{ textAlign: "center" }}>{it.quantity.toFixed(2)}</td>
 
                 {idx === 0 && (
-                  <td rowSpan={order.items.length} style={{ textAlign: "center", fontWeight: 700 }}>
+                  <td rowSpan={order.items.length} style={{ textAlign: "center", verticalAlign: "middle" }}>
                     {order.trackingNo ?? ""}
                   </td>
                 )}
 
                 {idx === 0 && (
-                  <td rowSpan={order.items.length} style={{ textAlign: "center", fontWeight: 700 }}>
+                  <td rowSpan={order.items.length} style={{ textAlign: "center", verticalAlign: "middle" }}>
                     {shipping}
                   </td>
                 )}
 
                 {idx === 0 && (
-                  <td rowSpan={order.items.length} style={{ textAlign: "center", fontWeight: 700 }}>
+                  <td rowSpan={order.items.length} style={{ textAlign: "center", verticalAlign: "middle" }}>
                     {country}
                   </td>
                 )}
@@ -551,6 +399,19 @@ function PackingListDoc({ order }: { order: Order }) {
             ))}
           </tbody>
         </table>
+
+        {/* ── Footer ── */}
+        <div className="pl-footer">
+          <div>
+            <b>GST No:</b> 27FNXPP3883B1ZA &nbsp;|&nbsp; <b>PAN:</b> FNXPP3883B<br />
+            <b>Lic 20B:</b> MH-NG2-526036 &nbsp;|&nbsp; <b>Lic 21B:</b> MH-NAG-526037
+          </div>
+          <div className="sig">
+            <div style={{ height: 32 }}></div>
+            For UNNATI PHARMAX<br />
+            Authorized Signatory
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -913,11 +774,11 @@ function EdfDoc({ order }: { order: Order }) {
       {/* ══════════ PAGE 1 ══════════ */}
       <table style={T}>
         <colgroup>
-          <col style={{ width: "8%" }} />  {/* col A */}
-          <col style={{ width: "30%" }} /> {/* col B */}
-          <col style={{ width: "4%" }} />  {/* col C - narrow spacer */}
-          <col style={{ width: "28%" }} /> {/* col D */}
-          <col style={{ width: "30%" }} /> {/* col E */}
+          <col style={{ width: "8%" }} />
+          <col style={{ width: "30%" }} />
+          <col style={{ width: "4%" }} />
+          <col style={{ width: "28%" }} />
+          <col style={{ width: "30%" }} />
         </colgroup>
         <tbody>
 
