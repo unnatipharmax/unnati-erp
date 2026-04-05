@@ -417,6 +417,248 @@ function PackingListDoc({ order }: { order: Order }) {
   );
 }
 
+// ── DOC 4: Covering Letter ───────────────────────────────────────────────────
+function CoveringLetterDoc({ order }: { order: Order }) {
+  const invDate = getInvoiceDate(order);
+  const dateStr = invDate.toLocaleDateString("en-GB"); // DD/MM/YYYY
+  const invNo   = order.invoiceNo ?? "—";
+  const productNames = order.items.map(i => i.productName).join(", ");
+
+  return (
+    <div id="covering-letter-print" style={{ fontFamily: "Times New Roman, serif", fontSize: "11pt", color: "#000", padding: "24px 32px", lineHeight: 1.7 }}>
+      <style>{`
+        #covering-letter-print .hl { background: #fff9c4; }
+        @media print { #covering-letter-print { padding: 0; } }
+      `}</style>
+
+      {/* Date + Addressee */}
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 18 }}>
+        <div></div>
+        <div>Date: <span className="hl"><b>{dateStr}</b></span></div>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <b>The Asst. Commissioner of Customs</b><br />
+        Postal Appraising Section (PAS), Export Department<br />
+        Foreign Post Office, VideshDakBhavan,<br />
+        Ballard Piers,<br />
+        Mumbai – 400 001
+      </div>
+
+      <div style={{ marginBottom: 12 }}>Dear Sir,</div>
+
+      <div style={{ marginBottom: 12 }}>
+        We request permission to export, non narcotic drugs/Medicines duly approved by Central
+        Drugs Standard Control Organization (CDSCO) &amp; FDA{" "}
+        <span className="hl"><b>{productNames}</b></span>{" "}
+        Invoice No <span className="hl"><b>{invNo}</b></span>{" "}
+        Dated <span className="hl"><b>{dateStr}</b></span>{" "}
+        with reference to the Order no{" "}
+        <span className="hl"><b>{invNo}</b></span>{" "}
+        dated <span className="hl"><b>{dateStr}</b></span>.
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        The drugs/medicines being exported are procured in bulk from licensed manufacturers or
+        their stockiest and are manufactured as per the norms notified by CDSCO and FDA.
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        The drugs/medicines are shipped in their original packing to the buyer&apos;s individual clients
+        abroad as per the dispatch list forwarded along with the order.
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        The payment is received through our ICICI Bank account. 146305501090 No export
+        incentive, benefits or drawback is claimed by us. The following documents are enclosed for
+        your kind perusal:-
+      </div>
+
+      <ol style={{ marginBottom: 12, paddingLeft: 28 }}>
+        <li>Covering Letter</li>
+        <li>Invoice (4 Copies)</li>
+        <li>Packing List 2 Copies</li>
+        <li>IEC Copy &amp; 5 Drug License (20 B &amp; 21 B)</li>
+        <li>PBE (2 copy)</li>
+      </ol>
+
+      <div style={{ marginBottom: 12 }}>
+        We undertake to abide by provisions of Foreign Exchange Management Act 1999, as
+        amended from time to time, including realization / repatriation of Foreign Exchange to &amp; from
+        India.
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        We trust the same is in order and submit that the above declaration is true and correct and
+        the goods exported are not in contravention to any laws in force.
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        We had authorized to <b>AARPEE CLEARING &amp; LOGISTICS (CHA NO: 11/2623)</b>. We
+        undertake that we are responsible for the acts related to above if found violating any Law in
+        force.
+      </div>
+
+      <div style={{ marginBottom: 6 }}>Thanking you,</div>
+      <div style={{ marginBottom: 32 }}>Yours sincerely,</div>
+
+      <div>
+        <b>For UNNATI PHARMAX</b><br /><br /><br />
+        <b>Authorized Signatory</b>
+      </div>
+    </div>
+  );
+}
+
+// ── DOC 5: CN22 Customs Declaration Label ────────────────────────────────────
+function CN22LabelDoc({ order }: { order: Order }) {
+  const invDate  = getInvoiceDate(order);
+  // PARCEL ID format: DD.MM.YYYY
+  const parcelId = [
+    String(invDate.getDate()).padStart(2, "0"),
+    String(invDate.getMonth() + 1).padStart(2, "0"),
+    invDate.getFullYear(),
+  ].join(".");
+
+  const recipientName    = order.fullName;
+  const recipientAddr    = [order.address, order.city, order.state, order.postalCode].filter(Boolean).join(", ");
+  const recipientCountry = order.country;
+  const totalUsd         = order.dollarAmount ?? order.amountPaid;
+
+  // Use first item's HSN; if multiple and different, join unique ones
+  const hsnSet = [...new Set(order.items.map(i => i.hsn).filter(Boolean))];
+  const hsnStr = hsnSet.length ? hsnSet.join(", ") : "3004";
+
+  // Description: join product names (simplified to "PHARMACEUTICAL PRODUCTS" if too long)
+  const descRaw = order.items.map(i => i.productName).join(", ");
+  const desc    = descRaw.length > 60 ? "PHARMACEUTICAL PRODUCTS" : descRaw.toUpperCase();
+
+  return (
+    <div id="cn22-print" style={{ fontFamily: "Arial, sans-serif", fontSize: "9pt", color: "#000" }}>
+      <style>{`
+        #cn22-print .cn-outer { display: flex; gap: 0; border: 2px solid #000; width: 100%; }
+        #cn22-print .cn-left { flex: 1; border-right: 2px solid #000; }
+        #cn22-print .cn-right { width: 240px; padding: 8px 10px; font-weight: 700; font-size: 9pt; line-height: 1.7; }
+        #cn22-print .cn-parcel-id { background: #fff9c4; text-align: center; font-weight: 800; font-size: 13pt; padding: 6px 8px; border-bottom: 2px solid #000; letter-spacing: 0.04em; }
+        #cn22-print .cn-barcode { text-align: center; font-size: 8pt; padding: 5px 8px; border-bottom: 1px solid #000; color: #555; }
+        #cn22-print .cn-title { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; border-bottom: 1px solid #000; }
+        #cn22-print .cn-title .ct { font-weight: 800; font-size: 10pt; }
+        #cn22-print .cn-title .cn22 { font-size: 20pt; font-weight: 900; line-height: 1; }
+        #cn22-print .cn-open { font-size: 7.5pt; padding: 2px 8px; border-bottom: 1px solid #000; }
+        #cn22-print .cn-checkboxes { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-bottom: 1px solid #000; }
+        #cn22-print .cn-cb { display: flex; align-items: center; gap: 4px; padding: 3px 8px; font-size: 8pt; border-right: 1px solid #000; border-bottom: 1px solid #000; }
+        #cn22-print .cn-cb:nth-child(2n) { border-right: none; }
+        #cn22-print .cn-cb:nth-child(5), #cn22-print .cn-cb:nth-child(6) { border-bottom: none; }
+        #cn22-print .cb-box { width: 12px; height: 12px; border: 1.5px solid #000; display: inline-flex; align-items: center; justify-content: center; font-size: 10pt; flex-shrink: 0; }
+        #cn22-print table.cn-goods { width: 100%; border-collapse: collapse; border-top: 1px solid #000; }
+        #cn22-print table.cn-goods th { border: 1px solid #000; padding: 3px 4px; font-size: 7pt; text-align: center; font-weight: 700; background: #f5f5f5; vertical-align: top; }
+        #cn22-print table.cn-goods td { border: 1px solid #000; padding: 4px 5px; font-size: 8.5pt; vertical-align: middle; }
+        #cn22-print .cn-totals { display: flex; border-top: 1px solid #000; }
+        #cn22-print .cn-totals > div { flex: 1; padding: 4px 8px; font-size: 8pt; border-right: 1px solid #000; }
+        #cn22-print .cn-totals > div:last-child { border-right: none; }
+        #cn22-print .cn-totals b { display: block; }
+        #cn22-print .cn-declaration { padding: 5px 8px; font-size: 6.5pt; border-top: 1px solid #000; line-height: 1.4; }
+        #cn22-print .cn-signature { padding: 5px 8px; font-size: 7.5pt; font-weight: 700; border-top: 1px solid #000; }
+        #cn22-print .cn-right .hl { color: #b30000; font-weight: 800; }
+        #cn22-print .cn-right .from-block { margin-top: 14px; font-size: 8.5pt; }
+      `}</style>
+
+      <div className="cn-outer">
+        {/* ── Left panel ── */}
+        <div className="cn-left">
+          {/* PARCEL ID */}
+          <div className="cn-parcel-id">PARCEL ID &nbsp; {parcelId}</div>
+
+          {/* Affix barcode */}
+          <div className="cn-barcode">Affix Barcode ( If Any )</div>
+
+          {/* CUSTOMS DECLARATION title + CN22 */}
+          <div className="cn-title">
+            <div>
+              <div className="ct">CUSTOMS</div>
+              <div className="ct">DECLARATION</div>
+            </div>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: "7pt", fontWeight: 700 }}>May be Opened</div>
+              <div style={{ fontSize: "7pt", fontWeight: 700 }}>Officially</div>
+            </div>
+            <div className="cn22">CN<br />22</div>
+          </div>
+
+          {/* May be opened */}
+          <div className="cn-open"></div>
+
+          {/* Checkboxes */}
+          <div className="cn-checkboxes">
+            <div className="cn-cb"><span className="cb-box"></span> Gift</div>
+            <div className="cn-cb"><span className="cb-box"></span> Commercial Sample</div>
+            <div className="cn-cb"><span className="cb-box"></span> Documents</div>
+            <div className="cn-cb"><span className="cb-box"></span> Returned Goods</div>
+            <div className="cn-cb"><span className="cb-box"></span> Sale Of Goods</div>
+            <div className="cn-cb"><span className="cb-box">✓</span> Other (Personal Items)</div>
+          </div>
+
+          {/* Goods table */}
+          <table className="cn-goods">
+            <thead>
+              <tr>
+                <th style={{ width: "32%" }}>Quantity and Detailed Description Of Contents (1)</th>
+                <th style={{ width: "14%" }}>Net Weight (2)</th>
+                <th style={{ width: "18%" }}>Value and Currency (3)</th>
+                <th style={{ width: "18%" }}>H S Tariff Number (4)</th>
+                <th style={{ width: "18%" }}>Country Of Origin (5)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ fontWeight: 700 }}>{desc}</td>
+                <td style={{ textAlign: "center" }}></td>
+                <td style={{ textAlign: "center", fontWeight: 700 }}>{totalUsd} USD</td>
+                <td style={{ textAlign: "center" }}>{hsnStr}</td>
+                <td style={{ textAlign: "center", fontWeight: 700 }}>India</td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* Totals */}
+          <div className="cn-totals">
+            <div><b>Total Weight In Kg (6):</b></div>
+            <div><b>Total Value (7):</b> {totalUsd} USD</div>
+          </div>
+
+          {/* Declaration */}
+          <div className="cn-declaration">
+            I certify the particulars given in the customs declaration are correct.
+            This form does not contain any undeclared dangerous articles, or
+            articles prohibited by legislation or by postal or customs regulations.
+            I have met all applicable export filing requirements under federal law and regulations.
+          </div>
+
+          {/* Signature */}
+          <div className="cn-signature">DATE AND SENDER&apos;S SIGNATURE (8)</div>
+        </div>
+
+        {/* ── Right panel: Recipient + Sender ── */}
+        <div className="cn-right">
+          <div>
+            <span className="hl">Full Name : {recipientName}</span><br />
+            <span className="hl">Address : {recipientAddr}</span><br />
+            <span className="hl">Country : {recipientCountry}</span>
+          </div>
+          <div className="from-block">
+            FROM –<br />
+            NAME : UNNATI<br />
+            SHOP NO 307/04,<br />
+            GURUVANDANA<br />
+            APARTMENT, NAGPUR –<br />
+            440008
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── DOC 3: Form-II (template) ────────────────────────────────────────────────
 function Form2Doc({ order }: { order: Order }) {
   const invDate = getInvoiceDate(order);
@@ -1142,14 +1384,16 @@ function DocumentsOverlay({
   order: Order;
   onClose: () => void;
 }) {
-  const [doc, setDoc] = useState<"invoice" | "packing" | "form2" | "edf">("invoice");
+  const [doc, setDoc] = useState<"invoice" | "packing" | "form2" | "edf" | "letter" | "cn22">("invoice");
   const downloadHref = `/api/packaging/orders/${order.id}/documents`;
 
   const titleMap = {
     invoice: "GST Invoice",
     packing: "Packing List",
-    form2: "Form-II",
-    edf: "EDF",
+    form2:   "Form-II",
+    edf:     "EDF",
+    letter:  "Covering Letter",
+    cn22:    "CN22 Label",
   } as const;
 
   return (
@@ -1185,18 +1429,12 @@ function DocumentsOverlay({
           </span>
 
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <button onClick={() => setDoc("invoice")} className="btn btn-sm btn-secondary">
-              Invoice
-            </button>
-            <button onClick={() => setDoc("packing")} className="btn btn-sm btn-secondary">
-              Packing List
-            </button>
-            <button onClick={() => setDoc("form2")} className="btn btn-sm btn-secondary">
-              Form-II
-            </button>
-            <button onClick={() => setDoc("edf")} className="btn btn-sm btn-secondary">
-              EDF
-            </button>
+            <button onClick={() => setDoc("invoice")} className="btn btn-sm btn-secondary">Invoice</button>
+            <button onClick={() => setDoc("packing")} className="btn btn-sm btn-secondary">Packing List</button>
+            <button onClick={() => setDoc("form2")}   className="btn btn-sm btn-secondary">Form-II</button>
+            <button onClick={() => setDoc("edf")}     className="btn btn-sm btn-secondary">EDF</button>
+            <button onClick={() => setDoc("letter")}  className="btn btn-sm btn-secondary">Covering Letter</button>
+            <button onClick={() => setDoc("cn22")}    className="btn btn-sm btn-secondary">CN22 Label</button>
           </div>
 
           <button
@@ -1300,6 +1538,8 @@ function DocumentsOverlay({
                 @page { size: A4 portrait; margin: 10mm; }
                 #unnati-docs-overlay { bottom: auto !important; }
                 #edf-page2 { page-break-before: always !important; break-before: page !important; }
+              ` : doc === "cn22" ? `
+                @page { size: A5 portrait; margin: 6mm; }
               ` : "@page { size: A4 portrait; margin: 10mm; }"}
             }
           `}</style>
@@ -1319,6 +1559,14 @@ function DocumentsOverlay({
 
           <div style={{ display: doc === "edf" ? "block" : "none" }}>
             <EdfDoc order={order} />
+          </div>
+
+          <div style={{ display: doc === "letter" ? "block" : "none" }}>
+            <CoveringLetterDoc order={order} />
+          </div>
+
+          <div style={{ display: doc === "cn22" ? "block" : "none" }}>
+            <CN22LabelDoc order={order} />
           </div>
         </div>
       </div>
