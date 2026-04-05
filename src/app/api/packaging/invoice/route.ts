@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { getSession } from "../../../../lib/auth";
+import { sendShipmentNotification } from "../../../../lib/email";
 
 export const runtime = "nodejs";
 
@@ -26,10 +27,20 @@ export async function POST(req: Request) {
   if (!orderId)
     return NextResponse.json({ error: "orderId required" }, { status: 400 });
 
-  // Check order exists + is PAYMENT_VERIFIED
+  // Check order exists + is PAYMENT_VERIFIED (fetch all fields needed for email too)
   const order = await prisma.orderInitiation.findUnique({
     where: { id: orderId },
-    select: { id: true, status: true, invoiceNo: true },
+    select: {
+      id: true, status: true, invoiceNo: true,
+      fullName: true, email: true, country: true,
+      accountId: true,         // null = individual client, non-null = bulk/account client
+      orderEntry: {
+        select: {
+          shipmentMode: true,
+          items: { select: { quantity: true, product: { select: { name: true } } } },
+        },
+      },
+    },
   });
 
   if (!order)
@@ -101,6 +112,26 @@ export async function POST(req: Request) {
         licenseNo, orderId
       );
     } catch { /* column may not exist yet */ }
+  }
+
+  // ── Send tracking email — only for individual (non-bulk) clients ──────────
+  // accountId !== null means it's a bulk/account client → skip email
+  if (!order.accountId && trackingNo && order.email) {
+    const products = order.orderEntry?.items.map(i => ({
+      name: i.product.name,
+      quantity: i.quantity,
+    })) ?? [];
+
+    // Fire-and-forget — don't block the response
+    sendShipmentNotification({
+      clientEmail:  order.email,
+      clientName:   order.fullName,
+      invoiceNo,
+      trackingNo,
+      shipmentMode: order.orderEntry?.shipmentMode ?? "EMS",
+      country:      order.country,
+      products,
+    }).catch(err => console.error("[Invoice] Shipment email failed:", err));
   }
 
   return NextResponse.json({ invoiceNo, existing: false });

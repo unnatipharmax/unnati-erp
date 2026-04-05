@@ -21,6 +21,7 @@ const ALL_MENU = [
   { name: "DOSAGE REMINDER", path: "/dashboard/dosage-reminders",     icon: FileText,      roles: ["ADMIN","MANAGER"] },
   { name: "PARTY MASTER",     path: "/dashboard/party",          icon: Users,     roles: ["ADMIN","MANAGER"] },
   { name: "PRODUCT MASTER",   path: "/dashboard/product-master", icon: Package,   roles: ["ADMIN","MANAGER","SALES","PACKAGING"] },
+  { name: "REPORTS & BACKUP", path: "/dashboard/reports",        icon: ClipboardList, roles: ["ADMIN","MANAGER","ACCOUNTS"] },
   { name: "SETUP",            path: "/dashboard/setup",          icon: Settings,  roles: ["ADMIN"] },
 ];
 

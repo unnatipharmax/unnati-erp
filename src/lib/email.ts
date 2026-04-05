@@ -111,6 +111,147 @@ export async function sendOrderConfirmation({
   await Promise.allSettled(recipients);
 }
 
+// ── Send shipment / tracking notification ─────────────────────────────────────
+export async function sendShipmentNotification({
+  clientEmail,
+  clientName,
+  invoiceNo,
+  trackingNo,
+  shipmentMode,
+  country,
+  products,
+}: {
+  clientEmail:  string;
+  clientName:   string;
+  invoiceNo:    string;
+  trackingNo:   string;
+  shipmentMode: string;
+  country:      string;
+  products:     { name: string; quantity: number }[];
+}) {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.warn("Email not configured — skipping shipment notification.");
+    return;
+  }
+
+  const officeEmail = process.env.OFFICE_EMAIL;
+  const productRows = products
+    .map(
+      p =>
+        `<tr>
+          <td style="padding:6px 10px;border-bottom:1px solid #f0e8b0;font-size:13px">${p.name}</td>
+          <td style="padding:6px 10px;border-bottom:1px solid #f0e8b0;font-size:13px;text-align:center">${p.quantity}</td>
+        </tr>`
+    )
+    .join("");
+
+  const clientHtml = `
+    <div style="font-family:Arial,sans-serif;max-width:580px;margin:0 auto;color:#111">
+      <!-- Header -->
+      <div style="background:#fef9e7;border-bottom:3px solid #c8960c;padding:20px 28px;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:19px;font-weight:800;color:#7a5c00;letter-spacing:0.03em">UNNATI PHARMAX</div>
+          <div style="font-size:11px;color:#888;margin-top:2px">Ground Floor, House No 307/4, Nagpur – 440008</div>
+        </div>
+        <div style="background:#c8960c;color:#fff;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700">DISPATCHED</div>
+      </div>
+
+      <!-- Body -->
+      <div style="background:#fff;padding:28px;border:1px solid #e8d080;border-top:none;border-radius:0 0 8px 8px">
+        <p style="margin:0 0 18px;font-size:15px">Dear <strong>${clientName}</strong>,</p>
+        <p style="margin:0 0 20px;font-size:14px;color:#374151;line-height:1.6">
+          Great news! Your order has been dispatched. Please find the shipment details below.
+        </p>
+
+        <!-- Shipment detail card -->
+        <div style="background:#fffbeb;border:1px solid #e8d080;border-radius:8px;padding:18px 20px;margin-bottom:22px">
+          <table style="width:100%;border-collapse:collapse;font-size:14px">
+            <tr>
+              <td style="padding:6px 0;color:#7a5c00;font-weight:700;width:150px">Invoice No</td>
+              <td style="padding:6px 0;font-family:monospace;font-weight:800;font-size:15px;color:#c8960c">${invoiceNo}</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;color:#7a5c00;font-weight:700">Tracking Number</td>
+              <td style="padding:6px 0;font-family:monospace;font-weight:800;font-size:16px;color:#1a3a6b">${trackingNo}</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;color:#7a5c00;font-weight:700">Shipment Mode</td>
+              <td style="padding:6px 0;font-weight:600">${shipmentMode}</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 0;color:#7a5c00;font-weight:700">Destination</td>
+              <td style="padding:6px 0;font-weight:600">${country}</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Products table -->
+        <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#555">Items in this shipment:</p>
+        <table style="width:100%;border-collapse:collapse;border:1px solid #e8d080;border-radius:6px;overflow:hidden;margin-bottom:22px">
+          <thead>
+            <tr style="background:#fef3c7">
+              <th style="padding:8px 10px;text-align:left;font-size:12px;color:#7a5c00;border-bottom:1px solid #c8960c">Product</th>
+              <th style="padding:8px 10px;text-align:center;font-size:12px;color:#7a5c00;border-bottom:1px solid #c8960c;width:70px">Qty</th>
+            </tr>
+          </thead>
+          <tbody>${productRows}</tbody>
+        </table>
+
+        <p style="margin:0 0 8px;font-size:13px;color:#555;line-height:1.6">
+          You can track your shipment using the tracking number above on the relevant postal / courier website.
+          If you have any questions, please reply to this email.
+        </p>
+
+        <hr style="border:none;border-top:1px solid #f0e8b0;margin:22px 0" />
+        <p style="margin:0;font-size:11px;color:#aaa;text-align:center">
+          Unnati Pharmax &nbsp;|&nbsp; GST: 27FNXPP3883B1ZA &nbsp;|&nbsp; This is an automated dispatch notification.
+        </p>
+      </div>
+    </div>
+  `;
+
+  const officeHtml = `
+    <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto">
+      <div style="background:#1e293b;padding:18px 24px;border-radius:8px 8px 0 0">
+        <h1 style="margin:0;color:#fff;font-size:16px">Order Dispatched — Tracking Sent</h1>
+        <p style="margin:4px 0 0;color:rgba(255,255,255,0.6);font-size:11px">Unnati Pharmax — Internal Alert</p>
+      </div>
+      <div style="background:#f8fafc;padding:22px 24px;border-radius:0 0 8px 8px;border:1px solid #e2e8f0;border-top:none;font-size:13px">
+        <table style="width:100%;border-collapse:collapse">
+          <tr><td style="padding:5px 0;color:#64748b;width:130px">Invoice</td><td style="font-family:monospace;font-weight:700;color:#c8960c">${invoiceNo}</td></tr>
+          <tr><td style="padding:5px 0;color:#64748b">Client</td><td style="font-weight:600">${clientName}</td></tr>
+          <tr><td style="padding:5px 0;color:#64748b">Email</td><td>${clientEmail}</td></tr>
+          <tr><td style="padding:5px 0;color:#64748b">Tracking No</td><td style="font-family:monospace;font-weight:700;color:#1a3a6b">${trackingNo}</td></tr>
+          <tr><td style="padding:5px 0;color:#64748b">Mode</td><td>${shipmentMode}</td></tr>
+          <tr><td style="padding:5px 0;color:#64748b">Country</td><td>${country}</td></tr>
+        </table>
+      </div>
+    </div>
+  `;
+
+  const sends: Promise<unknown>[] = [
+    transporter.sendMail({
+      from:    `"Unnati Pharmax" <${process.env.SMTP_USER}>`,
+      to:      clientEmail,
+      subject: `Your order ${invoiceNo} has been dispatched — Tracking: ${trackingNo}`,
+      html:    clientHtml,
+    }),
+  ];
+
+  if (officeEmail) {
+    sends.push(
+      transporter.sendMail({
+        from:    `"Unnati Pharmax ERP" <${process.env.SMTP_USER}>`,
+        to:      officeEmail,
+        subject: `[Dispatched] ${invoiceNo} → ${clientName} | ${trackingNo}`,
+        html:    officeHtml,
+      })
+    );
+  }
+
+  await Promise.allSettled(sends);
+}
+
 // ── Send dosage reminder ───────────────────────────────────────────────────────
 export async function sendDosageReminder({
   clientEmail,
