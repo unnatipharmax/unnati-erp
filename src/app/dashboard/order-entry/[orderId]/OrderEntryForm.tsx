@@ -197,9 +197,10 @@ function AddProductModal({ onClose, onAdded }: { onClose: () => void; onAdded: (
 
 // ── Main Form ─────────────────────────────────────────────────────────────────
 export default function OrderEntryForm({
-  orderId, products: initialProducts, existingEntry,
+  orderId, products: initialProducts, existingEntry, lastPrices = {},
 }: {
   orderId: string; products: ProductOption[]; existingEntry: ExistingEntry | null;
+  lastPrices?: Record<string, string>;
 }) {
   const [products, setProducts]           = useState<ProductOption[]>(initialProducts);
   const [showModal, setShowModal]         = useState(false);
@@ -229,7 +230,10 @@ export default function OrderEntryForm({
 
   function handleProductChange(idx: number, val: string) {
     if (val === "__add_new__") { setPendingRowIdx(idx); setShowModal(true); }
-    else updateRow(idx, { productId: val });
+    else {
+      const lastPrice = lastPrices[val];
+      updateRow(idx, { productId: val, ...(lastPrice ? { sellingPrice: lastPrice } : {}) });
+    }
   }
 
   function handleProductAdded(p: ProductOption) {
@@ -307,6 +311,8 @@ export default function OrderEntryForm({
           <div className="space-y-2">
             {rows.map((r, idx) => {
               const rowTotal = (Number(r.quantity) || 0) * (Number(r.sellingPrice) || 0);
+              const hasLastPrice = r.productId && lastPrices[r.productId];
+              const isAutoFilled = hasLastPrice && r.sellingPrice === lastPrices[r.productId];
               return (
                 <div key={idx} className="grid grid-cols-12 gap-2.5 rounded-xl border border-slate-800 bg-slate-950/40 hover:border-slate-700/80 p-3 transition-colors duration-150 group">
 
@@ -337,11 +343,16 @@ export default function OrderEntryForm({
 
                   {/* Price */}
                   <div className="col-span-5 md:col-span-3">
-                    <label className="text-xs font-medium text-slate-500">Selling Price (₹)</label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium text-slate-500">Selling Price (₹)</label>
+                      {isAutoFilled && (
+                        <span className="text-xs text-amber-400/80 font-medium">↩ last order</span>
+                      )}
+                    </div>
                     <input
                       value={r.sellingPrice} onChange={e => updateRow(idx, { sellingPrice: e.target.value })}
                       inputMode="decimal" placeholder="0.00"
-                      className={inputCls + " mt-1"}
+                      className={inputCls + " mt-1" + (isAutoFilled ? " border-amber-500/40 focus:border-amber-500" : "")}
                     />
                   </div>
 

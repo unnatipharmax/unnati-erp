@@ -256,7 +256,8 @@ export default function PurchaseBillClient() {
         const match = existingProducts.find(
           ep => ep.name.toLowerCase() === p.name?.toLowerCase()
         );
-        return match ? { ...p, id: match.id } : p;
+        const product = { ...p, composition: null };
+        return match ? { ...product, id: match.id } : product;
       }),
     };
 

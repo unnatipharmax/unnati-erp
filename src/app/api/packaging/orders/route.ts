@@ -51,6 +51,16 @@ export async function GET() {
     },
   });
 
+  // Fetch netWeight and grossWeight via raw SQL (columns added post-migration)
+  const orderIds = orders.map(o => o.id);
+  const weightMap: Record<string, { netWeight: number | null; grossWeight: number | null }> = {};
+  if (orderIds.length > 0) {
+    const weightRows = await prisma.$queryRaw<{ id: string; netWeight: number | null; grossWeight: number | null }[]>`
+      SELECT id, "netWeight", "grossWeight" FROM "OrderInitiation" WHERE id = ANY(${orderIds}::text[])
+    `;
+    for (const r of weightRows) weightMap[r.id] = { netWeight: r.netWeight, grossWeight: r.grossWeight };
+  }
+
   // Collect unique product IDs from all orders, then fetch current stock qty
   // via raw SQL to avoid stale-Prisma-client type errors (qty was recently added).
   const productIds = [
@@ -120,6 +130,8 @@ export async function GET() {
         shippingPrice:   entry ? Number(entry.shippingPrice) : 0,
         trackingNo:      o.trackingNo,
         licenseNo:       o.licenseNo,
+        netWeight:       weightMap[o.id]?.netWeight ?? null,
+        grossWeight:     weightMap[o.id]?.grossWeight ?? null,
         prescriptionFileName: o.prescriptionOriginalName ?? null,
         items,
         totalInr:        Math.round(totalInr * 100) / 100,

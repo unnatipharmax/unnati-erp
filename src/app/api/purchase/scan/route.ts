@@ -30,7 +30,6 @@ Return exactly this structure:
   "products": [
     {
       "name": "product/medicine name (brand name only, no composition here)",
-      "composition": "active ingredients and strength e.g. PARACETAMOL 500MG",
       "manufacturer": "manufacturing company name",
       "hsn": "HSN code if visible",
       "pack": "pack size e.g. 10TAB, 1VIAL, 30ML",
@@ -56,7 +55,7 @@ Return exactly this structure:
 Rules:
 - If a field is not visible, use null
 - product name should be the brand/trade name only
-- composition is the generic/chemical formula
+- do NOT extract composition — leave it out entirely
 - rate is the purchase price per unit (excluding GST, used for INR unit calculation)
 - dates must be Mon-YY format (e.g. "Jul-25", "Jun-27")
 - invoiceDate must be YYYY-MM-DD

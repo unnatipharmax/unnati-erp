@@ -78,6 +78,13 @@ export async function GET(
     );
   }
 
+  // Fetch netWeight and grossWeight via raw SQL (added post-migration)
+  const weightRows = await prisma.$queryRaw<{ netWeight: number | null; grossWeight: number | null }[]>`
+    SELECT "netWeight", "grossWeight" FROM "OrderInitiation" WHERE id = ${orderId}
+  `;
+  const netWeight   = weightRows[0]?.netWeight   ?? null;
+  const grossWeight = weightRows[0]?.grossWeight ?? null;
+
   const items =
     order.orderEntry?.items.map((item) => {
       const latestRate = item.product.PurchaseItems[0]?.rate ?? null;
@@ -122,6 +129,8 @@ export async function GET(
     dollarAmount: order.dollarAmount ? Number(order.dollarAmount) : null,
     prescriptionOriginalName: order.prescriptionOriginalName,
     prescriptionStoredName: order.prescriptionStoredName,
+    netWeight,
+    grossWeight,
     items,
   });
 

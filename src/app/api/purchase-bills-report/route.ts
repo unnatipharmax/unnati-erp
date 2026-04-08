@@ -1,6 +1,5 @@
-// GET /api/purchase-bills-report?from=YYYY-MM-DD&to=YYYY-MM-DD
-// Returns all credit purchase bills (type BILL) in the date range
-// with bill amount, paid amount, credit note adjustments, and outstanding balance.
+// GET /api/purchase-bills-report?from=YYYY-MM-DD&to=YYYY-MM-DD[&type=credit_note]
+// Returns purchase bills (type BILL) or credit notes (type=credit_note) in the date range.
 
 import { NextResponse } from "next/server";
 import { PurchaseDocumentType } from "@prisma/client";
@@ -18,6 +17,10 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const from = searchParams.get("from");
   const to   = searchParams.get("to");
+  const type = searchParams.get("type"); // "credit_note" or null (bills)
+
+  const isCreditNote = type === "credit_note";
+  const docType = isCreditNote ? PurchaseDocumentType.CREDIT_NOTE : PurchaseDocumentType.BILL;
 
   // Build date filter — apply to invoiceDate; fall back to createdAt if null
   const dateFilter = from && to
@@ -31,11 +34,11 @@ export async function GET(req: Request) {
 
   const bills = await prisma.purchaseBill.findMany({
     where: {
-      documentType: PurchaseDocumentType.BILL,
+      documentType: docType,
       party: { isActive: true },
       ...dateFilter,
     },
-    orderBy: [{ invoiceDate: "asc" }, { createdAt: "asc" }],
+    orderBy: [{ invoiceDate: "desc" }, { createdAt: "desc" }],
     select: {
       id:          true,
       invoiceNo:   true,
@@ -62,6 +65,10 @@ export async function GET(req: Request) {
       adjustedByCreditNotes: {
         select: { amount: true },
       },
+      // For credit notes: how much has been applied against bills
+      creditNoteAllocations: isCreditNote
+        ? { select: { amount: true } }
+        : false,
     },
   });
 
@@ -73,6 +80,12 @@ export async function GET(req: Request) {
     const creditAdjusted   = roundMoney(bill.adjustedByCreditNotes.reduce((s, a) => s + Number(a.amount), 0));
     const outstanding      = Math.max(0, roundMoney(billAmount - paidAmount - creditAdjusted));
     const products         = bill.items.map(i => i.product.name).join(", ");
+
+    // For credit notes: applied = how much of this CN has been used against bills
+    const applied = isCreditNote && (bill as any).creditNoteAllocations
+      ? roundMoney((bill as any).creditNoteAllocations.reduce((s: number, a: any) => s + Number(a.amount), 0))
+      : 0;
+    const remaining = isCreditNote ? Math.max(0, roundMoney(billAmount - applied)) : 0;
 
     return {
       id:            bill.id,
@@ -87,6 +100,8 @@ export async function GET(req: Request) {
       paidAmount,
       creditAdjusted,
       outstanding,
+      applied,
+      remaining,
     };
   });
 
@@ -94,6 +109,8 @@ export async function GET(req: Request) {
   const totalPaid           = roundMoney(rows.reduce((s, r) => s + r.paidAmount,     0));
   const totalCreditAdjusted = roundMoney(rows.reduce((s, r) => s + r.creditAdjusted, 0));
   const totalOutstanding    = roundMoney(rows.reduce((s, r) => s + r.outstanding,    0));
+  const totalApplied        = roundMoney(rows.reduce((s, r) => s + r.applied,        0));
+  const totalRemaining      = roundMoney(rows.reduce((s, r) => s + r.remaining,      0));
 
   return NextResponse.json({
     rows,
@@ -103,6 +120,8 @@ export async function GET(req: Request) {
       totalPaid,
       totalCreditAdjusted,
       totalOutstanding,
+      totalApplied,
+      totalRemaining,
     },
   });
 }

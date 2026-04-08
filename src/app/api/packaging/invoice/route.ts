@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   if (!session || !["ADMIN", "MANAGER", "PACKAGING"].includes(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { orderId, trackingNo, licenseNo } = await req.json();
+  const { orderId, trackingNo, licenseNo, netWeight, grossWeight } = await req.json();
   if (!orderId)
     return NextResponse.json({ error: "orderId required" }, { status: 400 });
 
@@ -61,6 +61,22 @@ export async function POST(req: Request) {
         await prisma.$executeRawUnsafe(
           `UPDATE "OrderInitiation" SET "licenseNo" = $1 WHERE id = $2`,
           licenseNo, orderId
+        );
+      } catch { /* column may not exist yet */ }
+    }
+    if (netWeight != null) {
+      try {
+        await prisma.$executeRawUnsafe(
+          `UPDATE "OrderInitiation" SET "netWeight" = $1 WHERE id = $2`,
+          netWeight, orderId
+        );
+      } catch { /* column may not exist yet */ }
+    }
+    if (grossWeight != null) {
+      try {
+        await prisma.$executeRawUnsafe(
+          `UPDATE "OrderInitiation" SET "grossWeight" = $1 WHERE id = $2`,
+          grossWeight, orderId
         );
       } catch { /* column may not exist yet */ }
     }
@@ -110,6 +126,22 @@ export async function POST(req: Request) {
       await prisma.$executeRawUnsafe(
         `UPDATE "OrderInitiation" SET "licenseNo" = $1 WHERE id = $2`,
         licenseNo, orderId
+      );
+    } catch { /* column may not exist yet */ }
+  }
+  if (netWeight != null) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `UPDATE "OrderInitiation" SET "netWeight" = $1 WHERE id = $2`,
+        netWeight, orderId
+      );
+    } catch { /* column may not exist yet */ }
+  }
+  if (grossWeight != null) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `UPDATE "OrderInitiation" SET "grossWeight" = $1 WHERE id = $2`,
+        grossWeight, orderId
       );
     } catch { /* column may not exist yet */ }
   }

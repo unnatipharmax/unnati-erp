@@ -44,6 +44,8 @@ type Order = {
   shippingPrice: number;
   trackingNo: string | null;
   licenseNo: string | null;
+  netWeight: number | null;
+  grossWeight: number | null;
   prescriptionFileName: string | null;
   items: Item[];
   totalInr: number;
@@ -1384,7 +1386,8 @@ function DocumentsOverlay({
   order: Order;
   onClose: () => void;
 }) {
-  const [doc, setDoc] = useState<"invoice" | "packing" | "form2" | "edf" | "letter" | "cn22">("invoice");
+  const isDHL = order.shipmentMode === "DHL";
+  const [doc, setDoc] = useState<"invoice" | "packing" | "form2" | "edf" | "letter" | "cn22" | "dhl-invoice" | "dhl-packing" | "dhl-adc" | "dhl-shipper" | "dhl-export-decl" | "dhl-custom-decl" | "dhl-auth" | "dhl-nondgr">(isDHL ? "dhl-invoice" : "invoice");
   const downloadHref = `/api/packaging/orders/${order.id}/documents`;
 
   const titleMap = {
@@ -1394,6 +1397,14 @@ function DocumentsOverlay({
     edf:     "EDF",
     letter:  "Covering Letter",
     cn22:    "CN22 Label",
+    "dhl-invoice":     "DHL Invoice",
+    "dhl-packing":     "DHL Packing List",
+    "dhl-adc":         "ADC Sheet",
+    "dhl-shipper":     "Shipper's Letter",
+    "dhl-export-decl": "Export Declaration",
+    "dhl-custom-decl": "Custom Declaration",
+    "dhl-auth":        "Authorization Letter",
+    "dhl-nondgr":      "Non-DGR Certificate",
   } as const;
 
   return (
@@ -1429,12 +1440,27 @@ function DocumentsOverlay({
           </span>
 
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <button onClick={() => setDoc("invoice")} className="btn btn-sm btn-secondary">Invoice</button>
-            <button onClick={() => setDoc("packing")} className="btn btn-sm btn-secondary">Packing List</button>
-            <button onClick={() => setDoc("form2")}   className="btn btn-sm btn-secondary">Form-II</button>
-            <button onClick={() => setDoc("edf")}     className="btn btn-sm btn-secondary">EDF</button>
-            <button onClick={() => setDoc("letter")}  className="btn btn-sm btn-secondary">Covering Letter</button>
-            <button onClick={() => setDoc("cn22")}    className="btn btn-sm btn-secondary">CN22 Label</button>
+            {isDHL ? (
+              <>
+                <button onClick={() => setDoc("dhl-invoice")}     className="btn btn-sm btn-secondary">Invoice</button>
+                <button onClick={() => setDoc("dhl-packing")}     className="btn btn-sm btn-secondary">Packing List</button>
+                <button onClick={() => setDoc("dhl-adc")}         className="btn btn-sm btn-secondary">ADC Sheet</button>
+                <button onClick={() => setDoc("dhl-shipper")}     className="btn btn-sm btn-secondary">Shipper's Letter</button>
+                <button onClick={() => setDoc("dhl-export-decl")} className="btn btn-sm btn-secondary">Export Decl.</button>
+                <button onClick={() => setDoc("dhl-custom-decl")} className="btn btn-sm btn-secondary">Custom Decl.</button>
+                <button onClick={() => setDoc("dhl-auth")}        className="btn btn-sm btn-secondary">Auth Letter</button>
+                <button onClick={() => setDoc("dhl-nondgr")}      className="btn btn-sm btn-secondary">Non-DGR Cert</button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => setDoc("invoice")} className="btn btn-sm btn-secondary">Invoice</button>
+                <button onClick={() => setDoc("packing")} className="btn btn-sm btn-secondary">Packing List</button>
+                <button onClick={() => setDoc("form2")}   className="btn btn-sm btn-secondary">Form-II</button>
+                <button onClick={() => setDoc("edf")}     className="btn btn-sm btn-secondary">EDF</button>
+                <button onClick={() => setDoc("letter")}  className="btn btn-sm btn-secondary">Covering Letter</button>
+                <button onClick={() => setDoc("cn22")}    className="btn btn-sm btn-secondary">CN22 Label</button>
+              </>
+            )}
           </div>
 
           <button
@@ -1568,8 +1594,288 @@ function DocumentsOverlay({
           <div style={{ display: doc === "cn22" ? "block" : "none" }}>
             <CN22LabelDoc order={order} />
           </div>
+
+          {/* DHL documents */}
+          <div style={{ display: doc === "dhl-invoice"     ? "block" : "none" }}><DHLInvoiceDoc     order={order} /></div>
+          <div style={{ display: doc === "dhl-packing"     ? "block" : "none" }}><DHLPackingDoc      order={order} /></div>
+          <div style={{ display: doc === "dhl-adc"         ? "block" : "none" }}><DHLAdcDoc          order={order} /></div>
+          <div style={{ display: doc === "dhl-shipper"     ? "block" : "none" }}><DHLShipperDoc      order={order} /></div>
+          <div style={{ display: doc === "dhl-export-decl" ? "block" : "none" }}><DHLExportDeclDoc   order={order} /></div>
+          <div style={{ display: doc === "dhl-custom-decl" ? "block" : "none" }}><DHLCustomDeclDoc   order={order} /></div>
+          <div style={{ display: doc === "dhl-auth"        ? "block" : "none" }}><DHLAuthDoc         order={order} /></div>
+          <div style={{ display: doc === "dhl-nondgr"      ? "block" : "none" }}><DHLNonDgrDoc       order={order} /></div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── DHL Document Components ───────────────────────────────────────────────────
+function dhlDateSlash(order: Order) {
+  const d = getInvoiceDate(order);
+  return d.toLocaleDateString("en-GB"); // DD/MM/YYYY
+}
+function dhlConsignee(order: Order) {
+  return [order.fullName, order.address, [order.city, order.state].filter(Boolean).join(", "), `${order.postalCode} ${order.country}`.trim()].filter(Boolean);
+}
+const IEC = "FNXPP3883B", GSTIN = "27FNXPP3883B1ZA";
+const tdS = { border: "1px solid #000", padding: "3px 6px" } as const;
+const thS = { ...tdS, background: "#eee", fontWeight: 700 } as const;
+
+function DHLInvoiceDoc({ order }: { order: Order }) {
+  const date = dhlDateSlash(order); const totalUsd = order.totalUsd ?? 0;
+  return (
+    <div style={{ fontFamily: "Arial,sans-serif", fontSize: "8.5pt", padding: "10mm" }}>
+      <h2 style={{ textAlign: "center", fontSize: "11pt" }}>EXPORTS INVOICE</h2>
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 8, fontSize: "8pt" }}><tbody>
+        <tr>
+          <td style={{ width: "50%", verticalAlign: "top" }}>
+            <strong>UNNATI PHARMAX</strong><br />Ground Floor House No 307/4, Guru Vandana Apartment,<br />Kakasaheb Cholkar Marg, Lakadganj, Nagpur 440008<br />
+            IEC: {IEC} | GSTIN: {GSTIN}
+          </td>
+          <td style={{ width: "50%", verticalAlign: "top", textAlign: "right" }}>
+            <strong>INVOICE NO:</strong> {order.invoiceNo}<br />
+            <strong>DATE:</strong> {date}<br />
+            <strong>WAY BILL:</strong> {order.trackingNo ?? "—"}
+          </td>
+        </tr>
+      </tbody></table>
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 8, fontSize: "8pt" }}><tbody>
+        <tr>
+          <td style={{ ...tdS, width: "50%", verticalAlign: "top" }}><strong>Consignee:</strong><br />{dhlConsignee(order).map((l,i) => <span key={i}>{l}<br /></span>)}</td>
+          <td style={{ ...tdS, width: "50%", verticalAlign: "top" }}><strong>BUYER:</strong> {order.remitterName}<br /><strong>ORIGIN:</strong> INDIA<br /><strong>DESTINATION:</strong> {order.country}<br /><strong>DELIVERY TERMS:</strong> C&F | <strong>PAYMENT:</strong> AD</td>
+        </tr>
+      </tbody></table>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "7.5pt" }}>
+        <thead><tr>
+          {["SR.","PARTICULARS","DRUG CONTENT","HSN","PACK","MFG DATE","EXP DATE","BATCH NO","QTY","UNIT USD","TOTAL USD"].map(h => <th key={h} style={thS}>{h}</th>)}
+        </tr></thead>
+        <tbody>
+          {order.items.map((item, i) => {
+            const lineUsd = item.inrUnit != null ? item.inrUnit * item.quantity / order.exchangeRate : 0;
+            return (<tr key={i}>
+              <td style={{ ...tdS, textAlign: "center" }}>{i+1}</td>
+              <td style={tdS}>{item.productName}</td>
+              <td style={tdS}>{item.composition ?? ""}</td>
+              <td style={{ ...tdS, textAlign: "center" }}>{item.hsn ?? ""}</td>
+              <td style={{ ...tdS, textAlign: "center" }}>{item.pack ?? ""}</td>
+              <td style={{ ...tdS, textAlign: "center" }}>{item.mfgDate ?? ""}</td>
+              <td style={{ ...tdS, textAlign: "center" }}>{item.expDate ?? ""}</td>
+              <td style={{ ...tdS, fontFamily: "monospace", textAlign: "center" }}>{item.batchNo ?? ""}</td>
+              <td style={{ ...tdS, textAlign: "center" }}>{item.quantity}</td>
+              <td style={{ ...tdS, textAlign: "right" }}>{lineUsd > 0 ? (lineUsd / item.quantity).toFixed(6) : ""}</td>
+              <td style={{ ...tdS, textAlign: "right" }}>{lineUsd > 0 ? lineUsd.toFixed(1) : ""}</td>
+            </tr>);
+          })}
+        </tbody>
+        <tfoot>
+          <tr><td colSpan={9} style={{ ...tdS, textAlign: "right", fontWeight: 700 }}>TOTAL FOB VALUE</td><td colSpan={2} style={{ ...tdS, textAlign: "right", fontWeight: 700 }}>{totalUsd.toFixed(0)}</td></tr>
+          <tr><td colSpan={9} style={{ ...tdS, textAlign: "right" }}>FREIGHT</td><td colSpan={2} style={{ ...tdS, textAlign: "right" }}>0</td></tr>
+          <tr><td colSpan={9} style={{ ...tdS, textAlign: "right", fontWeight: 700 }}>TOTAL VALUE WITH FREIGHT</td><td colSpan={2} style={{ ...tdS, textAlign: "right", fontWeight: 700 }}>{totalUsd.toFixed(0)}</td></tr>
+        </tfoot>
+      </table>
+      <p style={{ fontSize: "8pt" }}>Net Weight: <strong>{order.netWeight ?? "—"} kg</strong> &nbsp;|&nbsp; Gross Weight: <strong>{order.grossWeight ?? "—"} kg</strong></p>
+      <p style={{ textAlign: "right", marginTop: 20, fontSize: "8pt" }}><strong>AUTHORISED SIGNATORY FOR UNNATI PHARMAX</strong></p>
+    </div>
+  );
+}
+
+function DHLPackingDoc({ order }: { order: Order }) {
+  const date = dhlDateSlash(order);
+  return (
+    <div style={{ fontFamily: "Arial,sans-serif", fontSize: "8.5pt", padding: "10mm" }}>
+      <h2 style={{ textAlign: "center" }}>Packing List</h2>
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 8, fontSize: "8.5pt" }}><tbody>
+        <tr><td style={{ fontWeight: 700 }}>Invoice No.</td><td style={{ background: "#ffff00", fontWeight: 700 }}>{order.invoiceNo}</td></tr>
+        <tr><td style={{ fontWeight: 700 }}>Date :-</td><td style={{ background: "#ffff00", fontWeight: 700 }}>{date}</td></tr>
+      </tbody></table>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "8pt" }}>
+        <thead><tr style={{ background: "#ffff00" }}>
+          {["SR.NO","CUSTOMER NAME","Product Name","packing","Manufacturer","Batch No","Exp date","QTY","Shipping","country"].map(h => <th key={h} style={tdS}>{h}</th>)}
+        </tr></thead>
+        <tbody>{order.items.map((item, i) => (
+          <tr key={i} style={{ background: "#ffff00" }}>
+            <td style={{ ...tdS, textAlign: "center" }}>{i+1}</td>
+            <td style={tdS}>{order.fullName}</td>
+            <td style={{ ...tdS, fontWeight: 700 }}>{item.productName}</td>
+            <td style={{ ...tdS, textAlign: "center" }}>{item.pack ?? ""}</td>
+            <td style={tdS}>{item.manufacturer ?? ""}</td>
+            <td style={{ ...tdS, fontFamily: "monospace", textAlign: "center" }}>{item.batchNo ?? ""}</td>
+            <td style={{ ...tdS, textAlign: "center" }}>{item.expDate ?? ""}</td>
+            <td style={{ ...tdS, textAlign: "center", fontWeight: 700 }}>{item.quantity}.00</td>
+            <td style={{ ...tdS, textAlign: "center" }}>DHL</td>
+            <td style={{ ...tdS, textAlign: "center" }}>{order.country}</td>
+          </tr>
+        ))}</tbody>
+      </table>
+      <p style={{ marginTop: 10, fontSize: "8pt" }}><strong>Consignee:</strong><br />{dhlConsignee(order).map((l,i) => <span key={i}>{l}<br /></span>)}</p>
+    </div>
+  );
+}
+
+function DHLAdcDoc({ order }: { order: Order }) {
+  const date = dhlDateSlash(order); const awb = order.trackingNo ?? "";
+  return (
+    <div style={{ fontFamily: "Arial,sans-serif", fontSize: "8pt", padding: "8mm" }}>
+      <p style={{ textAlign: "center", margin: "0 0 4px" }}>Government of India<br />Ministry of Health &amp; Family Welfare, Directorate General of Health Services,<br />O/o Asst. Drugs Controller, Central Drugs Standard Control Organization<br /><strong>PORT OFFICE</strong><br />International Air Cargo Complex, Sahar Village, Andheri, Mumbai - 400 099.</p>
+      <h3 style={{ textAlign: "center" }}>ADC (I) SHEET FOR EXPORT</h3>
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 6, fontSize: "7.5pt" }}><tbody>
+        <tr><td style={{ width: "30%" }}><strong>ADC Entry No.</strong></td><td></td><td><strong>Shipping Bill No &amp; Date</strong></td><td style={{ color: "blue", fontWeight: 700 }}>{awb} &amp; {date}</td></tr>
+        <tr><td><strong>IEC Number</strong></td><td style={{ fontWeight: 700 }}>{IEC}</td><td></td><td></td></tr>
+      </tbody></table>
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 6, fontSize: "7.5pt" }}><tbody>
+        <tr>
+          <td style={{ width: "20%", verticalAlign: "top" }}><strong>Port of Loading</strong><br />AIR CARGO SHARA MUMBAI</td>
+          <td style={{ width: "40%", verticalAlign: "top" }}><strong>Name &amp; Address of Exporter:</strong><br />UNNATI PHARMAX<br />Ground Floor House No 307/4, Guru Vandana Apartment,<br />Kakasaheb Cholkar Marg, Lakadganj, Nagpur 440008</td>
+          <td style={{ width: "40%", verticalAlign: "top", border: "1px solid #000", padding: 4 }}><strong>Name &amp; Address of Consignee:</strong><br />{dhlConsignee(order).map((l,i) => <span key={i}>{l}<br /></span>)}</td>
+        </tr>
+      </tbody></table>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "7.5pt" }}>
+        <thead><tr style={{ background: "#eee" }}>
+          {["S.No.","Invoice No/ Date","Name of the Product","Batch No","Mfg. Date","Exp. Date","Total Export Qty","ADC Sample Qty","DSL/DML No","FOB Value INR","Remarks"].map(h => <th key={h} style={tdS}>{h}</th>)}
+        </tr></thead>
+        <tbody>{order.items.map((item, i) => (
+          <tr key={i}>
+            <td style={{ ...tdS, textAlign: "center" }}>{i+1}</td>
+            <td style={tdS}>{i === 1 ? `${order.invoiceNo} & ${date}` : ""}</td>
+            <td style={{ ...tdS, fontWeight: 700, color: "#ff8c00" }}>{item.productName}</td>
+            <td style={{ ...tdS, fontFamily: "monospace", textAlign: "center" }}>{item.batchNo ?? ""}</td>
+            <td style={{ ...tdS, textAlign: "center" }}>{item.mfgDate ?? ""}</td>
+            <td style={{ ...tdS, textAlign: "center" }}>{item.expDate ?? ""}</td>
+            <td style={{ ...tdS, textAlign: "center", fontWeight: 700 }}>{item.quantity}</td>
+            <td style={tdS}></td><td style={tdS}></td>
+            <td style={{ ...tdS, textAlign: "right" }}>{i === 1 ? (order.totalUsd ?? 0).toLocaleString("en-IN") : ""}</td>
+            <td style={tdS}></td>
+          </tr>
+        ))}</tbody>
+      </table>
+      <table style={{ marginTop: 10, width: "100%", fontSize: "7.5pt" }}><tbody>
+        <tr>
+          <td style={{ width: "50%", verticalAlign: "top" }}>M/S KAUSHIK PATEL<br />1. Shipping Bill : &nbsp; 2. Invoice : &nbsp; 3. Packing List :<br />4. Certificate of Analysis : &nbsp; 5. Sample : &nbsp; 6. Drug Licence :</td>
+          <td style={{ width: "50%", textAlign: "right" }}><strong>AUTHORISED SIGNATORY</strong><br />1 Receiving Time &nbsp; 2 Verified. Time<br />3 Released Time &nbsp; 4 Out Time</td>
+        </tr>
+      </tbody></table>
+    </div>
+  );
+}
+
+function DHLShipperDoc({ order }: { order: Order }) {
+  const date = dhlDateSlash(order); const awb = order.trackingNo ?? "";
+  const hl = { background: "#ffff00", fontWeight: 700 };
+  return (
+    <div style={{ fontFamily: "Arial,sans-serif", fontSize: "8pt", padding: "10mm" }}>
+      <h3 style={{ textAlign: "center", background: "#ffff00", padding: 4 }}>SHIPPER'S LETTER OF INSTRUCTIONS</h3>
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 6 }}><tbody>
+        <tr><td style={{ width: "30%" }}><strong>Shipper Name:</strong></td><td style={hl}>UNNATI PHARMAX</td><td><strong>Invoice No.:</strong></td><td style={hl}>{order.invoiceNo}</td></tr>
+        <tr><td><strong>Consignee Name:</strong></td><td style={hl}>{order.fullName}</td><td><strong>Invoice Date:</strong></td><td style={hl}>{date}</td></tr>
+      </tbody></table>
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 6 }}><tbody>
+        <tr><td style={{ width: "40%" }}><strong>DHL AIR WAYBILL NUMBER (AWB):</strong></td><td style={{ ...hl, ...{} as any }} colSpan={3}>{awb}</td></tr>
+        <tr><td><strong>IE CODE NO:</strong></td><td style={hl}>{IEC}</td><td><strong>PAN NUMBER:</strong></td><td style={hl}>{IEC}</td></tr>
+        <tr><td><strong>GSTIN NUMBER:</strong></td><td style={{ ...hl, ...{} as any }} colSpan={3}>{GSTIN}</td></tr>
+      </tbody></table>
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 6, fontSize: "7.5pt" }}><tbody>
+        <tr><td><strong>LUT - Export Under Bond</strong></td><td style={hl}>YES</td><td><strong>INCOTERMS:</strong></td><td style={hl}>C&F</td></tr>
+        <tr><td><strong>FOB VALUE</strong></td><td style={hl}>{order.totalUsd ?? 0}</td><td><strong>NO. OF PKGS.</strong></td><td style={hl}>1</td></tr>
+        <tr><td><strong>NET WT. (kg)</strong></td><td style={hl}>{order.netWeight ?? "—"}</td><td><strong>GROSS WT. (kg)</strong></td><td style={hl}>{order.grossWeight ?? "—"}</td></tr>
+        <tr><td><strong>STATE OF ORIGIN</strong></td><td style={hl}>MAHARASHTRA</td><td><strong>DISTRICT OF ORIGIN</strong></td><td style={hl}>MAHARASHTRA</td></tr>
+        <tr><td><strong>CATEGORY OF SHIPPER</strong></td><td style={hl}>Merchant</td><td><strong>Manufacturer:</strong></td><td style={hl}>HETER PHARMA</td></tr>
+        <tr><td><strong>NATURE OF PAYMENT</strong></td><td style={hl}>AD</td><td></td><td></td></tr>
+      </tbody></table>
+      <p style={{ textAlign: "right", marginTop: 20 }}><strong>SIGNATURE OF EXPORTER / STAMP</strong></p>
+    </div>
+  );
+}
+
+function DHLExportDeclDoc({ order }: { order: Order }) {
+  const date = dhlDateSlash(order);
+  return (
+    <div style={{ fontFamily: "Arial,sans-serif", fontSize: "11pt", padding: "20mm", lineHeight: 1.8 }}>
+      <h2 style={{ textAlign: "center" }}>DECLARATION</h2>
+      <p>I/We declare that the particulars given herein above are true, correct and complete.<br />I/We enclose herewith copies of the following documents*.</p>
+      <ol><li>Duty Exemption Entitlement Certificate / Advance Authorisation / Duty Free Import Authorisation Declaration</li><li>Invoice / Invoice cum packing list</li><li>Quota / Inspection certificates</li><li>Others (Specify)</li></ol>
+      <table style={{ borderCollapse: "collapse" }}><tbody>
+        <tr><td style={tdS}>Name of the Exporter:</td><td style={tdS}><strong>UNNATI PHARMAX</strong></td><td style={tdS}>Name of Customs Broker:</td><td style={tdS}></td></tr>
+        <tr><td style={tdS}>Designation</td><td style={tdS}><strong>KAUSHIK PATEL</strong></td><td style={tdS}>Designation</td><td style={tdS}></td></tr>
+        <tr><td colSpan={2} style={tdS}></td><td style={tdS}>Identity Card Number</td><td style={tdS}></td></tr>
+      </tbody></table>
+      <p>I/We undertake to abide by the provisions of Foreign Exchange Management Act, 1999, as amended from time to time.</p>
+      <br /><br />
+      <p>Date <strong style={{ background: "#ffff00" }}>{date}</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Signature:………………………..&quot;;</p>
+    </div>
+  );
+}
+
+function DHLCustomDeclDoc({ order }: { order: Order }) {
+  const date = dhlDateSlash(order); const awb = order.trackingNo ?? "";
+  const productNames = order.items.map(i => i.productName).join(", ");
+  return (
+    <div style={{ fontFamily: "Arial,sans-serif", fontSize: "11pt", padding: "20mm", lineHeight: 1.8 }}>
+      <p style={{ textAlign: "right", background: "#ffff00", fontWeight: 700, display: "inline-block", padding: "2px 8px", float: "right" }}>Dt. {date}</p>
+      <div style={{ clear: "both" }} />
+      <p><strong>To,</strong><br /><strong>The Assistant Commissioner of Customs – Exports</strong></p>
+      <p><strong>Sub:</strong> Declaration to Custom<br /><strong>Ref.:</strong> DHL AWB Inv {awb} no. {order.invoiceNo}</p>
+      <p>Respected Sir / Madam,</p>
+      <p>We are exporting <strong>{productNames}</strong> to our customer <strong>{order.fullName}</strong> covered under <strong>{awb}</strong> DHL AWB &amp; these are used <strong>under Pharmaceutical Guidelines and License.</strong></p>
+      <p>The product is non-narcotic, non-psychotropic, and not prohibited for export from India</p>
+      <p>We hereby declare that these contents do not fall under SCOMET List (Special Chemicals, Organisms, Materials, Equipment and Technologies).</p>
+      <p>Above mentioned details are true &amp; checked by technical expert.</p>
+      <p>You are request to allow the same for export.</p>
+      <br /><br />
+      <p>UNNATI PHARMAX<br />( Owner : Kaushik Patel )<br />(Company Seal, Signing Authority Name &amp; Designation)</p>
+    </div>
+  );
+}
+
+function DHLAuthDoc({ order }: { order: Order }) {
+  const date = dhlDateSlash(order);
+  return (
+    <div style={{ fontFamily: "Arial,sans-serif", fontSize: "11pt", padding: "20mm", lineHeight: 1.8 }}>
+      <h2 style={{ textAlign: "center" }}>Authorization Letter</h2>
+      <h3 style={{ textAlign: "center" }}>To whomsoever it may concern</h3>
+      <p>This letter may be considered as our authorization to DHL Express (India) Pvt. Ltd. ('DHL'), including its group companies and their customs brokers and agents, to act as our agent for the purpose of arranging customs clearance at various customs airports within India for all our Shipments, arriving into or departing from, India.</p>
+      <p>I/We also give our consent and authorize DHL to generate, sign, submit and file on our behalf, in physical form or digitally, the various forms like e-way bill, Bill of Entry, Shipping Bill and other forms, as and when required, under various statutes.</p>
+      <p>I/We further declare that our Importer Exporter Code ("IEC") number / GSTIN and Know Your Customer ("KYC") are valid and we authorize DHL to use the same while undertaking transportation and clearance of our shipments on our behalf.</p>
+      <p>This authority letter shall hold good for all proceedings and shall remain valid until revoked in writing.</p>
+      <p>Thanking you,<br />Yours sincerely,</p>
+      <br /><br />
+      <p>Signature:<br />Designation:<br />Authorised Signatory</p>
+      <p><strong>Company Name:</strong> UNNATI PHARMAX &nbsp;&nbsp;&nbsp; Company Stamp:</p>
+      <p><strong>Stamp:</strong> IEC No / GSTIN / KYC document number</p>
+      <p style={{ background: "#ffff00", fontWeight: 700, display: "inline-block", padding: "2px 8px" }}>Date: {date}</p>
+    </div>
+  );
+}
+
+function DHLNonDgrDoc({ order }: { order: Order }) {
+  const awb = order.trackingNo ?? "";
+  return (
+    <div style={{ fontFamily: "Arial,sans-serif", fontSize: "9pt", padding: "10mm" }}>
+      <h3 style={{ textAlign: "center" }}>Shipper's Certification for Non - Hazardous Cargo</h3>
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 8 }}><tbody>
+        <tr><td style={{ width: "30%" }}><strong>DHL/AWB no.</strong></td><td style={{ background: "#ffff00", fontWeight: 700 }}>{awb}</td><td><strong>Airport of Dep.</strong></td><td>MUMBAI</td><td><strong>Airport of Dest.</strong></td><td>{order.country}</td></tr>
+        <tr><td><strong>MAWB no.</strong></td><td></td><td><strong>INDIA</strong></td><td>MUMBAI</td><td></td><td></td></tr>
+      </tbody></table>
+      <p>This is to certify that the articles / substances of this shipment are properly described by name that they are not listed in the current edition of IATA / Dangerous Goods Regulations (DGR), nor do they correspond to any of the hazard classes appearing in the DGR. The goods are known not to be dangerous, i.e., not restricted.<br /><br />Furthermore the shipper confirms that the goods are in proper condition for transportation on passenger carrying aircraft (DGR, 8.1.23.) of International Air Transport Association (IATA)</p>
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 8 }}>
+        <thead><tr><th style={thS}>Marks and Proper description of goods (Trade Names not Permitted)</th><th style={{ ...thS, textAlign: "center" }}>Net Quantity</th></tr></thead>
+        <tbody>{order.items.map((item, i) => <tr key={i}><td style={tdS}>{item.productName}</td><td style={{ ...tdS, textAlign: "center" }}>{item.quantity}</td></tr>)}</tbody>
+      </table>
+      <table style={{ width: "100%", fontSize: "8.5pt" }}><tbody>
+        <tr>
+          <td style={{ width: "50%", verticalAlign: "top" }}>
+            <strong>Shipper:</strong><br />UNNATI PHARMAX<br />GROUND FLOOR HOUSE NO 307/04<br />GURU VANDANA APARTMENT KAKASAHEB CHOLKAR MARG<br />LAKADGANJ NAGPUR, MAHARASHTRA 440008<br /><br />
+            <strong>TOTAL NUMBER OF PACKAGES: 1</strong>
+          </td>
+          <td style={{ width: "50%", verticalAlign: "top" }}>
+            <strong>NET WEIGHT:</strong> {order.netWeight ?? "—"} KGS<br />
+            <strong>GROSS WEIGHT:</strong> {order.grossWeight ?? "—"} KGS<br /><br />
+            <strong>Consignee:</strong><br />{dhlConsignee(order).map((l,i) => <span key={i}>{l}<br /></span>)}<br />
+            <strong>NAME:</strong> KAUSHIK &nbsp; <strong>DESIGNATION:</strong> OWNER<br />
+            <strong>SIGNATURE &amp; COMPANY STAMP</strong>
+          </td>
+        </tr>
+      </tbody></table>
     </div>
   );
 }
@@ -1584,11 +1890,14 @@ function OrderCard({
   onInvoiceGenerated: (id: string, invoiceNo: string, trackingNo: string, licenseNo: string) => void;
   onViewDocs: (order: Order) => void;
 }) {
+  const isDHL = order.shipmentMode === "DHL";
   const [generating, setGenerating] = useState(false);
   const [err, setErr] = useState("");
   const [stockStatus, setStockStatus] = useState<"unset" | "in_stock" | "not_in_stock">("unset");
   const [trackingNo, setTrackingNo] = useState("");
   const [licenseNo, setLicenseNo] = useState("");
+  const [netWeight, setNetWeight] = useState("");
+  const [grossWeight, setGrossWeight] = useState("");
   const [licenseOptions, setLicenseOptions] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem("unnati_license_nos") || "[]"); } catch { return []; }
   });
@@ -1608,12 +1917,19 @@ function OrderCard({
 
   async function generateInvoice() {
     if (!trackingNo.trim()) { setErr("Please enter a tracking number first."); return; }
+    if (isDHL && (!netWeight.trim() || !grossWeight.trim())) { setErr("Please enter Net Weight and Gross Weight for DHL shipment."); return; }
     setGenerating(true);
     setErr("");
     const res = await fetch("/api/packaging/invoice", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId: order.id, trackingNo: trackingNo.trim(), licenseNo: licenseNo.trim() }),
+      body: JSON.stringify({
+        orderId: order.id,
+        trackingNo: trackingNo.trim(),
+        licenseNo: licenseNo.trim(),
+        netWeight:   isDHL && netWeight   ? Number(netWeight)   : null,
+        grossWeight: isDHL && grossWeight ? Number(grossWeight) : null,
+      }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -1681,6 +1997,26 @@ function OrderCard({
                 placeholder="Tracking number…"
                 style={{ width: 160, fontSize: "0.82rem", padding: "0.3rem 0.6rem" }}
               />
+              {isDHL && (
+                <>
+                  <input
+                    type="number"
+                    value={netWeight}
+                    onChange={e => setNetWeight(e.target.value)}
+                    placeholder="Net Wt (kg)"
+                    min="0" step="0.01"
+                    style={{ width: 100, fontSize: "0.82rem", padding: "0.3rem 0.6rem" }}
+                  />
+                  <input
+                    type="number"
+                    value={grossWeight}
+                    onChange={e => setGrossWeight(e.target.value)}
+                    placeholder="Gross Wt (kg)"
+                    min="0" step="0.01"
+                    style={{ width: 110, fontSize: "0.82rem", padding: "0.3rem 0.6rem" }}
+                  />
+                </>
+              )}
               {addingLicense ? (
                 <>
                   <input

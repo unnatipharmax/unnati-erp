@@ -707,7 +707,7 @@ function LedgerOverlay({
 
           {/* Tab bar */}
           <div style={{ display: "flex", gap: "0", borderTop: "1px solid var(--border)" }}>
-            {([["ledger", "📒 Ledger"], ["payment", "💳 Payment Entry"]] as const).map(([t, label]) => (
+            {([["ledger", "📒 Ledger"], ["payment", "💳 Payment Entry"], ["creditNote", "🧾 Credit Note"]] as const).map(([t, label]) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -738,6 +738,12 @@ function LedgerOverlay({
           ) : tab === "payment" ? (
             <PaymentEntryTab
               partyId={partyId}
+              onAdded={() => { load(); setTab("ledger"); }}
+            />
+          ) : tab === "creditNote" ? (
+            <CreditNoteEntryTab
+              partyId={partyId}
+              partyName={partyName}
               onAdded={() => { load(); setTab("ledger"); }}
             />
           ) : null}

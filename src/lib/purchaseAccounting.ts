@@ -5,6 +5,8 @@ type PurchaseAmountItem = {
   cgstAmount?: number | null;
   sgstAmount?: number | null;
   igstAmount?: number | null;
+  discount?: number | null;
+  discountType?: "%" | "₹" | null;
 };
 
 function toNumber(value: number | string | null | undefined) {
@@ -38,7 +40,16 @@ export function getCreditNoteLineAmount(item: PurchaseAmountItem) {
     toNumber(item.taxableAmount)
   );
 
-  return roundMoney(grossBase + getPurchaseTaxes(item));
+  // Subtract invoice discount (percentage or flat value) before adding taxes
+  let discountAmt = 0;
+  if (item.discount) {
+    discountAmt = item.discountType === "₹"
+      ? toNumber(item.discount)
+      : roundMoney(grossBase * toNumber(item.discount) / 100);
+  }
+  const base = roundMoney(grossBase - discountAmt);
+
+  return roundMoney(base + getPurchaseTaxes(item));
 }
 
 export function getPurchaseBillAmount(items: PurchaseAmountItem[]) {

@@ -23,6 +23,8 @@ type CreditNoteRow = {
   expDate: string;
   quantity: string;
   rate: string;
+  discount: string;
+  discountType: "%" | "₹";
   taxableAmount: string;
   cgstAmount: string;
   sgstAmount: string;
@@ -47,6 +49,8 @@ function emptyRow(): CreditNoteRow {
     expDate: "",
     quantity: "1",
     rate: "",
+    discount: "",
+    discountType: "%",
     taxableAmount: "",
     cgstAmount: "",
     sgstAmount: "",
@@ -123,6 +127,8 @@ export default function CreditNoteEntryTab({
   const totalAmount = activeRows.reduce((sum, row) => sum + getCreditNoteLineAmount({
     quantity: Number(row.quantity) || 0,
     rate: Number(row.rate) || 0,
+    discount: row.discount ? Number(row.discount) : null,
+    discountType: row.discountType,
     taxableAmount: row.taxableAmount ? Number(row.taxableAmount) : null,
     cgstAmount: row.cgstAmount ? Number(row.cgstAmount) : null,
     sgstAmount: row.sgstAmount ? Number(row.sgstAmount) : null,
@@ -167,7 +173,7 @@ export default function CreditNoteEntryTab({
         cgstAmount: row.cgstAmount ? Number(row.cgstAmount) : null,
         sgstAmount: row.sgstAmount ? Number(row.sgstAmount) : null,
         igstAmount: row.igstAmount ? Number(row.igstAmount) : null,
-        discount: null,
+        discount: row.discount ? Number(row.discount) : null,
       })),
     };
 
@@ -205,7 +211,7 @@ export default function CreditNoteEntryTab({
         fontSize: "0.82rem",
         color: "var(--text-secondary)",
       }}>
-        Return adjustment is calculated without reducing it for bill discount. Any open credit-note balance will auto-adjust against the next purchase bill for this party.
+        Enter the original invoice discount % per product — it will be deducted from the credit note value. Any open credit-note balance will auto-adjust against the next purchase bill for this party.
       </div>
 
       {err && <div className="alert alert-error" style={{ marginBottom: "1rem", fontSize: "0.82rem" }}>{err}</div>}
@@ -249,6 +255,8 @@ export default function CreditNoteEntryTab({
           const lineAmount = getCreditNoteLineAmount({
             quantity: Number(row.quantity) || 0,
             rate: Number(row.rate) || 0,
+            discount: row.discount ? Number(row.discount) : null,
+            discountType: row.discountType,
             taxableAmount: row.taxableAmount ? Number(row.taxableAmount) : null,
             cgstAmount: row.cgstAmount ? Number(row.cgstAmount) : null,
             sgstAmount: row.sgstAmount ? Number(row.sgstAmount) : null,
@@ -297,7 +305,7 @@ export default function CreditNoteEntryTab({
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1.4fr 90px 110px 110px 90px", gap: "0.6rem", marginBottom: "0.6rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1.4fr 80px 110px 90px 110px 90px", gap: "0.6rem", marginBottom: "0.6rem" }}>
                 <div>
                   <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Composition</label>
                   <input value={row.composition} onChange={(e) => updateRow(index, "composition", e.target.value)} />
@@ -309,6 +317,41 @@ export default function CreditNoteEntryTab({
                 <div>
                   <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Rate *</label>
                   <input type="number" min="0" step="0.01" value={row.rate} onChange={(e) => updateRow(index, "rate", e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.72rem", color: "#fbbf24", display: "block", marginBottom: 4 }}>Discount</label>
+                  <div style={{ display: "flex", gap: 0 }}>
+                    <input
+                      type="number" min="0" step="0.01"
+                      value={row.discount}
+                      onChange={(e) => updateRow(index, "discount", e.target.value)}
+                      placeholder="0"
+                      style={{
+                        borderColor: row.discount ? "rgba(251,191,36,0.4)" : undefined,
+                        borderRadius: "8px 0 0 8px", flex: 1, minWidth: 0,
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => updateRow(index, "discountType", row.discountType === "%" ? "₹" : "%")}
+                      style={{
+                        padding: "0 10px",
+                        background: "rgba(251,191,36,0.15)",
+                        border: "1px solid rgba(251,191,36,0.4)",
+                        borderLeft: "none",
+                        borderRadius: "0 8px 8px 0",
+                        color: "#fbbf24",
+                        fontWeight: 700,
+                        fontSize: "0.8rem",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                        minWidth: 36,
+                      }}
+                      title="Toggle between % and ₹"
+                    >
+                      {row.discountType}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Taxable</label>

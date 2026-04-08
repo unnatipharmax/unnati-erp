@@ -30,6 +30,38 @@ export default async function OrderEntryPage({
     }),
   ]);
 
+  // Build last-used selling price map for this client (by email)
+  // Find previous orders from same client that have order entries, sorted newest first
+  const lastPrices: Record<string, string> = {};
+  if (order?.email) {
+    const prevOrders = await prisma.orderInitiation.findMany({
+      where: {
+        email: order.email,
+        id: { not: orderId },
+        orderEntry: { isNot: null },
+      },
+      orderBy: { createdAt: "desc" },
+      select: {
+        orderEntry: {
+          select: {
+            items: {
+              select: { productId: true, sellingPrice: true },
+            },
+          },
+        },
+      },
+    });
+
+    // Iterate newest → oldest; only keep first (most recent) price per product
+    for (const prev of prevOrders) {
+      for (const item of prev.orderEntry?.items ?? []) {
+        if (!lastPrices[item.productId]) {
+          lastPrices[item.productId] = item.sellingPrice.toString();
+        }
+      }
+    }
+  }
+
   if (!order) {
     return (
       <div className="p-6 text-slate-100">
@@ -65,7 +97,7 @@ export default async function OrderEntryPage({
       </p>
 
       <div className="mt-6">
-        <OrderEntryForm orderId={order.id} products={products} existingEntry={existingEntry} />
+        <OrderEntryForm orderId={order.id} products={products} existingEntry={existingEntry} lastPrices={lastPrices} />
       </div>
     </div>
   );
