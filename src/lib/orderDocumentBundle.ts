@@ -752,3 +752,217 @@ passenger carrying aircraft (DGR, 8.1.23.) of International Air Transport Associ
   const buffer = await zip.generateAsync({ type: "nodebuffer" });
   return { buffer, fileName: `${safeBaseName}-dhl-documents.zip` };
 }
+
+// ── Multi-Order Combined Document Bundle ──────────────────────────────────────
+// Generates a single combined invoice + packing list for multiple orders that
+// share the same invoice number (batch dispatch on the same day).
+export async function buildMultiOrderDocumentBundle(orders: DocumentBundleOrder[]) {
+  if (orders.length === 0) throw new Error("No orders provided");
+
+  const invoiceNo   = orders[0].invoiceNo ?? "MULTI";
+  const invoiceDate = orders[0].invoiceGeneratedAt ?? orders[0].createdAt;
+  const dateStr     = formatDateLongIN(invoiceDate);
+  const safeBase    = sanitizeDownloadName(invoiceNo);
+
+  // Aggregate items tagged with their consignee
+  type TaggedItem = { order: DocumentBundleOrder; item: DocumentBundleOrder["items"][number] };
+  const allItems: TaggedItem[] = orders.flatMap((o) => o.items.map((item) => ({ order: o, item })));
+
+  const totalInr = orders.reduce(
+    (sum, o) => sum + o.items.reduce((s, i) => s + (i.amount ?? 0), 0) + o.shippingPrice,
+    0
+  );
+  const totalUsd = orders.reduce((sum, o) => sum + (o.dollarAmount ?? 0), 0);
+
+  // ── Consignee summary rows ──
+  const consigneeRows = orders
+    .map(
+      (o, i) => `
+    <tr>
+      <td style="padding:3px 6px;border:1px solid #e8d080;font-weight:700;text-align:center">${i + 1}</td>
+      <td style="padding:3px 6px;border:1px solid #e8d080;font-weight:600">${escapeHtml(o.fullName)}</td>
+      <td style="padding:3px 6px;border:1px solid #e8d080;color:#555">${escapeHtml([o.address, o.city, o.country].filter(Boolean).join(", "))}</td>
+      <td style="padding:3px 6px;border:1px solid #e8d080;text-align:right">${o.dollarAmount != null ? `$${o.dollarAmount.toFixed(2)}` : o.items.reduce((s, it) => s + (it.amount ?? 0), 0).toFixed(2) + " INR"}</td>
+    </tr>`
+    )
+    .join("");
+
+  // ── Item rows for combined invoice ──
+  const invoiceItemRows = allItems
+    .map(
+      ({ order, item }, idx) => `
+    <tr style="${idx % 2 === 1 ? "background:#fffdf0" : ""}">
+      <td style="border:1px solid #e8d080;padding:2px 4px;text-align:center">${idx + 1}</td>
+      <td style="border:1px solid #e8d080;padding:2px 4px;font-size:7pt;font-weight:600">${escapeHtml(order.fullName)}</td>
+      <td style="border:1px solid #e8d080;padding:2px 4px">${escapeHtml(item.productName)}</td>
+      <td style="border:1px solid #e8d080;padding:2px 4px;font-size:7pt">${escapeHtml(item.composition ?? "")}</td>
+      <td style="border:1px solid #e8d080;padding:2px 4px;font-size:7pt">${escapeHtml(item.manufacturer ?? "")}</td>
+      <td style="border:1px solid #e8d080;padding:2px 4px;text-align:center">${escapeHtml(item.hsn ?? "")}</td>
+      <td style="border:1px solid #e8d080;padding:2px 4px;text-align:center">${escapeHtml(item.pack ?? "")}</td>
+      <td style="border:1px solid #e8d080;padding:2px 4px;text-align:center;font-family:monospace;font-size:7pt">${escapeHtml(item.batchNo ?? "—")}</td>
+      <td style="border:1px solid #e8d080;padding:2px 4px;text-align:center;font-weight:700">${item.quantity}</td>
+      <td style="border:1px solid #e8d080;padding:2px 4px;text-align:right">${item.inrUnit != null ? "₹" + item.inrUnit.toFixed(2) : "—"}</td>
+      <td style="border:1px solid #e8d080;padding:2px 4px;text-align:right;font-weight:600">${item.amount != null ? "₹" + item.amount.toFixed(2) : "—"}</td>
+    </tr>`
+    )
+    .join("");
+
+  const combinedInvoiceHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8">
+<title>Combined Invoice ${escapeHtml(invoiceNo)}</title>
+</head>
+<body style="font-family:Arial,sans-serif;font-size:8.5pt;color:#111;margin:0;padding:20px">
+<div style="border:2px solid #c8960c;border-radius:4px;overflow:hidden">
+
+  <!-- Header -->
+  <div style="background:#fef9e7;border-bottom:2px solid #c8960c;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+    <div style="font-size:15pt;font-weight:800;color:#7a5c00;letter-spacing:0.04em">UNNATI PHARMAX</div>
+    <div style="text-align:right;font-size:7pt;color:#555;line-height:1.5">
+      Ground Floor, House No 307/4, Guru Vandana Apartment,<br>
+      Kakasaheb Cholkar Marg, Lakadganj, Nagpur – 440008, Maharashtra<br>
+      GST: 27FNXPP3883B1ZA &nbsp;|&nbsp; PAN: FNXPP3883B
+    </div>
+  </div>
+
+  <!-- Title bar -->
+  <div style="background:#fffbeb;padding:5px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e8d080">
+    <span style="font-size:11pt;font-weight:800;color:#7a5c00;letter-spacing:0.08em">COMBINED GST INVOICE</span>
+    <div style="font-size:8pt;text-align:right;line-height:1.6">
+      <b>Invoice No:</b> ${escapeHtml(invoiceNo)}<br>
+      <b>Date:</b> ${escapeHtml(dateStr)}<br>
+      <b>Orders:</b> ${orders.length} combined
+    </div>
+  </div>
+
+  <!-- Consignees -->
+  <div style="padding:8px 14px;border-bottom:1px solid #e8d080">
+    <div style="font-size:6.5pt;font-weight:700;text-transform:uppercase;color:#888;margin-bottom:5px">Consignees</div>
+    <table style="width:100%;border-collapse:collapse;font-size:8pt">
+      <thead><tr>
+        <th style="padding:3px 6px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:7pt;width:30px">#</th>
+        <th style="padding:3px 6px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:7pt;text-align:left">Name</th>
+        <th style="padding:3px 6px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:7pt;text-align:left">Address</th>
+        <th style="padding:3px 6px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:7pt;text-align:right">Amount</th>
+      </tr></thead>
+      <tbody>${consigneeRows}</tbody>
+    </table>
+  </div>
+
+  <!-- Items table -->
+  <table style="width:100%;border-collapse:collapse">
+    <thead><tr>
+      <th style="padding:3px 4px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:6.5pt;text-align:center">Sr.</th>
+      <th style="padding:3px 4px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:6.5pt;text-align:left">Ship To</th>
+      <th style="padding:3px 4px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:6.5pt;text-align:left">Product</th>
+      <th style="padding:3px 4px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:6.5pt;text-align:left">Composition</th>
+      <th style="padding:3px 4px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:6.5pt;text-align:left">Manufacturer</th>
+      <th style="padding:3px 4px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:6.5pt;text-align:center">HSN</th>
+      <th style="padding:3px 4px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:6.5pt;text-align:center">Pack</th>
+      <th style="padding:3px 4px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:6.5pt;text-align:center">Batch</th>
+      <th style="padding:3px 4px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:6.5pt;text-align:center">Qty</th>
+      <th style="padding:3px 4px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:6.5pt;text-align:right">Rate</th>
+      <th style="padding:3px 4px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:6.5pt;text-align:right">Amount</th>
+    </tr></thead>
+    <tbody>${invoiceItemRows}</tbody>
+    <tfoot>
+      <tr>
+        <td colspan="10" style="padding:4px 8px;border:1px solid #c8960c;text-align:right;font-weight:700;background:#fef3c7;color:#7a5c00">Total (INR):</td>
+        <td style="padding:4px 8px;border:1px solid #c8960c;text-align:right;font-weight:800;background:#fef3c7;color:#7a5c00">₹${totalInr.toFixed(2)}</td>
+      </tr>
+      ${totalUsd > 0 ? `<tr>
+        <td colspan="10" style="padding:4px 8px;border:1px solid #e8d080;text-align:right;font-weight:700">Total (USD):</td>
+        <td style="padding:4px 8px;border:1px solid #e8d080;text-align:right;font-weight:800">$${totalUsd.toFixed(2)}</td>
+      </tr>` : ""}
+    </tfoot>
+  </table>
+
+  <!-- Footer -->
+  <div style="background:#fef9e7;padding:8px 14px;display:flex;justify-content:space-between;align-items:flex-end;border-top:2px solid #c8960c">
+    <div style="font-size:7pt;color:#333;line-height:1.7">
+      IEC: FNXPP3883B &nbsp;|&nbsp; GSTIN: 27FNXPP3883B1ZA<br>
+      Drug Lic: MH-NB-152878 &nbsp;|&nbsp; D.L. No.: MH/NB/152877
+    </div>
+    <div style="text-align:right;font-size:7.5pt;color:#7a5c00;font-weight:700">
+      For UNNATI PHARMAX<br><br><br>Authorised Signatory
+    </div>
+  </div>
+
+</div>
+</body>
+</html>`;
+
+  // ── Packing list ──
+  const packingItemRows = allItems
+    .map(
+      ({ order, item }, idx) => `
+    <tr style="${idx % 2 === 1 ? "background:#fffdf0" : ""}">
+      <td style="border:1px solid #e8d080;padding:3px 6px;text-align:center">${idx + 1}</td>
+      <td style="border:1px solid #e8d080;padding:3px 6px;font-weight:600">${escapeHtml(order.fullName)}</td>
+      <td style="border:1px solid #e8d080;padding:3px 6px">${escapeHtml(item.productName)}</td>
+      <td style="border:1px solid #e8d080;padding:3px 6px;font-size:7.5pt">${escapeHtml(item.composition ?? "")}</td>
+      <td style="border:1px solid #e8d080;padding:3px 6px;text-align:center">${escapeHtml(item.pack ?? "")}</td>
+      <td style="border:1px solid #e8d080;padding:3px 6px;text-align:center;font-family:monospace;font-size:7.5pt">${escapeHtml(item.batchNo ?? "—")}</td>
+      <td style="border:1px solid #e8d080;padding:3px 6px;text-align:center">${escapeHtml(item.mfgDate ?? "—")}</td>
+      <td style="border:1px solid #e8d080;padding:3px 6px;text-align:center">${escapeHtml(item.expDate ?? "—")}</td>
+      <td style="border:1px solid #e8d080;padding:3px 6px;text-align:center;font-weight:700">${item.quantity}</td>
+    </tr>`
+    )
+    .join("");
+
+  const combinedPackingHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8">
+<title>Combined Packing List ${escapeHtml(invoiceNo)}</title>
+</head>
+<body style="font-family:Arial,sans-serif;font-size:8.5pt;color:#111;margin:0;padding:20px">
+<div style="border:2px solid #c8960c;border-radius:4px;overflow:hidden">
+
+  <div style="background:#fef9e7;border-bottom:2px solid #c8960c;padding:10px 14px">
+    <div style="font-size:14pt;font-weight:800;color:#7a5c00">UNNATI PHARMAX — COMBINED PACKING LIST</div>
+    <div style="font-size:8pt;margin-top:4px;color:#333">
+      <b>Invoice No:</b> ${escapeHtml(invoiceNo)} &nbsp;|&nbsp;
+      <b>Date:</b> ${escapeHtml(dateStr)} &nbsp;|&nbsp;
+      <b>Total Orders:</b> ${orders.length} &nbsp;|&nbsp;
+      <b>Total Items:</b> ${allItems.length}
+    </div>
+  </div>
+
+  <table style="width:100%;border-collapse:collapse">
+    <thead><tr>
+      <th style="padding:4px 6px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:7pt;text-align:center">Sr.</th>
+      <th style="padding:4px 6px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:7pt;text-align:left">Ship To</th>
+      <th style="padding:4px 6px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:7pt;text-align:left">Product</th>
+      <th style="padding:4px 6px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:7pt;text-align:left">Composition</th>
+      <th style="padding:4px 6px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:7pt;text-align:center">Pack</th>
+      <th style="padding:4px 6px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:7pt;text-align:center">Batch No</th>
+      <th style="padding:4px 6px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:7pt;text-align:center">Mfg Date</th>
+      <th style="padding:4px 6px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:7pt;text-align:center">Exp Date</th>
+      <th style="padding:4px 6px;border:1px solid #c8960c;background:#fef3c7;color:#7a5c00;font-size:7pt;text-align:center">Qty</th>
+    </tr></thead>
+    <tbody>${packingItemRows}</tbody>
+    <tfoot>
+      <tr>
+        <td colspan="8" style="padding:4px 8px;border:1px solid #c8960c;text-align:right;font-weight:700;background:#fef3c7;color:#7a5c00">Total Qty:</td>
+        <td style="padding:4px 8px;border:1px solid #c8960c;text-align:center;font-weight:800;background:#fef3c7;color:#7a5c00">${allItems.reduce((s, { item }) => s + item.quantity, 0)}</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div style="background:#fef9e7;padding:8px 14px;display:flex;justify-content:flex-end;border-top:2px solid #c8960c">
+    <div style="text-align:right;font-size:7.5pt;color:#7a5c00;font-weight:700">
+      For UNNATI PHARMAX<br><br><br>Authorised Signatory
+    </div>
+  </div>
+
+</div>
+</body>
+</html>`;
+
+  const zip = new JSZip();
+  zip.file(`${safeBase}-combined-invoice.html`, combinedInvoiceHtml);
+  zip.file(`${safeBase}-combined-packing-list.html`, combinedPackingHtml);
+
+  const buffer = await zip.generateAsync({ type: "nodebuffer" });
+  return { buffer, fileName: `${safeBase}-multi-documents.zip` };
+}

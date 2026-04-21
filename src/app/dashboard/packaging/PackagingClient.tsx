@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import PurchaseBillPanel from "./PurchaseBillPanel";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -24,6 +24,7 @@ type Item = {
 
 type Order = {
   id: string;
+  accountId: string | null;   // null = individual link-based client; non-null = account/bulk client
   invoiceNo: string | null;
   invoiceGeneratedAt: string | null;
   status: string;
@@ -73,220 +74,203 @@ function StatusBadge({ s }: { s: string }) {
   return <span className={`badge ${map[s] ?? "badge-gray"}`}>{s.replace("_", " ")}</span>;
 }
 
-// ── DOC 1: GST Invoice (print template only) ──────────────────────────────────
+// ── DOC 1: Export Invoice ─────────────────────────────────────────────────────
 function GSTInvoiceDoc({ order }: { order: Order }) {
-  const invDate = getInvoiceDate(order);
-  const today = formatDateLongIN(invDate);
+  const invDate  = getInvoiceDate(order);
+  const dateStr  = invDate.toLocaleDateString("en-GB");
+  const exchRate = order.exchangeRate || 84;
+  const totalUsd = order.dollarAmount ?? 0;
 
-  const mode = order.shipmentMode ?? "EMS";
-  const shipLabel = `By Air through ${mode}`;
-
-  // INR total from items
-  const inrTotal = order.items.reduce((s, i) => s + (i.amount ?? 0), 0);
-
-  function dollarToWords(n: number): string {
+  function d2w(n: number): string {
     const ones = ["","ONE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT","NINE","TEN","ELEVEN","TWELVE","THIRTEEN","FOURTEEN","FIFTEEN","SIXTEEN","SEVENTEEN","EIGHTEEN","NINETEEN"];
     const tens = ["","","TWENTY","THIRTY","FORTY","FIFTY","SIXTY","SEVENTY","EIGHTY","NINETY"];
-    if (n === 0) return "ZERO";
-    const int = Math.floor(n);
-    if (int < 20) return ones[int];
-    if (int < 100) return tens[Math.floor(int / 10)] + (int % 10 ? " " + ones[int % 10] : "");
-    if (int < 1000) return ones[Math.floor(int / 100)] + " HUNDRED" + (int % 100 ? " " + dollarToWords(int % 100) : "");
-    return dollarToWords(Math.floor(int / 1000)) + " THOUSAND" + (int % 1000 ? " " + dollarToWords(int % 1000) : "");
+    if (n <= 0) return "ZERO";
+    if (n < 20) return ones[n];
+    if (n < 100) return tens[Math.floor(n/10)] + (n%10 ? " "+ones[n%10] : "");
+    if (n < 1000) return ones[Math.floor(n/100)]+" HUNDRED"+(n%100?" "+d2w(n%100):"");
+    return d2w(Math.floor(n/1000))+" THOUSAND"+(n%1000?" "+d2w(n%1000):"");
+  }
+  const dollars  = Math.floor(totalUsd);
+  const cents    = Math.round((totalUsd - dollars) * 100);
+  const usdWords = d2w(dollars) + " DOLLAR" + (cents > 0 ? " AND "+d2w(cents)+" CENTS" : "");
+
+  function itemUnitUsd(item: Item): number {
+    if (item.sellingPrice > 0) return item.sellingPrice;
+    return item.inrUnit != null ? item.inrUnit / exchRate : 0;
   }
 
-  const usdWords = order.dollarAmount != null ? dollarToWords(order.dollarAmount) + " DOLLAR" : "";
-
   return (
-    <div id="gst-invoice-print" style={{ fontFamily: "'Arial', sans-serif", fontSize: "8.5pt", color: "#111", background: "#fff" }}>
+    <div id="exp-inv" style={{ fontFamily: "Arial,sans-serif", fontSize: "9.5pt", color: "#000", background: "#fff", padding: "10px" }}>
       <style>{`
-        #gst-invoice-print { padding: 0; }
-        #gst-invoice-print .inv-border { border: 2px solid #c8960c; border-radius: 4px; overflow: hidden; }
-        #gst-invoice-print .inv-header { background: #fef9e7; border-bottom: 2px solid #c8960c; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }
-        #gst-invoice-print .inv-header-logo { height: 52px; width: auto; object-fit: contain; }
-        #gst-invoice-print .inv-header-company { text-align: right; color: #111; }
-        #gst-invoice-print .inv-header-company .co-name { font-size: 15pt; font-weight: 800; letter-spacing: 0.04em; color: #7a5c00; }
-        #gst-invoice-print .inv-header-company .co-addr { font-size: 7pt; color: #555; margin-top: 2px; line-height: 1.4; }
-        #gst-invoice-print .inv-title-bar { background: #fffbeb; padding: 5px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e8d080; }
-        #gst-invoice-print .inv-title-text { font-size: 11pt; font-weight: 800; color: #7a5c00; letter-spacing: 0.08em; }
-        #gst-invoice-print .inv-title-meta { font-size: 8pt; color: #333; text-align: right; line-height: 1.6; }
-        #gst-invoice-print .inv-section { display: flex; border-bottom: 1px solid #e8d080; }
-        #gst-invoice-print .inv-section .col { flex: 1; padding: 7px 10px; border-right: 1px solid #e8d080; }
-        #gst-invoice-print .inv-section .col:last-child { border-right: none; }
-        #gst-invoice-print .inv-section .col-label { font-size: 6.5pt; color: #888; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
-        #gst-invoice-print .inv-section .col-value { font-size: 8pt; color: #111; font-weight: 600; line-height: 1.5; }
-        #gst-invoice-print .inv-section .col-value .co-buyer { font-weight: 800; font-size: 9pt; }
-        #gst-invoice-print table.goods-table { width: 100%; border-collapse: collapse; }
-        #gst-invoice-print table.goods-table td,
-        #gst-invoice-print table.goods-table th { border: 1px solid #e8d080; padding: 3px 4px; vertical-align: middle; font-size: 7.5pt; }
-        #gst-invoice-print table.goods-table thead tr { background: #fef3c7; }
-        #gst-invoice-print table.goods-table thead th { color: #7a5c00; font-weight: 800; text-align: center; font-size: 7pt; padding: 4px 3px; border-color: #c8960c; }
-        #gst-invoice-print table.goods-table tbody tr:nth-child(even) { background: #fffdf0; }
-        #gst-invoice-print .totals-row td { padding: 3px 6px; font-size: 7.5pt; border: 1px solid #e8d080; }
-        #gst-invoice-print .totals-row.highlight td { background: #fef3c7; color: #7a5c00; font-weight: 800; font-size: 9pt; border-color: #c8960c; }
-        #gst-invoice-print .words-row { background: #fff9c4; border-top: 1px solid #e8d080; padding: 5px 10px; font-size: 8pt; font-weight: 700; color: #333; }
-        #gst-invoice-print .decl-row { padding: 3px 10px; font-size: 7pt; color: #444; border-top: 1px solid #f0e8b0; }
-        #gst-invoice-print .footer-bar { background: #fef9e7; padding: 7px 14px; display: flex; justify-content: space-between; align-items: flex-end; border-top: 2px solid #c8960c; }
-        #gst-invoice-print .footer-licenses { font-size: 7pt; color: #333; line-height: 1.7; }
-        #gst-invoice-print .footer-sig { text-align: right; font-size: 7.5pt; color: #7a5c00; font-weight: 700; }
+        #exp-inv, #exp-inv * { box-sizing: border-box; color: #000 !important; -webkit-text-fill-color: #000 !important; font-family: Arial, sans-serif; }
+        #exp-inv { background: #fff !important; }
+        #exp-inv table { width: 100%; border-collapse: collapse; }
+        #exp-inv td, #exp-inv th { border: 1px solid #000 !important; padding: 4px 6px; vertical-align: top; }
+        #exp-inv thead th { background: #d9d9d9 !important; font-weight: 700; text-align: center; font-size: 8.5pt; padding: 5px 4px; }
+        #exp-inv .banner td { background: #e8e8e8 !important; font-weight: 800; text-align: center; font-size: 10.5pt; letter-spacing: 0.08em; padding: 6px; }
+        #exp-inv .total-row td { background: #d9d9d9 !important; font-weight: 800; }
+        #exp-inv .footer-right { text-align: center; }
+        #exp-inv .stamp-box { border: 1px solid #000 !important; min-height: 60px; display: flex; align-items: center; justify-content: center; font-size: 8pt; color: #555 !important; margin: 6px 0; }
+        #exp-inv .sig-line { border-top: 1px solid #000 !important; padding-top: 4px; font-weight: 700; font-size: 8pt; }
+        #exp-inv .meta-table td { border: none !important; padding: 2px 4px; font-size: 8.5pt; }
+        #exp-inv .meta-table td:first-child { font-weight: 700; white-space: nowrap; width: 38%; }
+        #exp-inv .inner-meta td { border: none !important; padding: 2px 3px; font-size: 8pt; }
+        #exp-inv .inner-meta td:first-child { font-weight: 700; white-space: nowrap; }
       `}</style>
 
-      <div className="inv-border">
-        {/* ── Header: Logo + Company ── */}
-        <div className="inv-header">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Unnati Pharmax" className="inv-header-logo" />
-          <div className="inv-header-company">
-            <div className="co-name">UNNATI PHARMAX</div>
-            <div className="co-addr">
-              Ground Floor, House No 307/4, Guru Vandana Apartment,<br />
-              Kakasaheb Cholkar Marg, Lakadganj, Nagpur – 440008, Maharashtra<br />
-              GST: 27FNXPP3883B1ZA &nbsp;|&nbsp; PAN: FNXPP3883B
-            </div>
-          </div>
-        </div>
+      {/* ── Row 1: Header ── */}
+      <table style={{ marginBottom: "-1px" }}>
+        <tbody>
+          <tr>
+            {/* Left: Logo + Company */}
+            <td style={{ width: "55%", padding: "8px 10px", verticalAlign: "middle" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo.png" alt="Unnati" style={{ height: 56, width: "auto", objectFit: "contain" }} />
+                <div>
+                  <div style={{ fontWeight: 900, fontSize: "13pt", letterSpacing: "0.04em" }}>UNNATI PHARMAX</div>
+                  <div style={{ fontSize: "7.5pt", lineHeight: 1.6, marginTop: 3 }}>
+                    GROUND FLOOR, HOUSE NO 307/4, GURU VANDANA APARTMENT,<br />
+                    KAKASAHEB CHOLKAR MARG, LAKADGANJ, NAGPUR – 440008, MAHARASHTRA<br />
+                    GSTIN: 27FNXPP3883B1ZA &nbsp;|&nbsp; IEC: FNXPP3883B &nbsp;|&nbsp; Drug Lic: MH-NB-152878
+                  </div>
+                </div>
+              </div>
+            </td>
+            {/* Right: EXPORT INVOICE title + meta */}
+            <td style={{ width: "45%", padding: "8px 10px", verticalAlign: "top" }}>
+              <div style={{ fontWeight: 900, fontSize: "14pt", textAlign: "center", letterSpacing: "0.1em", marginBottom: 8, borderBottom: "2px solid #000", paddingBottom: 4 }}>
+                EXPORT INVOICE
+              </div>
+              <table className="meta-table" style={{ width: "100%" }}>
+                <tbody>
+                  <tr><td>Invoice No.</td><td style={{ fontWeight: 800, fontSize: "9.5pt" }}>{order.invoiceNo ?? "—"}</td></tr>
+                  <tr><td>Date</td><td>{dateStr}</td></tr>
+                  <tr><td>Tracking No.</td><td>{order.trackingNo ?? "—"}</td></tr>
+                  <tr><td>Mode of Shipment</td><td>{order.shipmentMode ?? "EMS"}</td></tr>
+                  <tr><td>Exchange Rate</td><td>1 USD = ₹{exchRate}</td></tr>
+                  <tr><td>Port of Loading</td><td>Mumbai, India</td></tr>
+                  <tr><td>Port of Discharge</td><td>{order.country}</td></tr>
+                  <tr><td>IEC Code</td><td>FNXPP3883B</td></tr>
+                  <tr><td>LUT No.</td><td>AD271023037544C</td></tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-        {/* ── Title bar ── */}
-        <div className="inv-title-bar">
-          <span className="inv-title-text">GST INVOICE</span>
-          <div className="inv-title-meta">
-            <span><b>Invoice No:</b> {order.invoiceNo ?? "—"}</span><br />
-            <span><b>Date:</b> {today}</span><br />
-            <span><b>Ref:</b> {order.id.slice(0, 8).toUpperCase()}</span>
-          </div>
-        </div>
-
-        {/* ── Consignee | Buyer | Shipping ── */}
-        <div className="inv-section">
-          <div className="col" style={{ flex: 2 }}>
-            <div className="col-label">Consignee</div>
-            <div className="col-value">
-              <div className="co-buyer">{order.fullName}</div>
+      {/* ── Row 2: Consignee / Buyer ── */}
+      <table style={{ marginBottom: "-1px" }}>
+        <tbody>
+          <tr>
+            <td style={{ width: "55%", minHeight: 90, padding: "6px 10px" }}>
+              <div style={{ fontWeight: 700, fontSize: "8pt", marginBottom: 5, textDecoration: "underline" }}>CONSIGNEE :</div>
+              <div style={{ fontWeight: 800, fontSize: "9.5pt" }}>{order.fullName}</div>
               <div>{order.address}</div>
-              {order.city && <div>{order.city}{order.state ? `, ${order.state}` : ""} {order.postalCode}</div>}
-              <div><b>Country:</b> {order.country}</div>
-            </div>
-          </div>
-          <div className="col" style={{ flex: 1 }}>
-            <div className="col-label">Buyer&apos;s Reference</div>
-            <div className="col-value" style={{ fontWeight: 800, fontSize: "9pt" }}>{order.remitterName}</div>
-          </div>
-          <div className="col" style={{ flex: 1 }}>
-            <div className="col-label">Shipping Details</div>
-            <div className="col-value">
-              <div>{shipLabel}</div>
-              <div><b>Pre-carrier:</b> Mumbai</div>
-              <div><b>Port of Loading:</b> Mumbai</div>
-              <div><b>Origin:</b> INDIA</div>
-              <div><b>Destination:</b> {order.country.toUpperCase()}</div>
-            </div>
-          </div>
-        </div>
+              {(order.city || order.state) && <div>{[order.city, order.state].filter(Boolean).join(", ")} {order.postalCode}</div>}
+              <div style={{ fontWeight: 700 }}>{order.country}</div>
+            </td>
+            <td style={{ width: "45%", minHeight: 90, padding: "6px 10px" }}>
+              <div style={{ fontWeight: 700, fontSize: "8pt", marginBottom: 5, textDecoration: "underline" }}>BUYER (If other than consignee) :</div>
+              {order.remitterName && <div style={{ fontWeight: 700 }}>{order.remitterName}</div>}
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-        {/* ── Goods Table ── */}
-        <table className="goods-table">
-          <thead>
-            <tr>
-              <th style={{ width: 22 }}>Sr.</th>
-              <th style={{ width: 22 }}>Pcl</th>
-              <th style={{ minWidth: 90 }}>Product</th>
-              <th style={{ minWidth: 95 }}>Composition</th>
-              <th style={{ minWidth: 80 }}>Manufacturer</th>
-              <th style={{ width: 46 }}>HSN</th>
-              <th style={{ width: 36 }}>Pack</th>
-              <th style={{ width: 28 }}>GST</th>
-              <th style={{ width: 56 }}>Batch No</th>
-              <th style={{ width: 38 }}>Mfg</th>
-              <th style={{ width: 36 }}>Exp</th>
-              <th style={{ width: 30 }}>Qty</th>
-              <th style={{ width: 38 }}>INR/Unit</th>
-              <th style={{ width: 50 }}>Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {order.items.map((item, idx) => (
+      {/* ── Banner ── */}
+      <table className="banner" style={{ marginBottom: "-1px" }}>
+        <tbody><tr><td>INDIAN PHARMACEUTICAL MEDICINES</td></tr></tbody>
+      </table>
+
+      {/* ── Product Table ── */}
+      <table style={{ marginBottom: "-1px" }}>
+        <thead>
+          <tr>
+            <th style={{ width: "4%" }}>Sr.<br />No.</th>
+            <th style={{ textAlign: "left", minWidth: 120 }}>PRODUCT</th>
+            <th style={{ width: "5%" }}>QTY</th>
+            <th style={{ width: "11%" }}>Batch No.</th>
+            <th style={{ width: "7%" }}>MFG</th>
+            <th style={{ width: "7%" }}>EXP</th>
+            <th style={{ textAlign: "left", minWidth: 70 }}>MANUFACTURER</th>
+            <th style={{ width: "8%", textAlign: "right" }}>SR.B<br />(USD)</th>
+            <th style={{ width: "11%", textAlign: "right" }}>AMOUNT<br />US $</th>
+          </tr>
+        </thead>
+        <tbody>
+          {order.items.map((item, idx) => {
+            const unitUsd   = itemUnitUsd(item);
+            const amountUsd = unitUsd * item.quantity;
+            return (
               <tr key={item.productId}>
                 <td style={{ textAlign: "center" }}>{idx + 1}</td>
-                <td style={{ textAlign: "center" }}>{idx + 1}</td>
-                <td style={{ fontWeight: 700 }}>{item.productName}</td>
-                <td>{item.composition ?? ""}</td>
-                <td>{item.manufacturer ?? ""}</td>
-                <td style={{ textAlign: "center" }}>{item.hsn ?? ""}</td>
-                <td style={{ textAlign: "center" }}>{item.pack ?? ""}</td>
-                <td style={{ textAlign: "center" }}>{item.gstPercent != null ? `${item.gstPercent}%` : ""}</td>
-                <td>{item.batchNo ?? ""}</td>
-                <td style={{ textAlign: "center" }}>{item.mfgDate ?? ""}</td>
-                <td style={{ textAlign: "center" }}>{item.expDate ?? ""}</td>
-                <td style={{ textAlign: "right" }}>{item.quantity}</td>
-                <td style={{ textAlign: "right" }}>{item.inrUnit?.toFixed(2) ?? ""}</td>
-                <td style={{ textAlign: "right", fontWeight: 700 }}>{item.amount?.toFixed(2) ?? ""}</td>
+                <td>
+                  <div style={{ fontWeight: 700 }}>{item.productName}</div>
+                  {item.composition && <div style={{ fontSize: "7.5pt" }}>{item.composition}</div>}
+                </td>
+                <td style={{ textAlign: "center", fontWeight: 700 }}>{item.quantity}</td>
+                <td style={{ textAlign: "center", fontFamily: "monospace", fontSize: "8pt" }}>{item.batchNo ?? ""}</td>
+                <td style={{ textAlign: "center", fontSize: "8pt" }}>{item.mfgDate ?? ""}</td>
+                <td style={{ textAlign: "center", fontSize: "8pt" }}>{item.expDate ?? ""}</td>
+                <td style={{ fontSize: "8pt" }}>{item.manufacturer ?? ""}</td>
+                <td style={{ textAlign: "right" }}>{unitUsd > 0 ? unitUsd.toFixed(2) : ""}</td>
+                <td style={{ textAlign: "right", fontWeight: 700 }}>{amountUsd > 0 ? amountUsd.toFixed(2) : ""}</td>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            );
+          })}
+          {order.items.length < 6 && Array.from({ length: 6 - order.items.length }).map((_, i) => (
+            <tr key={`filler-${i}`}>
+              {Array.from({ length: 9 }).map((_, j) => <td key={j} style={{ height: 22 }}>&nbsp;</td>)}
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="total-row">
+            <td colSpan={8} style={{ textAlign: "right", fontSize: "9.5pt" }}>TOTAL PRODUCT VALUE</td>
+            <td style={{ textAlign: "right", fontSize: "9.5pt" }}>{totalUsd.toFixed(2)}</td>
+          </tr>
+        </tfoot>
+      </table>
 
-        {/* ── Totals ── */}
-        <table className="goods-table" style={{ marginTop: 0 }}>
-          <tbody>
-            <tr className="totals-row">
-              <td colSpan={12} style={{ textAlign: "right", fontWeight: 700 }}>Sub Total (INR)</td>
-              <td colSpan={2} style={{ textAlign: "right", fontWeight: 700 }}>{inrTotal.toFixed(2)}</td>
-            </tr>
-            <tr className="totals-row">
-              <td colSpan={12} style={{ textAlign: "right" }}>Shipping Charges (ITPS)</td>
-              <td colSpan={2} style={{ textAlign: "right" }}>Included</td>
-            </tr>
-            <tr className="totals-row">
-              <td colSpan={12} style={{ textAlign: "right" }}>Shipping Charges (EMS)</td>
-              <td colSpan={2} style={{ textAlign: "right", fontWeight: 700 }}>
-                {order.shippingPrice > 0 ? order.shippingPrice.toFixed(2) : "—"}
-              </td>
-            </tr>
-            <tr className="totals-row">
-              <td colSpan={12} style={{ textAlign: "right" }}>Round Off</td>
-              <td colSpan={2} style={{ textAlign: "right" }}></td>
-            </tr>
-            <tr className="totals-row highlight">
-              <td colSpan={11} style={{ textAlign: "right" }}>TOTAL AMOUNT</td>
-              <td style={{ textAlign: "center", fontSize: "8pt" }}>INR</td>
-              <td colSpan={2} style={{ textAlign: "right", fontSize: "11pt" }}>
-                {order.inrAmount ? Math.round(order.inrAmount).toLocaleString("en-IN") : ""}
-              </td>
-            </tr>
-            <tr className="totals-row highlight">
-              <td colSpan={11} style={{ textAlign: "right" }}>TOTAL AMOUNT</td>
-              <td style={{ textAlign: "center", fontSize: "8pt" }}>USD</td>
-              <td colSpan={2} style={{ textAlign: "right", fontSize: "13pt", fontWeight: 800 }}>
-                {order.dollarAmount ?? ""}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        {/* ── Amount in words ── */}
-        <div className="words-row">
-          Amount in Words: {usdWords}
-        </div>
-
-        {/* ── Declarations ── */}
-        <div className="decl-row">We declare that this Invoice shows the actual price of the goods described and that all particulars are true and correct.</div>
-        <div className="decl-row">Export under LUT without payment of GST at 0%.</div>
-        <div className="decl-row">Country of Origin: INDIA &nbsp;|&nbsp; Port of Loading: Mumbai &nbsp;|&nbsp; Final Destination: {order.country.toUpperCase()}</div>
-        <div className="decl-row">Total No. of Packages: {order.items.length} &nbsp;|&nbsp; Shipment Mode: ITPS / EMS</div>
-
-        {/* ── Footer: Licenses + Signature ── */}
-        <div className="footer-bar">
-          <div className="footer-licenses">
-            <b>Licenses:</b> 20B: MH-NG2-526036 &nbsp;|&nbsp; 21B: MH-NAG-526037<br />
-            <b>GST No:</b> 27FNXPP3883B1ZA &nbsp;|&nbsp; <b>PAN:</b> FNXPP3883B
-          </div>
-          <div className="footer-sig">
-            <div style={{ height: 36 }}></div>
-            For UNNATI PHARMAX<br />
-            Authorized Signatory
-          </div>
-        </div>
-      </div>
+      {/* ── Footer ── */}
+      <table>
+        <tbody>
+          <tr>
+            {/* Left: weights, amount in words, declaration */}
+            <td style={{ width: "65%", fontSize: "8.5pt", padding: "8px 10px" }}>
+              <div style={{ marginBottom: 6, fontSize: "9pt" }}>
+                <strong>GMS NET WT :</strong>&nbsp;
+                {order.netWeight != null ? (order.netWeight * 1000).toFixed(0) : "________"}
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <strong>GMS NET NET WT :</strong>&nbsp;
+                {order.grossWeight != null ? (order.grossWeight * 1000).toFixed(0) : "________"}
+              </div>
+              <div style={{ marginBottom: 8, fontSize: "8.5pt" }}>
+                <strong>DOLLAR in Words :</strong>&nbsp;{usdWords}
+              </div>
+              <div style={{ fontSize: "7.5pt", lineHeight: 1.7, borderTop: "1px solid #000", paddingTop: 6 }}>
+                <strong>Declaration :</strong> We declare that this Invoice shows the actual price of the goods
+                described and that all particulars are true and correct. Supply meant for export under
+                Letter of Undertaking (LUT) without payment of IGST. The goods are of Indian Origin and
+                are permitted for export from India.
+              </div>
+            </td>
+            {/* Right: FOR VALUE + stamp + signatory */}
+            <td style={{ width: "35%", padding: "8px 10px", verticalAlign: "top" }} className="footer-right">
+              <div style={{ fontSize: "9pt", fontWeight: 700, marginBottom: 2 }}>FOR VALUE</div>
+              <div style={{ fontSize: "13pt", fontWeight: 900, marginBottom: 12 }}>
+                USD &nbsp;{totalUsd.toFixed(2)}
+              </div>
+              <div className="stamp-box">COMPANY STAMP</div>
+              <div style={{ height: 36 }} />
+              <div className="sig-line">Authorised Signatory</div>
+              <div style={{ fontSize: "8pt", fontWeight: 700, marginTop: 2 }}>For UNNATI PHARMAX</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -427,19 +411,19 @@ function CoveringLetterDoc({ order }: { order: Order }) {
   const productNames = order.items.map(i => i.productName).join(", ");
 
   return (
-    <div id="covering-letter-print" style={{ fontFamily: "Times New Roman, serif", fontSize: "11pt", color: "#000", padding: "24px 32px", lineHeight: 1.7 }}>
+    <div id="covering-letter-print" style={{ fontFamily: "Times New Roman, serif", fontSize: "11pt", color: "#000", padding: "16px 28px", lineHeight: 1.5 }}>
       <style>{`
         #covering-letter-print .hl { background: #fff9c4; }
         @media print { #covering-letter-print { padding: 0; } }
       `}</style>
 
       {/* Date + Addressee */}
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 18 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
         <div></div>
         <div>Date: <span className="hl"><b>{dateStr}</b></span></div>
       </div>
 
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 10 }}>
         <b>The Asst. Commissioner of Customs</b><br />
         Postal Appraising Section (PAS), Export Department<br />
         Foreign Post Office, VideshDakBhavan,<br />
@@ -447,9 +431,9 @@ function CoveringLetterDoc({ order }: { order: Order }) {
         Mumbai – 400 001
       </div>
 
-      <div style={{ marginBottom: 12 }}>Dear Sir,</div>
+      <div style={{ marginBottom: 8 }}>Dear Sir,</div>
 
-      <div style={{ marginBottom: 12 }}>
+      <div style={{ marginBottom: 8 }}>
         We request permission to export, non narcotic drugs/Medicines duly approved by Central
         Drugs Standard Control Organization (CDSCO) &amp; FDA{" "}
         <span className="hl"><b>{productNames}</b></span>{" "}
@@ -460,23 +444,23 @@ function CoveringLetterDoc({ order }: { order: Order }) {
         dated <span className="hl"><b>{dateStr}</b></span>.
       </div>
 
-      <div style={{ marginBottom: 12 }}>
+      <div style={{ marginBottom: 8 }}>
         The drugs/medicines being exported are procured in bulk from licensed manufacturers or
         their stockiest and are manufactured as per the norms notified by CDSCO and FDA.
       </div>
 
-      <div style={{ marginBottom: 12 }}>
+      <div style={{ marginBottom: 8 }}>
         The drugs/medicines are shipped in their original packing to the buyer&apos;s individual clients
         abroad as per the dispatch list forwarded along with the order.
       </div>
 
-      <div style={{ marginBottom: 12 }}>
+      <div style={{ marginBottom: 8 }}>
         The payment is received through our ICICI Bank account. 146305501090 No export
         incentive, benefits or drawback is claimed by us. The following documents are enclosed for
         your kind perusal:-
       </div>
 
-      <ol style={{ marginBottom: 12, paddingLeft: 28 }}>
+      <ol style={{ marginBottom: 8, paddingLeft: 28 }}>
         <li>Covering Letter</li>
         <li>Invoice (4 Copies)</li>
         <li>Packing List 2 Copies</li>
@@ -484,28 +468,28 @@ function CoveringLetterDoc({ order }: { order: Order }) {
         <li>PBE (2 copy)</li>
       </ol>
 
-      <div style={{ marginBottom: 12 }}>
+      <div style={{ marginBottom: 8 }}>
         We undertake to abide by provisions of Foreign Exchange Management Act 1999, as
         amended from time to time, including realization / repatriation of Foreign Exchange to &amp; from
         India.
       </div>
 
-      <div style={{ marginBottom: 12 }}>
+      <div style={{ marginBottom: 8 }}>
         We trust the same is in order and submit that the above declaration is true and correct and
         the goods exported are not in contravention to any laws in force.
       </div>
 
-      <div style={{ marginBottom: 12 }}>
+      <div style={{ marginBottom: 8 }}>
         We had authorized to <b>AARPEE CLEARING &amp; LOGISTICS (CHA NO: 11/2623)</b>. We
         undertake that we are responsible for the acts related to above if found violating any Law in
         force.
       </div>
 
-      <div style={{ marginBottom: 6 }}>Thanking you,</div>
-      <div style={{ marginBottom: 32 }}>Yours sincerely,</div>
+      <div style={{ marginBottom: 4 }}>Thanking you,</div>
+      <div style={{ marginBottom: 20 }}>Yours sincerely,</div>
 
       <div>
-        <b>For UNNATI PHARMAX</b><br /><br /><br />
+        <b>For UNNATI PHARMAX</b><br /><br />
         <b>Authorized Signatory</b>
       </div>
     </div>
@@ -1378,232 +1362,173 @@ function EdfDoc({ order }: { order: Order }) {
   );
 }
 
-// ── Documents overlay (tabs + print) ──────────────────────────────────────────
-function DocumentsOverlay({
-  order,
-  onClose,
-}: {
-  order: Order;
-  onClose: () => void;
-}) {
-  const isDHL = order.shipmentMode === "DHL";
-  const [doc, setDoc] = useState<"invoice" | "packing" | "form2" | "edf" | "letter" | "cn22" | "dhl-invoice" | "dhl-packing" | "dhl-adc" | "dhl-shipper" | "dhl-export-decl" | "dhl-custom-decl" | "dhl-auth" | "dhl-nondgr">(isDHL ? "dhl-invoice" : "invoice");
+// ── Documents overlay — all docs stacked, single print/download ───────────────
+function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => void }) {
+  const isDHL        = order.shipmentMode === "DHL";
   const downloadHref = `/api/packaging/orders/${order.id}/documents`;
 
-  const titleMap = {
-    invoice: "GST Invoice",
-    packing: "Packing List",
-    form2:   "Form-II",
-    edf:     "EDF",
-    letter:  "Covering Letter",
-    cn22:    "CN22 Label",
-    "dhl-invoice":     "DHL Invoice",
-    "dhl-packing":     "DHL Packing List",
-    "dhl-adc":         "ADC Sheet",
-    "dhl-shipper":     "Shipper's Letter",
-    "dhl-export-decl": "Export Declaration",
-    "dhl-custom-decl": "Custom Declaration",
-    "dhl-auth":        "Authorization Letter",
-    "dhl-nondgr":      "Non-DGR Certificate",
-  } as const;
+  const nonDHLDocs = [
+    { label: "Export Invoice",    comp: <GSTInvoiceDoc     order={order} /> },
+    { label: "Packing List",      comp: <PackingListDoc    order={order} /> },
+    { label: "Form II",           comp: <Form2Doc          order={order} /> },
+    { label: "EDF",               comp: <EdfDoc            order={order} /> },
+    { label: "Covering Letter",   comp: <CoveringLetterDoc order={order} /> },
+    { label: "CN22 Label",        comp: <CN22LabelDoc      order={order} /> },
+  ];
+
+  const dhlDocs = [
+    { label: "DHL Invoice",          comp: <DHLInvoiceDoc    order={order} /> },
+    { label: "DHL Packing List",     comp: <DHLPackingDoc    order={order} /> },
+    { label: "ADC Sheet",            comp: <DHLAdcDoc        order={order} /> },
+    { label: "Shipper's Letter",     comp: <DHLShipperDoc    order={order} /> },
+    { label: "Export Declaration",   comp: <DHLExportDeclDoc order={order} /> },
+    { label: "Custom Declaration",   comp: <DHLCustomDeclDoc order={order} /> },
+    { label: "Authorization Letter", comp: <DHLAuthDoc       order={order} /> },
+    { label: "Non-DGR Certificate",  comp: <DHLNonDgrDoc     order={order} /> },
+  ];
+
+  const docs = isDHL ? dhlDocs : nonDHLDocs;
+
+  // Open a clean new window with just the document HTML and print from there.
+  // This avoids all overlay/fixed-positioning/visibility-hack issues that cause
+  // blank pages, side-clipping, and broken pagination.
+  function handlePrint() {
+    const root = document.getElementById("unnati-docs-root");
+    if (!root) return;
+
+    // Fix relative image src paths to absolute so they load in the new window
+    const origin = window.location.origin;
+    const html = root.innerHTML.replace(/src="\/([^"]+)"/g, `src="${origin}/$1"`);
+
+    const win = window.open("", "_blank", "width=900,height=700");
+    if (!win) { alert("Pop-up blocked — allow pop-ups for this site and try again."); return; }
+
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>${order.invoiceNo ?? "Documents"}</title>
+<style>
+  *, *::before, *::after {
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  body { margin: 0; padding: 0; background: #fff; font-family: Arial, sans-serif; }
+  .doc-section-label { display: none !important; }
+  .doc-section {
+    page-break-after: always;
+    break-after: page;
+    page-break-inside: auto;
+    padding: 0;
+    overflow: visible;
+  }
+  .doc-section:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+  @page { size: A4 portrait; margin: 10mm; }
+</style>
+</head>
+<body>${html}</body>
+</html>`);
+    win.document.close();
+
+    // Wait for images to load before printing
+    const imgs = win.document.images;
+    if (imgs.length === 0) {
+      win.focus();
+      win.print();
+      win.close();
+    } else {
+      let loaded = 0;
+      const total = imgs.length;
+      const tryPrint = () => {
+        loaded++;
+        if (loaded >= total) { win.focus(); win.print(); win.close(); }
+      };
+      Array.from(imgs).forEach(img => {
+        if (img.complete) { tryPrint(); }
+        else { img.onload = tryPrint; img.onerror = tryPrint; }
+      });
+    }
+  }
 
   return (
-    <div
-      id="unnati-docs-overlay"
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.7)",
-        zIndex: 1000,
-        overflowY: "auto",
-      }}
-    >
-      <div style={{ maxWidth: doc === "form2" ? 1200 : 920, margin: "20px auto", background: "#fff", padding: "0 0 20px" }}>
-        {/* Controls (hidden in print) */}
-        <div
-          data-no-print
-          style={{
-            background: "#1a1a2e",
-            color: "#fff",
-            padding: "10px 20px",
-            display: "flex",
-            gap: 10,
-            alignItems: "center",
-            position: "sticky",
-            top: 0,
-            zIndex: 10,
-            flexWrap: "wrap",
-          }}
-        >
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000, overflowY: "auto" }}>
+      <div style={{ maxWidth: 960, margin: "20px auto", background: "#fff", padding: "0 0 40px" }}>
+
+        {/* ── Control bar ── */}
+        <div style={{
+          background: "#1a1a2e", color: "#fff",
+          padding: "10px 20px",
+          display: "flex", gap: 10, alignItems: "center",
+          position: "sticky", top: 0, zIndex: 10, flexWrap: "wrap",
+        }}>
           <span style={{ fontWeight: 700, marginRight: "auto" }}>
-            Documents — {order.invoiceNo ?? "—"} · {titleMap[doc]}
+            {order.invoiceNo ?? "—"} &nbsp;·&nbsp; {docs.length} documents
           </span>
-
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {isDHL ? (
-              <>
-                <button onClick={() => setDoc("dhl-invoice")}     className="btn btn-sm btn-secondary">Invoice</button>
-                <button onClick={() => setDoc("dhl-packing")}     className="btn btn-sm btn-secondary">Packing List</button>
-                <button onClick={() => setDoc("dhl-adc")}         className="btn btn-sm btn-secondary">ADC Sheet</button>
-                <button onClick={() => setDoc("dhl-shipper")}     className="btn btn-sm btn-secondary">Shipper's Letter</button>
-                <button onClick={() => setDoc("dhl-export-decl")} className="btn btn-sm btn-secondary">Export Decl.</button>
-                <button onClick={() => setDoc("dhl-custom-decl")} className="btn btn-sm btn-secondary">Custom Decl.</button>
-                <button onClick={() => setDoc("dhl-auth")}        className="btn btn-sm btn-secondary">Auth Letter</button>
-                <button onClick={() => setDoc("dhl-nondgr")}      className="btn btn-sm btn-secondary">Non-DGR Cert</button>
-              </>
-            ) : (
-              <>
-                <button onClick={() => setDoc("invoice")} className="btn btn-sm btn-secondary">Invoice</button>
-                <button onClick={() => setDoc("packing")} className="btn btn-sm btn-secondary">Packing List</button>
-                <button onClick={() => setDoc("form2")}   className="btn btn-sm btn-secondary">Form-II</button>
-                <button onClick={() => setDoc("edf")}     className="btn btn-sm btn-secondary">EDF</button>
-                <button onClick={() => setDoc("letter")}  className="btn btn-sm btn-secondary">Covering Letter</button>
-                <button onClick={() => setDoc("cn22")}    className="btn btn-sm btn-secondary">CN22 Label</button>
-              </>
-            )}
-          </div>
-
           <button
-            onClick={() => window.print()}
-            style={{
-              padding: "6px 16px",
-              background: "#27ae60",
-              color: "#fff",
-              border: "none",
-              borderRadius: 6,
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
+            onClick={handlePrint}
+            style={{ padding: "6px 18px", background: "#27ae60", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}
           >
-            🖨 Print
+            🖨 Print All
           </button>
-
           <a
             href={downloadHref}
-            style={{
-              padding: "6px 16px",
-              background: "#2563eb",
-              color: "#fff",
-              border: "none",
-              borderRadius: 6,
-              cursor: "pointer",
-              fontWeight: 600,
-              textDecoration: "none",
-            }}
+            style={{ padding: "6px 18px", background: "#2563eb", color: "#fff", borderRadius: 6, cursor: "pointer", fontWeight: 600, textDecoration: "none" }}
           >
-            Download Documents
+            ⬇ Download All
           </a>
-
           <button
             onClick={onClose}
-            style={{
-              padding: "6px 16px",
-              background: "rgba(255,255,255,0.1)",
-              color: "#fff",
-              border: "none",
-              borderRadius: 6,
-              cursor: "pointer",
-            }}
+            style={{ padding: "6px 16px", background: "rgba(255,255,255,0.12)", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}
           >
             ✕ Close
           </button>
-          {order.prescriptionFileName && (
-            <span style={{ fontSize: "0.78rem", color: "#bfdbfe" }}>
-              Prescription: {order.prescriptionFileName}
-            </span>
-          )}
         </div>
 
-        {/* Print + Style isolation */}
-        <div
-          id="unnati-docs-root"
-          style={{
-            padding: "12px",
-            paddingRight: doc === "form2" ? "14px" : "12px",
-            background: "#fff",
-            color: "#000",
-            overflow: "visible",
-          }}
-        >
+        {/* ── All documents stacked (screen view) ── */}
+        <div id="unnati-docs-root" style={{ background: "#fff", color: "#000" }}>
           <style>{`
-            /* FORCE readable text regardless of your ERP theme */
+            /* Force ERP dark-theme overrides back to black text on white for all doc content */
             #unnati-docs-root, #unnati-docs-root * {
               color: #000 !important;
-              background: transparent;
+              -webkit-text-fill-color: #000 !important;
               opacity: 1 !important;
               text-shadow: none !important;
-              -webkit-text-fill-color: #000 !important;
             }
             #unnati-docs-root { background: #fff !important; }
-
-            /* Make tables always visible */
             #unnati-docs-root table { width: 100%; border-collapse: collapse; }
-            #unnati-docs-root td, #unnati-docs-root th {
-              border-color: #000 !important;
+            #unnati-docs-root td, #unnati-docs-root th { border-color: #000 !important; }
+
+            /* Screen-only section label divider */
+            .doc-section-label {
+              background: #1a1a2e !important;
+              color: #fff !important;
+              -webkit-text-fill-color: #fff !important;
+              font-size: 10px;
+              font-weight: 700;
+              padding: 4px 16px;
+              letter-spacing: 0.08em;
+              text-transform: uppercase;
             }
-
-            /* ✅ PRINT FIX: do NOT use body > * { display:none } (causes blank pages) */
-            @media print {
-              body * { visibility: hidden !important; }
-              #unnati-docs-overlay, #unnati-docs-overlay * { visibility: visible !important; }
-
-              /* Remove dim background and position at top */
-              #unnati-docs-overlay { background: #fff !important; position: absolute !important; inset: 0 !important; }
-              #unnati-docs-root { padding: 0 !important; }
-
-              /* Hide controls */
-              [data-no-print] { display: none !important; }
-
-              /* Landscape for Form-II, scale to one page */
-              ${doc === "form2" ? `
-                @page { size: A4 landscape; margin: 4mm; }
-                #unnati-docs-overlay > div { max-width: none !important; width: 100% !important; }
-                #f2-print-wrapper { zoom: 72%; page-break-inside: avoid; }
-                .f2 table { page-break-inside: avoid; }
-              ` : doc === "edf" ? `
-                @page { size: A4 portrait; margin: 10mm; }
-                #unnati-docs-overlay { bottom: auto !important; }
-                #edf-page2 { page-break-before: always !important; break-before: page !important; }
-              ` : doc === "cn22" ? `
-                @page { size: A5 portrait; margin: 6mm; }
-              ` : "@page { size: A4 portrait; margin: 10mm; }"}
-            }
+            .doc-section { padding: 12px; }
           `}</style>
 
-          {/* Render all docs but show only active (no class collisions) */}
-          <div style={{ display: doc === "invoice" ? "block" : "none" }}>
-            <GSTInvoiceDoc order={order} />
-          </div>
-
-          <div style={{ display: doc === "packing" ? "block" : "none" }}>
-            <PackingListDoc order={order} />
-          </div>
-
-          <div style={{ display: doc === "form2" ? "block" : "none" }}>
-            <Form2Doc order={order} />
-          </div>
-
-          <div style={{ display: doc === "edf" ? "block" : "none" }}>
-            <EdfDoc order={order} />
-          </div>
-
-          <div style={{ display: doc === "letter" ? "block" : "none" }}>
-            <CoveringLetterDoc order={order} />
-          </div>
-
-          <div style={{ display: doc === "cn22" ? "block" : "none" }}>
-            <CN22LabelDoc order={order} />
-          </div>
-
-          {/* DHL documents */}
-          <div style={{ display: doc === "dhl-invoice"     ? "block" : "none" }}><DHLInvoiceDoc     order={order} /></div>
-          <div style={{ display: doc === "dhl-packing"     ? "block" : "none" }}><DHLPackingDoc      order={order} /></div>
-          <div style={{ display: doc === "dhl-adc"         ? "block" : "none" }}><DHLAdcDoc          order={order} /></div>
-          <div style={{ display: doc === "dhl-shipper"     ? "block" : "none" }}><DHLShipperDoc      order={order} /></div>
-          <div style={{ display: doc === "dhl-export-decl" ? "block" : "none" }}><DHLExportDeclDoc   order={order} /></div>
-          <div style={{ display: doc === "dhl-custom-decl" ? "block" : "none" }}><DHLCustomDeclDoc   order={order} /></div>
-          <div style={{ display: doc === "dhl-auth"        ? "block" : "none" }}><DHLAuthDoc         order={order} /></div>
-          <div style={{ display: doc === "dhl-nondgr"      ? "block" : "none" }}><DHLNonDgrDoc       order={order} /></div>
+          {docs.map(({ label, comp }, i) => (
+            // Use Fragment so label + section are siblings at the same level.
+            // This makes .doc-section:last-child match ONLY the final section,
+            // so page-break-after:always fires correctly between every document.
+            <React.Fragment key={i}>
+              <div className="doc-section-label">
+                {i + 1} / {docs.length} — {label}
+              </div>
+              <div className="doc-section">
+                {comp}
+              </div>
+            </React.Fragment>
+          ))}
         </div>
       </div>
     </div>
@@ -1876,6 +1801,77 @@ function DHLNonDgrDoc({ order }: { order: Order }) {
           </td>
         </tr>
       </tbody></table>
+    </div>
+  );
+}
+
+// ── Custom square checkbox ────────────────────────────────────────────────────
+function SquareCheckbox({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+  return (
+    <div
+      onClick={(e) => { e.stopPropagation(); onChange(); }}
+      style={{
+        width: 20, height: 20, flexShrink: 0,
+        border: checked ? "2px solid var(--primary)" : "2px solid var(--text-muted)",
+        borderRadius: 4,
+        background: checked ? "var(--primary)" : "transparent",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        cursor: "pointer",
+        transition: "background 0.12s, border-color 0.12s",
+        userSelect: "none",
+      }}
+    >
+      {checked && (
+        <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
+          <path d="M1 4L4 7.5L10 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+    </div>
+  );
+}
+
+// ── Batch action bar (fixed bottom bar when orders are selected) ──────────────
+function BatchActionBar({
+  selectedCount,
+  onGenerate,
+  onClear,
+  generating,
+  err,
+}: {
+  selectedCount: number;
+  onGenerate: () => void;
+  onClear: () => void;
+  generating: boolean;
+  err: string;
+}) {
+  if (selectedCount === 0) return null;
+
+  return (
+    <div style={{
+      position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
+      background: "var(--bg-card)",
+      borderTop: "2px solid var(--primary)",
+      padding: "0.75rem 1.5rem",
+      display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap",
+      boxShadow: "0 -4px 24px rgba(0,0,0,0.25)",
+    }}>
+      <span style={{ fontWeight: 700, color: "var(--primary)", fontSize: "0.9rem" }}>
+        {selectedCount} order{selectedCount !== 1 ? "s" : ""} selected
+      </span>
+      <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+        Tracking &amp; license numbers are set per order above
+      </span>
+      <div style={{ flex: 1 }} />
+      <button onClick={onClear} className="btn btn-secondary btn-sm">✕ Clear selection</button>
+      <button
+        onClick={onGenerate}
+        disabled={generating}
+        className="btn btn-primary"
+        style={{ fontSize: "0.9rem" }}
+      >
+        {generating ? "Generating…" : "Generate Combined Documents"}
+      </button>
+      {err && <span style={{ color: "#f87171", fontSize: "0.82rem", width: "100%" }}>{err}</span>}
     </div>
   );
 }
@@ -2208,7 +2204,25 @@ export default function PackagingClient() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeDocsOrder, setActiveDocsOrder] = useState<Order | null>(null);
-  const [tab, setTab] = useState<"ready" | "packing">("ready");
+  const [mainMode, setMainMode] = useState<"single" | "multi">("single");
+  const [singleStatusTab, setSingleStatusTab] = useState<"ready" | "packing">("ready");
+  const [multiStatusTab, setMultiStatusTab]   = useState<"ready" | "packing">("ready");
+
+  // Batch selection state (Single Order tab only)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchGenerating, setBatchGenerating] = useState(false);
+  const [batchErr, setBatchErr] = useState("");
+  // Per-order tracking/license inputs (only used when order is selected)
+  const [orderDetails, setOrderDetails] = useState<Map<string, { trackingNo: string; licenseNo: string }>>(new Map());
+
+  function setOrderDetail(id: string, field: "trackingNo" | "licenseNo", value: string) {
+    setOrderDetails((prev) => {
+      const next = new Map(prev);
+      const cur  = next.get(id) ?? { trackingNo: "", licenseNo: "" };
+      next.set(id, { ...cur, [field]: value });
+      return next;
+    });
+  }
 
   async function load() {
     setLoading(true);
@@ -2218,91 +2232,302 @@ export default function PackagingClient() {
     setLoading(false);
   }
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
-  const handleInvoiceGenerated = useCallback((id: string, invoiceNo: string, trackingNo: string, licenseNo: string) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === id
-          ? { ...o, invoiceNo, status: "PACKING", trackingNo, licenseNo }
-          : o
-      )
-    );
-  }, []);
+  const handleInvoiceGenerated = useCallback(
+    (id: string, invoiceNo: string, trackingNo: string, licenseNo: string) => {
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === id ? { ...o, invoiceNo, status: "PACKING", trackingNo, licenseNo } : o
+        )
+      );
+    },
+    []
+  );
 
   const handleViewDocs = useCallback((order: Order) => {
     setActiveDocsOrder(order);
   }, []);
 
-  const readyOrders = orders.filter((o) => o.status === "PAYMENT_VERIFIED");
-  const packingOrders = orders.filter((o) => o.status === "PACKING");
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function generateCombined() {
+    setBatchGenerating(true);
+    setBatchErr("");
+    // 1. Generate one shared invoice number for all selected orders (per-order tracking/license)
+    const invoiceRes = await fetch("/api/packaging/multi-invoice", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        orders: [...selectedIds].map((id) => {
+          const det = orderDetails.get(id) ?? { trackingNo: "", licenseNo: "" };
+          return {
+            id,
+            trackingNo: det.trackingNo.trim() || null,
+            licenseNo:  det.licenseNo.trim()  || null,
+          };
+        }),
+      }),
+    });
+    const invoiceData = await invoiceRes.json();
+    if (!invoiceRes.ok) {
+      setBatchErr(invoiceData?.error || "Failed to generate invoice");
+      setBatchGenerating(false);
+      return;
+    }
+    const invoiceNo: string = invoiceData.invoiceNo;
+
+    // 2. Download combined documents ZIP automatically
+    const docsRes = await fetch(`/api/packaging/multi-documents?invoiceNo=${encodeURIComponent(invoiceNo)}`);
+    if (!docsRes.ok) {
+      setBatchErr("Invoice created but document download failed. Invoice: " + invoiceNo);
+      setBatchGenerating(false);
+      load();
+      return;
+    }
+    const blob = await docsRes.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `${invoiceNo}-multi-documents.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    setSelectedIds(new Set());
+    setOrderDetails(new Map());
+    setBatchGenerating(false);
+    load();
+  }
+
+  // ── Split by client type ──
+  const singleOrders = orders.filter((o) => o.accountId === null);
+  const multiOrders  = orders.filter((o) => o.accountId !== null);
+
+  const singleReady   = singleOrders.filter((o) => o.status === "PAYMENT_VERIFIED");
+  const singlePacking = singleOrders.filter((o) => o.status === "PACKING");
+  const multiReady    = multiOrders.filter((o)  => o.status === "PAYMENT_VERIFIED");
+  const multiPacking  = multiOrders.filter((o)  => o.status === "PACKING");
+
+  // Keep selected IDs in sync when orders refresh (drop IDs that no longer exist)
+  useEffect(() => {
+    const validIds = new Set(singleReady.map((o) => o.id));
+    setSelectedIds((prev) => {
+      const filtered = new Set([...prev].filter((id) => validIds.has(id)));
+      return filtered.size === prev.size ? prev : filtered;
+    });
+  }, [orders]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const Skeleton = () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+      {[1, 2].map((i) => <div key={i} className="skeleton" style={{ height: 140, borderRadius: 14 }} />)}
+    </div>
+  );
 
   return (
-    <div>
+    <div style={{ paddingBottom: selectedIds.size > 0 ? 90 : 0 }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem", flexWrap: "wrap", gap: "0.75rem" }}>
         <div>
           <h1>Packaging</h1>
           <p style={{ marginTop: "0.25rem" }}>
-            <span style={{ color: "#6ee7b7" }}>{readyOrders.length} ready</span>
-            {packingOrders.length > 0 && <span style={{ color: "#fcd34d" }}> · {packingOrders.length} in packing</span>}
+            <span style={{ color: "#6ee7b7" }}>{singleReady.length + multiReady.length} ready</span>
+            {(singlePacking.length + multiPacking.length) > 0 && (
+              <span style={{ color: "#fcd34d" }}> · {singlePacking.length + multiPacking.length} in packing</span>
+            )}
           </p>
         </div>
-        <button onClick={load} className="btn btn-secondary btn-sm">
-          ↺ Refresh
+        <button onClick={load} className="btn btn-secondary btn-sm">↺ Refresh</button>
+      </div>
+
+      {/* Top-level tabs: Single Order / Multi Order */}
+      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.25rem", borderBottom: "2px solid var(--border)", paddingBottom: "0.75rem" }}>
+        <button
+          onClick={() => { setMainMode("single"); setSelectedIds(new Set()); }}
+          className={`btn btn-sm ${mainMode === "single" ? "btn-primary" : "btn-secondary"}`}
+        >
+          🔗 Single Order
+        </button>
+        <button
+          onClick={() => { setMainMode("multi"); setSelectedIds(new Set()); }}
+          className={`btn btn-sm ${mainMode === "multi" ? "btn-primary" : "btn-secondary"}`}
+        >
+          🏢 Multi Order
         </button>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.25rem", borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem" }}>
-        {[
-          { key: "ready", label: `⚡ Ready for Invoice (${readyOrders.length})` },
-          { key: "packing", label: `📦 In Packing (${packingOrders.length})` },
-        ].map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key as any)} className={`btn btn-sm ${tab === t.key ? "btn-primary" : "btn-secondary"}`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {loading ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-          {[1, 2].map((i) => (
-            <div key={i} className="skeleton" style={{ height: 140, borderRadius: 14 }} />
-          ))}
-        </div>
-      ) : (
+      {/* ── SINGLE ORDER tab: individual link-based clients with batch selection ── */}
+      {mainMode === "single" && (
         <>
-          {tab === "ready" &&
-            (readyOrders.length === 0 ? (
-              <div className="card" style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
-                No orders are ready for invoicing yet.
-                <br />
-                <span style={{ fontSize: "0.8rem" }}>Orders appear here once accounts marks them as PAYMENT_VERIFIED.</span>
-              </div>
-            ) : (
-              readyOrders.map((o) => (
-                <OrderCard key={o.id} order={o} onInvoiceGenerated={handleInvoiceGenerated} onViewDocs={handleViewDocs} />
-              ))
+          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem" }}>
+            {[
+              { key: "ready",   label: `⚡ Ready for Invoice (${singleReady.length})` },
+              { key: "packing", label: `📦 In Packing (${singlePacking.length})` },
+            ].map((t) => (
+              <button
+                key={t.key}
+                onClick={() => { setSingleStatusTab(t.key as "ready" | "packing"); setSelectedIds(new Set()); }}
+                className={`btn btn-sm ${singleStatusTab === t.key ? "btn-primary" : "btn-secondary"}`}
+              >
+                {t.label}
+              </button>
             ))}
+            {/* Select-all shortcut when in Ready tab */}
+            {singleStatusTab === "ready" && singleReady.length > 0 && (
+              <button
+                onClick={() =>
+                  selectedIds.size === singleReady.length
+                    ? setSelectedIds(new Set())
+                    : setSelectedIds(new Set(singleReady.map((o) => o.id)))
+                }
+                className="btn btn-secondary btn-sm"
+                style={{ marginLeft: "auto" }}
+              >
+                {selectedIds.size === singleReady.length ? "Deselect All" : "Select All"}
+              </button>
+            )}
+          </div>
 
-          {tab === "packing" &&
-            (packingOrders.length === 0 ? (
-              <div className="card" style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
-                No orders in packing yet.
-              </div>
-            ) : (
-              packingOrders.map((o) => (
-                <OrderCard key={o.id} order={o} onInvoiceGenerated={handleInvoiceGenerated} onViewDocs={handleViewDocs} />
-              ))
+          {loading ? <Skeleton /> : (
+            <>
+              {singleStatusTab === "ready" && (
+                singleReady.length === 0 ? (
+                  <div className="card" style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
+                    No individual orders ready for invoicing.
+                  </div>
+                ) : singleReady.map((o) => {
+                  const checked = selectedIds.has(o.id);
+                  const det = orderDetails.get(o.id) ?? { trackingNo: "", licenseNo: "" };
+                  return (
+                    <div key={o.id} style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem", marginBottom: "0.75rem" }}>
+                      {/* Custom checkbox */}
+                      <div style={{ paddingTop: 22, flexShrink: 0 }}>
+                        <SquareCheckbox checked={checked} onChange={() => toggleSelect(o.id)} />
+                      </div>
+
+                      <div style={{ flex: 1 }}>
+                        {/* Order card with highlight when selected */}
+                        <div style={{ outline: checked ? "2px solid var(--primary)" : "none", borderRadius: 14 }}>
+                          <OrderCard
+                            order={o}
+                            onInvoiceGenerated={handleInvoiceGenerated}
+                            onViewDocs={handleViewDocs}
+                          />
+                        </div>
+
+                        {/* Per-order tracking & license inputs — shown only when selected */}
+                        {checked && (
+                          <div style={{
+                            display: "flex", gap: "0.6rem", flexWrap: "wrap",
+                            padding: "0.5rem 0.75rem",
+                            background: "rgba(99,102,241,0.06)",
+                            border: "1px solid rgba(99,102,241,0.25)",
+                            borderTop: "none",
+                            borderRadius: "0 0 10px 10px",
+                            marginTop: "-2px",
+                          }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                              <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>Tracking No:</label>
+                              <input
+                                type="text"
+                                value={det.trackingNo}
+                                onChange={(e) => setOrderDetail(o.id, "trackingNo", e.target.value)}
+                                placeholder="e.g. EM123456789IN"
+                                style={{ width: 170, fontSize: "0.8rem", padding: "0.25rem 0.5rem" }}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                              <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>License No:</label>
+                              <input
+                                type="text"
+                                value={det.licenseNo}
+                                onChange={(e) => setOrderDetail(o.id, "licenseNo", e.target.value)}
+                                placeholder="License number"
+                                style={{ width: 150, fontSize: "0.8rem", padding: "0.25rem 0.5rem" }}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+
+              {singleStatusTab === "packing" && (
+                singlePacking.length === 0 ? (
+                  <div className="card" style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
+                    No individual orders in packing yet.
+                  </div>
+                ) : singlePacking.map((o) => (
+                  <OrderCard key={o.id} order={o} onInvoiceGenerated={handleInvoiceGenerated} onViewDocs={handleViewDocs} />
+                ))
+              )}
+            </>
+          )}
+        </>
+      )}
+
+      {/* ── MULTI ORDER tab: account/bulk clients — individual order flow, no batch ── */}
+      {mainMode === "multi" && (
+        <>
+          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem" }}>
+            {[
+              { key: "ready",   label: `⚡ Ready for Invoice (${multiReady.length})` },
+              { key: "packing", label: `📦 In Packing (${multiPacking.length})` },
+            ].map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setMultiStatusTab(t.key as "ready" | "packing")}
+                className={`btn btn-sm ${multiStatusTab === t.key ? "btn-primary" : "btn-secondary"}`}
+              >
+                {t.label}
+              </button>
             ))}
+          </div>
+          {loading ? <Skeleton /> : (
+            <>
+              {multiStatusTab === "ready" && (
+                multiReady.length === 0 ? (
+                  <div className="card" style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
+                    No account orders ready for invoicing.
+                  </div>
+                ) : multiReady.map((o) => (
+                  <OrderCard key={o.id} order={o} onInvoiceGenerated={handleInvoiceGenerated} onViewDocs={handleViewDocs} />
+                ))
+              )}
+              {multiStatusTab === "packing" && (
+                multiPacking.length === 0 ? (
+                  <div className="card" style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
+                    No account orders in packing yet.
+                  </div>
+                ) : multiPacking.map((o) => (
+                  <OrderCard key={o.id} order={o} onInvoiceGenerated={handleInvoiceGenerated} onViewDocs={handleViewDocs} />
+                ))
+              )}
+            </>
+          )}
         </>
       )}
 
       {/* Documents overlay */}
       {activeDocsOrder && <DocumentsOverlay order={activeDocsOrder} onClose={() => setActiveDocsOrder(null)} />}
+
+      {/* Batch action bar — slides in from bottom when orders are selected */}
+      <BatchActionBar
+        selectedCount={selectedIds.size}
+        onGenerate={generateCombined}
+        onClear={() => { setSelectedIds(new Set()); setOrderDetails(new Map()); setBatchErr(""); }}
+        generating={batchGenerating}
+        err={batchErr}
+      />
     </div>
   );
 }

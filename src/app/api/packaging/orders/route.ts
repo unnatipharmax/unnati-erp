@@ -23,7 +23,7 @@ export async function GET() {
       trackingNo: true, licenseNo: true,
       prescriptionOriginalName: true,
       exchangeRate: true, dollarAmount: true, inrAmount: true,
-      createdAt: true,
+      createdAt: true, accountId: true,
       orderEntry: {
         select: {
           shipmentMode: true, shippingPrice: true, notes: true,
@@ -110,6 +110,7 @@ export async function GET() {
 
       return {
         id:              o.id,
+        accountId:       o.accountId ?? null,
         invoiceNo:       o.invoiceNo,
         invoiceGeneratedAt: o.invoiceGeneratedAt?.toISOString() ?? null,
         status:          o.status,

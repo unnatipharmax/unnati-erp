@@ -256,7 +256,8 @@ function WeightBar({ items }: { items: LineItem[] }) {
 }
 
 // ── Quotation Preview (printed format) ────────────────────────────────────────
-function QuotationPreview({ q, totalWeightKg }: { q: QuotationData; totalWeightKg: number | null }) {
+type Websites = { website: string; indiamart: string; marketing: string };
+function QuotationPreview({ q, totalWeightKg, websites }: { q: QuotationData; totalWeightKg: number | null; websites: Websites }) {
   const subtotal    = q.items.reduce((s, i) => s + i.quantity * i.rate, 0);
   const extraTotal  = q.extraCharges.reduce((s, c) => s + c.amount, 0);
   const grandTotal  = subtotal + extraTotal;
@@ -286,6 +287,9 @@ function QuotationPreview({ q, totalWeightKg }: { q: QuotationData; totalWeightK
             <div style={{ whiteSpace: "pre-line", color: "#555", fontSize: "8pt", marginTop: 2, lineHeight: 1.5 }}>{q.fromAddress}</div>
             {q.fromEmail && <div style={{ color: "#555", fontSize: "8pt" }}>✉ {q.fromEmail}</div>}
             {q.fromPhone && <div style={{ color: "#555", fontSize: "8pt" }}>✆ {q.fromPhone}</div>}
+            {websites.website  && <div style={{ color: "#555", fontSize: "8pt" }}>🌐 {websites.website}</div>}
+            {websites.indiamart && <div style={{ color: "#555", fontSize: "8pt" }}>🛒 {websites.indiamart}</div>}
+            {websites.marketing && <div style={{ color: "#555", fontSize: "8pt" }}>📣 {websites.marketing}</div>}
           </div>
         </div>
 
@@ -443,7 +447,7 @@ export default function QuotationClient() {
 
   const [q, setQ] = useState<QuotationData>(() => ({
     fromName:    "UNNATI PHARMAX",
-    fromAddress: "Ground Floor House No 307/4, Guru Vandana Apartment,\nKakasaheb Cholkar Marg, Lakadganj, Nagpur, 440008",
+    fromAddress: "1/04 Guruvanada Appartment, Central Ave, Lakadganj, Nagpur 440008",
     fromEmail:   "unnatipharmax@gmail.com",
     fromPhone:   "",
     toName:    "",
@@ -463,6 +467,29 @@ export default function QuotationClient() {
     notes: "",
     terms: "1. Prices are valid for the period mentioned above.\n2. All disputes subject to Nagpur jurisdiction.",
   }));
+
+  // Load company settings from API and pre-fill sender fields + bank details
+  const [companyWebsites, setCompanyWebsites] = useState({ website: "", indiamart: "", marketing: "" });
+  useEffect(() => {
+    fetch("/api/settings/company")
+      .then(r => r.json())
+      .then(s => {
+        setQ(prev => ({
+          ...prev,
+          fromName:    s.name    || prev.fromName,
+          fromAddress: s.address || prev.fromAddress,
+          fromEmail:   s.email   || prev.fromEmail,
+          fromPhone:   s.phone   || prev.fromPhone,
+          bankName:    s.bankName    || prev.bankName,
+          bankAccount: s.bankAccount || prev.bankAccount,
+          bankIfsc:    s.bankIfsc    || prev.bankIfsc,
+          bankBranch:  s.bankBranch  || prev.bankBranch,
+          bankSwift:   s.bankSwift   || prev.bankSwift,
+        }));
+        setCompanyWebsites({ website: s.website || "", indiamart: s.indiamart || "", marketing: s.marketing || "" });
+      })
+      .catch(() => {/* use defaults */});
+  }, []);
 
   const set = useCallback(<K extends keyof QuotationData>(key: K, val: QuotationData[K]) => {
     setQ(prev => ({ ...prev, [key]: val }));
@@ -808,7 +835,7 @@ export default function QuotationClient() {
               PREVIEW (live)
             </div>
             <div style={{ transform: "scale(0.72)", transformOrigin: "top left", width: "138.9%", pointerEvents: "none" }}>
-              <QuotationPreview q={q} totalWeightKg={totalWeightKg} />
+              <QuotationPreview q={q} totalWeightKg={totalWeightKg} websites={companyWebsites} />
             </div>
           </div>
         </div>

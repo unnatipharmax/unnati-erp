@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 type Role = "ADMIN" | "MANAGER" | "SALES" | "ACCOUNTS" | "PACKAGING";
 
@@ -131,6 +131,164 @@ function AddUserModal({ onClose, onAdded }: { onClose: () => void; onAdded: (u: 
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
+// ── Company Settings Panel ─────────────────────────────────────────────────────
+type CS = {
+  name: string; address: string; email: string; phone: string;
+  website: string; indiamart: string; marketing: string;
+  gstin: string; iec: string; drugLic: string;
+  bankName: string; bankAccount: string; bankIfsc: string; bankBranch: string; bankSwift: string;
+};
+
+const CS_EMPTY: CS = {
+  name: "", address: "", email: "", phone: "",
+  website: "", indiamart: "", marketing: "",
+  gstin: "", iec: "", drugLic: "",
+  bankName: "", bankAccount: "", bankIfsc: "", bankBranch: "", bankSwift: "",
+};
+
+function CompanySettingsPanel() {
+  const [form, setForm]     = useState<CS>(CS_EMPTY);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [msg, setMsg]         = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/settings/company")
+      .then(r => r.json())
+      .then(d => { setForm({ ...CS_EMPTY, ...d }); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  function set(k: keyof CS, v: string) {
+    setForm(f => ({ ...f, [k]: v }));
+    if (msg) setMsg(null);
+  }
+
+  async function handleSave() {
+    setSaving(true); setMsg(null);
+    const res = await fetch("/api/settings/company", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (res.ok) { setForm({ ...CS_EMPTY, ...data }); setMsg({ ok: true, text: "Company settings saved successfully." }); }
+    else setMsg({ ok: false, text: data?.error || "Failed to save." });
+  }
+
+  const iS: React.CSSProperties = { width: "100%", padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--text-primary)", fontSize: "0.85rem", boxSizing: "border-box" };
+  const lS: React.CSSProperties = { fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 4, display: "block" };
+  const sH: React.CSSProperties = { fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase" as const, color: "var(--accent)", marginBottom: 10, letterSpacing: 0.5, marginTop: 18 };
+
+  if (loading) return <div style={{ color: "var(--text-muted)", padding: 16 }}>Loading…</div>;
+
+  return (
+    <div className="card" style={{ marginBottom: "1.5rem" }}>
+      <div style={{ fontWeight: 700, fontSize: "1rem", marginBottom: 4 }}>🏢 Company Settings</div>
+      <div style={{ color: "var(--text-muted)", fontSize: "0.8rem", marginBottom: 18 }}>
+        These details appear on Quotations and other documents. Only admins can edit.
+      </div>
+
+      {/* ── Basic Info ── */}
+      <div style={sH}>Basic Information</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 20px" }}>
+        <div>
+          <label style={lS}>Company Name</label>
+          <input style={iS} value={form.name} onChange={e => set("name", e.target.value)} />
+        </div>
+        <div>
+          <label style={lS}>Email</label>
+          <input style={iS} value={form.email} onChange={e => set("email", e.target.value)} />
+        </div>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label style={lS}>Registered Address</label>
+          <textarea style={{ ...iS, minHeight: 60, resize: "vertical" }} value={form.address} onChange={e => set("address", e.target.value)} />
+        </div>
+        <div>
+          <label style={lS}>Phone</label>
+          <input style={iS} value={form.phone} onChange={e => set("phone", e.target.value)} />
+        </div>
+      </div>
+
+      {/* ── Websites ── */}
+      <div style={sH}>Websites</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px 20px" }}>
+        <div>
+          <label style={lS}>Personal Website</label>
+          <input style={iS} value={form.website} onChange={e => set("website", e.target.value)} placeholder="www.unnatipharma.com" />
+        </div>
+        <div>
+          <label style={lS}>IndiaMart Website</label>
+          <input style={iS} value={form.indiamart} onChange={e => set("indiamart", e.target.value)} placeholder="www.medshopy.com" />
+        </div>
+        <div>
+          <label style={lS}>Marketing Website</label>
+          <input style={iS} value={form.marketing} onChange={e => set("marketing", e.target.value)} placeholder="medindiadropshipper.com" />
+        </div>
+      </div>
+
+      {/* ── Legal / Compliance ── */}
+      <div style={sH}>Legal &amp; Compliance</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px 20px" }}>
+        <div>
+          <label style={lS}>GSTIN</label>
+          <input style={{ ...iS, fontFamily: "monospace" }} value={form.gstin} onChange={e => set("gstin", e.target.value)} />
+        </div>
+        <div>
+          <label style={lS}>IEC Code</label>
+          <input style={{ ...iS, fontFamily: "monospace" }} value={form.iec} onChange={e => set("iec", e.target.value)} />
+        </div>
+        <div>
+          <label style={lS}>Drug License No.</label>
+          <input style={{ ...iS, fontFamily: "monospace" }} value={form.drugLic} onChange={e => set("drugLic", e.target.value)} />
+        </div>
+      </div>
+
+      {/* ── Bank Details ── */}
+      <div style={sH}>Bank Details (auto-filled in Quotations)</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px 20px" }}>
+        <div>
+          <label style={lS}>Bank Name</label>
+          <input style={iS} value={form.bankName} onChange={e => set("bankName", e.target.value)} />
+        </div>
+        <div>
+          <label style={lS}>Account Number</label>
+          <input style={{ ...iS, fontFamily: "monospace" }} value={form.bankAccount} onChange={e => set("bankAccount", e.target.value)} />
+        </div>
+        <div>
+          <label style={lS}>IFSC Code</label>
+          <input style={{ ...iS, fontFamily: "monospace" }} value={form.bankIfsc} onChange={e => set("bankIfsc", e.target.value)} />
+        </div>
+        <div>
+          <label style={lS}>Branch</label>
+          <input style={iS} value={form.bankBranch} onChange={e => set("bankBranch", e.target.value)} />
+        </div>
+        <div>
+          <label style={lS}>SWIFT / BIC</label>
+          <input style={{ ...iS, fontFamily: "monospace" }} value={form.bankSwift} onChange={e => set("bankSwift", e.target.value)} />
+        </div>
+      </div>
+
+      {/* ── Actions ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 20 }}>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="btn btn-primary"
+          style={{ minWidth: 140 }}
+        >
+          {saving ? "Saving…" : "💾 Save Settings"}
+        </button>
+        {msg && (
+          <span style={{ fontSize: "0.85rem", color: msg.ok ? "#10b981" : "#ef4444", fontWeight: 600 }}>
+            {msg.ok ? "✓ " : "✗ "}{msg.text}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function SetupClient({ initialUsers, currentUserId }: { initialUsers: User[]; currentUserId: string }) {
   const [users, setUsers]     = useState<User[]>(initialUsers);
   const [showModal, setShowModal] = useState(false);
@@ -170,6 +328,9 @@ export default function SetupClient({ initialUsers, currentUserId }: { initialUs
   return (
     <>
       {showModal && <AddUserModal onClose={() => setShowModal(false)} onAdded={handleAdded} />}
+
+      {/* ── Company Settings ── */}
+      <CompanySettingsPanel />
 
       {/* Stats row */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "0.75rem", marginBottom: "1.5rem" }}>
