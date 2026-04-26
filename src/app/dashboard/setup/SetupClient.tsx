@@ -136,6 +136,8 @@ type CS = {
   name: string; address: string; email: string; phone: string;
   website: string; indiamart: string; marketing: string;
   gstin: string; iec: string; drugLic: string;
+  chaName: string; chaNo: string;
+  stampB64: string; sigB64: string;
   bankName: string; bankAccount: string; bankIfsc: string; bankBranch: string; bankSwift: string;
 };
 
@@ -143,6 +145,8 @@ const CS_EMPTY: CS = {
   name: "", address: "", email: "", phone: "",
   website: "", indiamart: "", marketing: "",
   gstin: "", iec: "", drugLic: "",
+  chaName: "", chaNo: "",
+  stampB64: "", sigB64: "",
   bankName: "", bankAccount: "", bankIfsc: "", bankBranch: "", bankSwift: "",
 };
 
@@ -241,6 +245,68 @@ function CompanySettingsPanel() {
         <div>
           <label style={lS}>Drug License No.</label>
           <input style={{ ...iS, fontFamily: "monospace" }} value={form.drugLic} onChange={e => set("drugLic", e.target.value)} />
+        </div>
+      </div>
+
+      {/* ── CHA Details ── */}
+      <div style={sH}>CHA (Clearing &amp; Handling Agent)</div>
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "12px 20px" }}>
+        <div>
+          <label style={lS}>CHA Name</label>
+          <input style={iS} value={form.chaName} onChange={e => set("chaName", e.target.value)} placeholder="AARPEE CLEARING & LOGISTICS" />
+        </div>
+        <div>
+          <label style={lS}>CHA No.</label>
+          <input style={{ ...iS, fontFamily: "monospace" }} value={form.chaNo} onChange={e => set("chaNo", e.target.value)} placeholder="11/2623" />
+        </div>
+      </div>
+
+      {/* ── Stamp & Signature Images ── */}
+      <div style={sH}>Stamp &amp; Signature (shown on Export Invoice)</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 20px" }}>
+        {/* Stamp */}
+        <div>
+          <label style={lS}>Company Stamp Image</label>
+          <input
+            type="file" accept="image/*"
+            style={{ ...iS, padding: "4px" }}
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = ev => set("stampB64", ev.target?.result as string ?? "");
+              reader.readAsDataURL(file);
+            }}
+          />
+          {form.stampB64 && (
+            <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={form.stampB64} alt="Stamp preview" style={{ height: 60, border: "1px solid var(--border)", borderRadius: 4, background: "#fff", padding: 2 }} />
+              <button onClick={() => set("stampB64", "")} style={{ fontSize: "0.75rem", color: "#ef4444", background: "none", border: "none", cursor: "pointer" }}>Remove</button>
+            </div>
+          )}
+        </div>
+        {/* Signature */}
+        <div>
+          <label style={lS}>Authorised Signature Image</label>
+          <input
+            type="file" accept="image/*"
+            style={{ ...iS, padding: "4px" }}
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = ev => set("sigB64", ev.target?.result as string ?? "");
+              reader.readAsDataURL(file);
+            }}
+          />
+          {form.sigB64 && (
+            <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={form.sigB64} alt="Signature preview" style={{ height: 60, border: "1px solid var(--border)", borderRadius: 4, background: "#fff", padding: 2 }} />
+              <button onClick={() => set("sigB64", "")} style={{ fontSize: "0.75rem", color: "#ef4444", background: "none", border: "none", cursor: "pointer" }}>Remove</button>
+            </div>
+          )}
         </div>
       </div>
 

@@ -18,6 +18,10 @@ export type CompanySettings = {
   gstin: string;
   iec: string;
   drugLic: string;
+  chaName: string;
+  chaNo: string;
+  stampB64: string;
+  sigB64: string;
   bankName: string;
   bankAccount: string;
   bankIfsc: string;
@@ -36,6 +40,10 @@ const DEFAULTS: CompanySettings = {
   gstin:      "27FNXPP3883B1ZA",
   iec:        "FNXPP3883B",
   drugLic:    "MH-NB-152878",
+  chaName:    "AARPEE CLEARING & LOGISTICS",
+  chaNo:      "11/2623",
+  stampB64:   "",
+  sigB64:     "",
   bankName:   "",
   bankAccount:"",
   bankIfsc:   "",
@@ -74,6 +82,11 @@ export async function PUT(req: Request) {
     gstin:       (body.gstin       ?? current.gstin).trim(),
     iec:         (body.iec         ?? current.iec).trim(),
     drugLic:     (body.drugLic     ?? current.drugLic).trim(),
+    chaName:     (body.chaName     ?? current.chaName).trim(),
+    chaNo:       (body.chaNo       ?? current.chaNo).trim(),
+    // base64 images — keep existing if not provided in body
+    stampB64:    body.stampB64  !== undefined ? body.stampB64  : current.stampB64,
+    sigB64:      body.sigB64    !== undefined ? body.sigB64    : current.sigB64,
     bankName:    (body.bankName    ?? current.bankName).trim(),
     bankAccount: (body.bankAccount ?? current.bankAccount).trim(),
     bankIfsc:    (body.bankIfsc    ?? current.bankIfsc).trim(),

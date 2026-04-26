@@ -75,7 +75,7 @@ function StatusBadge({ s }: { s: string }) {
 }
 
 // ── DOC 1: Export Invoice ─────────────────────────────────────────────────────
-function GSTInvoiceDoc({ order }: { order: Order }) {
+function GSTInvoiceDoc({ order, stampB64, sigB64 }: { order: Order; stampB64?: string; sigB64?: string }) {
   const invDate  = getInvoiceDate(order);
   const dateStr  = invDate.toLocaleDateString("en-GB");
   const exchRate = order.exchangeRate || 84;
@@ -189,14 +189,15 @@ function GSTInvoiceDoc({ order }: { order: Order }) {
         <thead>
           <tr>
             <th style={{ width: "4%" }}>Sr.<br />No.</th>
-            <th style={{ textAlign: "left", minWidth: 120 }}>PRODUCT</th>
+            <th style={{ textAlign: "left", minWidth: 100 }}>PRODUCT</th>
+            <th style={{ width: "8%" }}>PACK</th>
+            <th style={{ width: "8%" }}>HSN</th>
             <th style={{ width: "5%" }}>QTY</th>
-            <th style={{ width: "11%" }}>Batch No.</th>
-            <th style={{ width: "7%" }}>MFG</th>
-            <th style={{ width: "7%" }}>EXP</th>
-            <th style={{ textAlign: "left", minWidth: 70 }}>MANUFACTURER</th>
+            <th style={{ width: "10%" }}>Batch No.</th>
+            <th style={{ width: "6%" }}>MFG</th>
+            <th style={{ width: "6%" }}>EXP</th>
             <th style={{ width: "8%", textAlign: "right" }}>SR.B<br />(USD)</th>
-            <th style={{ width: "11%", textAlign: "right" }}>AMOUNT<br />US $</th>
+            <th style={{ width: "10%", textAlign: "right" }}>AMOUNT<br />US $</th>
           </tr>
         </thead>
         <tbody>
@@ -208,13 +209,15 @@ function GSTInvoiceDoc({ order }: { order: Order }) {
                 <td style={{ textAlign: "center" }}>{idx + 1}</td>
                 <td>
                   <div style={{ fontWeight: 700 }}>{item.productName}</div>
-                  {item.composition && <div style={{ fontSize: "7.5pt" }}>{item.composition}</div>}
+                  {item.composition  && <div style={{ fontSize: "7pt" }}>{item.composition}</div>}
+                  {item.manufacturer && <div style={{ fontSize: "7pt", color: "#444" }}>{item.manufacturer}</div>}
                 </td>
+                <td style={{ textAlign: "center", fontSize: "8pt" }}>{item.pack ?? ""}</td>
+                <td style={{ textAlign: "center", fontFamily: "monospace", fontSize: "8pt" }}>{item.hsn ?? ""}</td>
                 <td style={{ textAlign: "center", fontWeight: 700 }}>{item.quantity}</td>
                 <td style={{ textAlign: "center", fontFamily: "monospace", fontSize: "8pt" }}>{item.batchNo ?? ""}</td>
                 <td style={{ textAlign: "center", fontSize: "8pt" }}>{item.mfgDate ?? ""}</td>
                 <td style={{ textAlign: "center", fontSize: "8pt" }}>{item.expDate ?? ""}</td>
-                <td style={{ fontSize: "8pt" }}>{item.manufacturer ?? ""}</td>
                 <td style={{ textAlign: "right" }}>{unitUsd > 0 ? unitUsd.toFixed(2) : ""}</td>
                 <td style={{ textAlign: "right", fontWeight: 700 }}>{amountUsd > 0 ? amountUsd.toFixed(2) : ""}</td>
               </tr>
@@ -222,13 +225,13 @@ function GSTInvoiceDoc({ order }: { order: Order }) {
           })}
           {order.items.length < 6 && Array.from({ length: 6 - order.items.length }).map((_, i) => (
             <tr key={`filler-${i}`}>
-              {Array.from({ length: 9 }).map((_, j) => <td key={j} style={{ height: 22 }}>&nbsp;</td>)}
+              {Array.from({ length: 10 }).map((_, j) => <td key={j} style={{ height: 22 }}>&nbsp;</td>)}
             </tr>
           ))}
         </tbody>
         <tfoot>
           <tr className="total-row">
-            <td colSpan={8} style={{ textAlign: "right", fontSize: "9.5pt" }}>TOTAL PRODUCT VALUE</td>
+            <td colSpan={9} style={{ textAlign: "right", fontSize: "9.5pt" }}>TOTAL PRODUCT VALUE</td>
             <td style={{ textAlign: "right", fontSize: "9.5pt" }}>{totalUsd.toFixed(2)}</td>
           </tr>
         </tfoot>
@@ -263,8 +266,14 @@ function GSTInvoiceDoc({ order }: { order: Order }) {
               <div style={{ fontSize: "13pt", fontWeight: 900, marginBottom: 12 }}>
                 USD &nbsp;{totalUsd.toFixed(2)}
               </div>
-              <div className="stamp-box">COMPANY STAMP</div>
-              <div style={{ height: 36 }} />
+              {stampB64
+                ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={stampB64} alt="Stamp" style={{ maxHeight: 72, maxWidth: "100%", objectFit: "contain", margin: "6px 0", display: "block" }} />
+                : <div className="stamp-box">COMPANY STAMP</div>
+              }
+              {sigB64
+                ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={sigB64} alt="Signature" style={{ maxHeight: 44, maxWidth: "100%", objectFit: "contain", marginBottom: 2, display: "block" }} />
+                : <div style={{ height: 36 }} />
+              }
               <div className="sig-line">Authorised Signatory</div>
               <div style={{ fontSize: "8pt", fontWeight: 700, marginTop: 2 }}>For UNNATI PHARMAX</div>
             </td>
@@ -404,7 +413,7 @@ function PackingListDoc({ order }: { order: Order }) {
 }
 
 // ── DOC 4: Covering Letter ───────────────────────────────────────────────────
-function CoveringLetterDoc({ order }: { order: Order }) {
+function CoveringLetterDoc({ order, chaName, chaNo }: { order: Order; chaName?: string; chaNo?: string }) {
   const invDate = getInvoiceDate(order);
   const dateStr = invDate.toLocaleDateString("en-GB"); // DD/MM/YYYY
   const invNo   = order.invoiceNo ?? "—";
@@ -480,7 +489,7 @@ function CoveringLetterDoc({ order }: { order: Order }) {
       </div>
 
       <div style={{ marginBottom: 8 }}>
-        We had authorized to <b>AARPEE CLEARING &amp; LOGISTICS (CHA NO: 11/2623)</b>. We
+        We had authorized to <b>{chaName ?? "AARPEE CLEARING & LOGISTICS"} (CHA NO: {chaNo ?? "11/2623"})</b>. We
         undertake that we are responsible for the acts related to above if found violating any Law in
         force.
       </div>
@@ -497,7 +506,7 @@ function CoveringLetterDoc({ order }: { order: Order }) {
 }
 
 // ── DOC 5: CN22 Customs Declaration Label ────────────────────────────────────
-function CN22LabelDoc({ order }: { order: Order }) {
+function CN22LabelDoc({ order, companyName, companyAddress }: { order: Order; companyName?: string; companyAddress?: string }) {
   const invDate  = getInvoiceDate(order);
   // PARCEL ID format: DD.MM.YYYY
   const parcelId = [
@@ -598,7 +607,9 @@ function CN22LabelDoc({ order }: { order: Order }) {
             <tbody>
               <tr>
                 <td style={{ fontWeight: 700 }}>{desc}</td>
-                <td style={{ textAlign: "center" }}></td>
+                <td style={{ textAlign: "center", fontWeight: 700 }}>
+                  {order.netWeight != null ? `${order.netWeight.toFixed(3)} kg` : ""}
+                </td>
                 <td style={{ textAlign: "center", fontWeight: 700 }}>{totalUsd} USD</td>
                 <td style={{ textAlign: "center" }}>{hsnStr}</td>
                 <td style={{ textAlign: "center", fontWeight: 700 }}>India</td>
@@ -608,7 +619,10 @@ function CN22LabelDoc({ order }: { order: Order }) {
 
           {/* Totals */}
           <div className="cn-totals">
-            <div><b>Total Weight In Kg (6):</b></div>
+            <div>
+              <b>Total Weight In Kg (6):</b>
+              {order.grossWeight != null ? ` ${order.grossWeight.toFixed(3)} kg` : order.netWeight != null ? ` ${order.netWeight.toFixed(3)} kg` : ""}
+            </div>
             <div><b>Total Value (7):</b> {totalUsd} USD</div>
           </div>
 
@@ -633,11 +647,8 @@ function CN22LabelDoc({ order }: { order: Order }) {
           </div>
           <div className="from-block">
             FROM –<br />
-            NAME : UNNATI<br />
-            SHOP NO 307/04,<br />
-            GURUVANDANA<br />
-            APARTMENT, NAGPUR –<br />
-            440008
+            NAME : {companyName ?? "UNNATI PHARMAX"}<br />
+            {companyAddress ?? "1/04 Guruvanada Appartment, Central Ave, Lakadganj, Nagpur 440008"}
           </div>
         </div>
       </div>
@@ -1363,17 +1374,32 @@ function EdfDoc({ order }: { order: Order }) {
 }
 
 // ── Documents overlay — all docs stacked, single print/download ───────────────
+type DocSettings = { chaName: string; chaNo: string; stampB64: string; sigB64: string; companyName: string; companyAddress: string; };
+const DOC_SETTINGS_DEFAULT: DocSettings = { chaName: "AARPEE CLEARING & LOGISTICS", chaNo: "11/2623", stampB64: "", sigB64: "", companyName: "UNNATI PHARMAX", companyAddress: "1/04 Guruvanada Appartment, Central Ave, Lakadganj, Nagpur 440008" };
+
 function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => void }) {
   const isDHL        = order.shipmentMode === "DHL";
   const downloadHref = `/api/packaging/orders/${order.id}/documents`;
 
+  const [ds, setDs] = useState<DocSettings>(DOC_SETTINGS_DEFAULT);
+  useEffect(() => {
+    fetch("/api/settings/company").then(r => r.json()).then(s => setDs({
+      chaName: s.chaName || DOC_SETTINGS_DEFAULT.chaName,
+      chaNo:   s.chaNo   || DOC_SETTINGS_DEFAULT.chaNo,
+      stampB64: s.stampB64 || "",
+      sigB64:   s.sigB64   || "",
+      companyName:    s.name    || DOC_SETTINGS_DEFAULT.companyName,
+      companyAddress: s.address || DOC_SETTINGS_DEFAULT.companyAddress,
+    })).catch(() => {});
+  }, []);
+
   const nonDHLDocs = [
-    { label: "Export Invoice",    comp: <GSTInvoiceDoc     order={order} /> },
+    { label: "Export Invoice",    comp: <GSTInvoiceDoc     order={order} stampB64={ds.stampB64} sigB64={ds.sigB64} /> },
     { label: "Packing List",      comp: <PackingListDoc    order={order} /> },
     { label: "Form II",           comp: <Form2Doc          order={order} /> },
     { label: "EDF",               comp: <EdfDoc            order={order} /> },
-    { label: "Covering Letter",   comp: <CoveringLetterDoc order={order} /> },
-    { label: "CN22 Label",        comp: <CN22LabelDoc      order={order} /> },
+    { label: "Covering Letter",   comp: <CoveringLetterDoc order={order} chaName={ds.chaName} chaNo={ds.chaNo} /> },
+    { label: "CN22 Label",        comp: <CN22LabelDoc      order={order} companyName={ds.companyName} companyAddress={ds.companyAddress} /> },
   ];
 
   const dhlDocs = [
