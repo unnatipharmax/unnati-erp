@@ -1,9 +1,32 @@
 import { randomUUID } from "crypto";
-import { mkdir, rm, writeFile } from "fs/promises";
+import { rm, writeFile } from "fs/promises";
+import fs from "fs";
+import os from "os";
 import path from "path";
 
 const MAX_PRESCRIPTION_SIZE_BYTES = 10 * 1024 * 1024;
-const UPLOAD_DIR = path.join(process.cwd(), "uploads", "prescriptions");
+
+function resolveUploadDir(): string {
+  // Priority: env var → project-relative → system temp
+  const candidates = [
+    process.env.PRESCRIPTION_UPLOAD_DIR,
+    path.join(process.cwd(), "uploads", "prescriptions"),
+    path.join(os.tmpdir(), "unnati-prescriptions"),
+  ].filter(Boolean) as string[];
+
+  for (const dir of candidates) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      return dir;
+    } catch {
+      // try next candidate
+    }
+  }
+  // Should never reach here; os.tmpdir() is always writable
+  return path.join(os.tmpdir(), "unnati-prescriptions");
+}
+
+const UPLOAD_DIR = resolveUploadDir();
 
 const MIME_EXTENSION_MAP: Record<string, string> = {
   "application/pdf": ".pdf",
@@ -65,7 +88,6 @@ export async function preparePrescriptionUpload(
 export async function savePrescriptionUpload(
   pending: PendingPrescription
 ): Promise<SavedPrescription> {
-  await mkdir(UPLOAD_DIR, { recursive: true });
   await writeFile(path.join(UPLOAD_DIR, pending.storedName), pending.bytes);
 
   return {
