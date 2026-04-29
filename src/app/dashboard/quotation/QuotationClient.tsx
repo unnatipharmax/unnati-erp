@@ -391,6 +391,7 @@ function QuotationPreview({ q, totalWeightKg, websites }: { q: QuotationData; to
               <tbody>
                 {[
                   ["Bank Name",    q.bankName],
+                  ["A/C Name",     q.fromName],
                   ["Account No.",  q.bankAccount],
                   ["IFSC Code",    q.bankIfsc],
                   ["Branch",       q.bankBranch],
@@ -464,8 +465,8 @@ export default function QuotationClient() {
     bankIfsc:    "",
     bankBranch:  "",
     bankSwift:   "",
-    notes: "",
-    terms: "1. Prices are valid for the period mentioned above.\n2. All disputes subject to Nagpur jurisdiction.",
+    notes: "Email: Unnatipharmax@gmail.com\n\nBank Details:\nBank Name: ICICI BANK\nA/C Name: UNNATI PHARMAX\nA/C No.: 146305501090\nSWIFT Code: ICICINBBXXX\n\nBank Address:\nICICI Bank, Pushpak Plaza, New Itwari Road,\nNear Gandhi Putla, Nagpur - 440018, India",
+    terms: "From Unnati Pharmax, India. We assured you our best services at all times.\nOnly Lab tested and Approved products we sell.\nGoods once sold shall not be returned back or exchanged.\nCustom clearance of destination country is the responsibility of the purchaser.\nProduct shall get dispatched only on the remittance of amount in our account.\n\nSave A Tree. Please do not print this unless you really need to.",
   }));
 
   // Load company settings from API and pre-fill sender fields + bank details

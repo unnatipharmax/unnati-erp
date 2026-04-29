@@ -506,152 +506,303 @@ function CoveringLetterDoc({ order, chaName, chaNo }: { order: Order; chaName?: 
 }
 
 // ── DOC 5: CN22 Customs Declaration Label ────────────────────────────────────
+
+// Country → label variant mapping (per India Post CN22 specification)
+const CN22_EPACKET = new Set([
+  "cambodia","indonesia","japan","korea","south korea","new zealand","sri lanka",
+]);
+const CN22_PRIME = new Set([
+  "united states","usa","united states of america","us","canada",
+]);
+const CN22_TRACK_TRACE = new Set([
+  "aruba","belarus","bhutan","bulgaria","chile","china","curacao",
+  "dominican republic","egypt","estonia","georgia","gibraltar","hong kong",
+  "jersey","kazakhstan","lithuania","malaysia","mexico","morocco","myanmar",
+  "netherlands","oman","philippines","singapore","solomon islands","tuvalu",
+  "ukraine","united arab emirates","uae","uruguay","vietnam","zimbabwe",
+]);
+
+type CN22Variant = "epacket" | "prime" | "track" | "standard";
+
+function getCN22Variant(country: string): CN22Variant {
+  const c = (country ?? "").toLowerCase().trim();
+  if (CN22_PRIME.has(c))       return "prime";
+  if (CN22_EPACKET.has(c))     return "epacket";
+  if (CN22_TRACK_TRACE.has(c)) return "track";
+  return "standard";
+}
+
 function CN22LabelDoc({ order, companyName, companyAddress }: { order: Order; companyName?: string; companyAddress?: string }) {
-  const invDate  = getInvoiceDate(order);
-  // PARCEL ID format: DD.MM.YYYY
-  const parcelId = [
-    String(invDate.getDate()).padStart(2, "0"),
-    String(invDate.getMonth() + 1).padStart(2, "0"),
-    invDate.getFullYear(),
-  ].join(".");
+  const invDate = getInvoiceDate(order);
+  const dateStr = invDate.toISOString().split("T")[0]; // YYYY-MM-DD
 
   const recipientName    = order.fullName;
   const recipientAddr    = [order.address, order.city, order.state, order.postalCode].filter(Boolean).join(", ");
-  const recipientCountry = order.country;
+  const recipientCountry = order.country ?? "";
   const totalUsd         = order.dollarAmount ?? order.amountPaid;
+  const netWt            = order.netWeight;
+  const grossWt          = order.grossWeight ?? order.netWeight;
 
-  // Use first item's HSN; if multiple and different, join unique ones
   const hsnSet = [...new Set(order.items.map(i => i.hsn).filter(Boolean))];
   const hsnStr = hsnSet.length ? hsnSet.join(", ") : "3004";
 
-  // Description: join product names (simplified to "PHARMACEUTICAL PRODUCTS" if too long)
   const descRaw = order.items.map(i => i.productName).join(", ");
-  const desc    = descRaw.length > 60 ? "PHARMACEUTICAL PRODUCTS" : descRaw.toUpperCase();
+  const desc    = descRaw.length > 55 ? "PHARMACEUTICAL PRODUCTS" : descRaw.toUpperCase();
+
+  const senderName = companyName ?? "UNNATI PHARMAX";
+  const senderAddr = companyAddress ?? "1/04 Guruvanada Appartment, Central Ave, Lakadganj, Nagpur 440008";
+
+  const variant = getCN22Variant(recipientCountry);
+
+  // ── Checkbox component ──
+  const CB = ({ checked, label }: { checked?: boolean; label: string }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 6px", fontSize: "7.5pt", borderRight: "1px solid #000", borderBottom: "1px solid #000" }}>
+      <span style={{ width: 11, height: 11, border: "1.5px solid #000", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "9pt", flexShrink: 0, fontWeight: 900 }}>
+        {checked ? "✓" : ""}
+      </span>
+      {" "}{label}
+    </div>
+  );
+
+  // ── Country-specific badge in right panel bottom ──
+  const RightBadge = () => {
+    if (variant === "epacket") return (
+      <div style={{ border: "2px solid #004080", borderRadius: 4, padding: "4px 8px", textAlign: "center", marginTop: 6 }}>
+        <div style={{ fontSize: "7pt", color: "#004080", fontWeight: 900, letterSpacing: 0.5 }}>APP</div>
+        <div style={{ fontSize: "8.5pt", color: "#004080", fontWeight: 900, fontStyle: "italic" }}>ePacket</div>
+      </div>
+    );
+    if (variant === "prime") return (
+      <div style={{ marginTop: 6 }}>
+        <div style={{ border: "2px solid #000", padding: "3px 8px", textAlign: "center", fontSize: "8pt", fontWeight: 800, letterSpacing: 1, marginBottom: 4 }}>
+          USPS PRIORITY MAIL EXPRESS
+        </div>
+        <div style={{ border: "1px solid #000", height: 22, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "7pt", color: "#555" }}>
+          Barcode for ZIP CODE
+        </div>
+        <div style={{ textAlign: "center", fontSize: "6.5pt", marginTop: 2, fontWeight: 700 }}>ZIP CODE</div>
+      </div>
+    );
+    if (variant === "track") return (
+      <div style={{ textAlign: "center", marginTop: 8 }}>
+        {/* QR code placeholder */}
+        <div style={{ width: 52, height: 52, border: "2px solid #000", margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 2, padding: 4, boxSizing: "border-box" }}>
+          {Array.from({length:9}).map((_,i)=>(
+            <div key={i} style={{ background: i%2===0?"#000":"#fff", borderRadius:1 }} />
+          ))}
+        </div>
+        <div style={{ fontSize: "6.5pt", fontWeight: 700, marginTop: 3, letterSpacing: 0.5 }}>Track &amp; Trace</div>
+      </div>
+    );
+    return null; // standard — no badge
+  };
 
   return (
-    <div id="cn22-print" style={{ fontFamily: "Arial, sans-serif", fontSize: "9pt", color: "#000" }}>
+    <div id="cn22-print" style={{ fontFamily: "Arial, sans-serif", fontSize: "8.5pt", color: "#000", width: "100%" }}>
       <style>{`
-        #cn22-print .cn-outer { display: flex; gap: 0; border: 2px solid #000; width: 100%; }
-        #cn22-print .cn-left { flex: 1; border-right: 2px solid #000; }
-        #cn22-print .cn-right { width: 240px; padding: 8px 10px; font-weight: 700; font-size: 9pt; line-height: 1.7; }
-        #cn22-print .cn-parcel-id { background: #fff9c4; text-align: center; font-weight: 800; font-size: 13pt; padding: 6px 8px; border-bottom: 2px solid #000; letter-spacing: 0.04em; }
-        #cn22-print .cn-barcode { text-align: center; font-size: 8pt; padding: 5px 8px; border-bottom: 1px solid #000; color: #555; }
-        #cn22-print .cn-title { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; border-bottom: 1px solid #000; }
-        #cn22-print .cn-title .ct { font-weight: 800; font-size: 10pt; }
-        #cn22-print .cn-title .cn22 { font-size: 20pt; font-weight: 900; line-height: 1; }
-        #cn22-print .cn-open { font-size: 7.5pt; padding: 2px 8px; border-bottom: 1px solid #000; }
-        #cn22-print .cn-checkboxes { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-bottom: 1px solid #000; }
-        #cn22-print .cn-cb { display: flex; align-items: center; gap: 4px; padding: 3px 8px; font-size: 8pt; border-right: 1px solid #000; border-bottom: 1px solid #000; }
-        #cn22-print .cn-cb:nth-child(2n) { border-right: none; }
-        #cn22-print .cn-cb:nth-child(5), #cn22-print .cn-cb:nth-child(6) { border-bottom: none; }
-        #cn22-print .cb-box { width: 12px; height: 12px; border: 1.5px solid #000; display: inline-flex; align-items: center; justify-content: center; font-size: 10pt; flex-shrink: 0; }
-        #cn22-print table.cn-goods { width: 100%; border-collapse: collapse; border-top: 1px solid #000; }
-        #cn22-print table.cn-goods th { border: 1px solid #000; padding: 3px 4px; font-size: 7pt; text-align: center; font-weight: 700; background: #f5f5f5; vertical-align: top; }
-        #cn22-print table.cn-goods td { border: 1px solid #000; padding: 4px 5px; font-size: 8.5pt; vertical-align: middle; }
-        #cn22-print .cn-totals { display: flex; border-top: 1px solid #000; }
-        #cn22-print .cn-totals > div { flex: 1; padding: 4px 8px; font-size: 8pt; border-right: 1px solid #000; }
-        #cn22-print .cn-totals > div:last-child { border-right: none; }
-        #cn22-print .cn-totals b { display: block; }
-        #cn22-print .cn-declaration { padding: 5px 8px; font-size: 6.5pt; border-top: 1px solid #000; line-height: 1.4; }
-        #cn22-print .cn-signature { padding: 5px 8px; font-size: 7.5pt; font-weight: 700; border-top: 1px solid #000; }
-        #cn22-print .cn-right .hl { color: #b30000; font-weight: 800; }
-        #cn22-print .cn-right .from-block { margin-top: 14px; font-size: 8.5pt; }
+        #cn22-print, #cn22-print * { color: #000 !important; -webkit-text-fill-color: #000 !important; box-sizing: border-box; }
+        #cn22-print { background: #fff !important; }
+        #cn22-print table { border-collapse: collapse; width: 100%; }
+        #cn22-print td, #cn22-print th { border: 1px solid #000 !important; }
       `}</style>
 
-      <div className="cn-outer">
-        {/* ── Left panel ── */}
-        <div className="cn-left">
-          {/* PARCEL ID */}
-          <div className="cn-parcel-id">PARCEL ID &nbsp; {parcelId}</div>
+      {/* ── Outer table: left panel + right panel ── */}
+      <table style={{ width: "100%", border: "2px solid #000", tableLayout: "fixed" }}>
+        <tbody>
+          <tr style={{ verticalAlign: "top" }}>
 
-          {/* Affix barcode */}
-          <div className="cn-barcode">Affix Barcode ( If Any )</div>
+            {/* ═══════════════ LEFT PANEL ═══════════════ */}
+            <td style={{ width: "52%", padding: 0, borderRight: "2px solid #000" }}>
 
-          {/* CUSTOMS DECLARATION title + CN22 */}
-          <div className="cn-title">
-            <div>
-              <div className="ct">CUSTOMS</div>
-              <div className="ct">DECLARATION</div>
-            </div>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "7pt", fontWeight: 700 }}>May be Opened</div>
-              <div style={{ fontSize: "7pt", fontWeight: 700 }}>Officially</div>
-            </div>
-            <div className="cn22">CN<br />22</div>
-          </div>
+              {/* Row 1: CUSTOMS DECLARATION | May be opened officially | CN 22 */}
+              <table style={{ marginBottom: 0 }}>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: "4px 6px", borderBottom: "1px solid #000", borderRight: "none", width: "42%" }}>
+                      <div style={{ fontWeight: 900, fontSize: "9.5pt", letterSpacing: 0.3 }}>CUSTOMS</div>
+                      <div style={{ fontWeight: 900, fontSize: "9.5pt", letterSpacing: 0.3 }}>DECLARATION</div>
+                    </td>
+                    <td style={{ padding: "4px 6px", borderBottom: "1px solid #000", borderRight: "none", textAlign: "center", fontSize: "7pt", fontWeight: 700, width: "30%" }}>
+                      May be opened<br />officially
+                    </td>
+                    <td style={{ padding: "4px 6px", borderBottom: "1px solid #000", borderRight: "none", textAlign: "right" }}>
+                      <span style={{ fontWeight: 900, fontSize: "18pt", lineHeight: 1 }}>CN<br />22</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
 
-          {/* May be opened */}
-          <div className="cn-open"></div>
+              {/* Row 2: Designated operator + Barcode space */}
+              <table style={{ marginBottom: 0 }}>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: "3px 6px", borderBottom: "1px solid #000", borderRight: "1px solid #000", width: "42%", fontSize: "7.5pt" }}>
+                      <div style={{ fontWeight: 600 }}>Designated operator</div>
+                      <div style={{ fontWeight: 900, fontSize: "9pt" }}>India Post</div>
+                    </td>
+                    <td style={{ padding: "3px 6px", borderBottom: "1px solid #000", borderRight: "none", textAlign: "center", fontSize: "7pt", color: "#555" }}>
+                      Space for Barcode
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
 
-          {/* Checkboxes */}
-          <div className="cn-checkboxes">
-            <div className="cn-cb"><span className="cb-box"></span> Gift</div>
-            <div className="cn-cb"><span className="cb-box"></span> Commercial Sample</div>
-            <div className="cn-cb"><span className="cb-box"></span> Documents</div>
-            <div className="cn-cb"><span className="cb-box"></span> Returned Goods</div>
-            <div className="cn-cb"><span className="cb-box"></span> Sale Of Goods</div>
-            <div className="cn-cb"><span className="cb-box">✓</span> Other (Personal Items)</div>
-          </div>
+              {/* Row 3: Checkboxes (2×3 grid) */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderBottom: "1px solid #000" }}>
+                <CB label="Gift" />
+                <CB label="Commercial sample" />
+                <CB label="Documents" />
+                <CB label="Returned goods" />
+                <CB label="Sale of goods" checked={true} />
+                <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 6px", fontSize: "7.5pt", borderBottom: "1px solid #000" }}>
+                  <span style={{ width: 11, height: 11, border: "1.5px solid #000", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }} />
+                  {" "}Other:
+                </div>
+              </div>
 
-          {/* Goods table */}
-          <table className="cn-goods">
-            <thead>
-              <tr>
-                <th style={{ width: "32%" }}>Quantity and Detailed Description Of Contents (1)</th>
-                <th style={{ width: "14%" }}>Net Weight (2)</th>
-                <th style={{ width: "18%" }}>Value and Currency (3)</th>
-                <th style={{ width: "18%" }}>H S Tariff Number (4)</th>
-                <th style={{ width: "18%" }}>Country Of Origin (5)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style={{ fontWeight: 700 }}>{desc}</td>
-                <td style={{ textAlign: "center", fontWeight: 700 }}>
-                  {order.netWeight != null ? `${order.netWeight.toFixed(3)} kg` : ""}
-                </td>
-                <td style={{ textAlign: "center", fontWeight: 700 }}>{totalUsd} USD</td>
-                <td style={{ textAlign: "center" }}>{hsnStr}</td>
-                <td style={{ textAlign: "center", fontWeight: 700 }}>India</td>
-              </tr>
-            </tbody>
-          </table>
+              {/* Row 4: Goods table */}
+              <table>
+                <thead>
+                  <tr style={{ background: "#f0f0f0" }}>
+                    <th style={{ padding: "3px 4px", fontSize: "6.5pt", fontWeight: 700, textAlign: "left", borderRight: "1px solid #000", width: "36%" }}>
+                      Quantity and detailed<br />description of contents (1)
+                    </th>
+                    <th style={{ padding: "3px 4px", fontSize: "6.5pt", fontWeight: 700, textAlign: "center", borderRight: "1px solid #000", width: "13%" }}>
+                      Net<br />weight<br />(2)
+                    </th>
+                    <th style={{ padding: "3px 4px", fontSize: "6.5pt", fontWeight: 700, textAlign: "center", borderRight: "1px solid #000", width: "19%" }}>
+                      Value and<br />currency (3)
+                    </th>
+                    <th style={{ padding: "3px 4px", fontSize: "6.5pt", fontWeight: 700, textAlign: "center", borderRight: "1px solid #000", width: "17%" }}>
+                      HS tariff<br />number *<br />(4)
+                    </th>
+                    <th style={{ padding: "3px 4px", fontSize: "6.5pt", fontWeight: 700, textAlign: "center", width: "15%" }}>
+                      Country<br />of<br />origin * (5)
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: "5px 4px", fontSize: "8pt", fontWeight: 700, minHeight: 42, verticalAlign: "top" }}>{desc}</td>
+                    <td style={{ padding: "5px 4px", textAlign: "center", fontSize: "7.5pt", fontWeight: 700 }}>
+                      {netWt != null ? `${netWt.toFixed(3)} kg` : ""}
+                    </td>
+                    <td style={{ padding: "5px 4px", textAlign: "center", fontSize: "8pt", fontWeight: 700 }}>
+                      {typeof totalUsd === "number" ? totalUsd.toFixed(2) : totalUsd} USD
+                    </td>
+                    <td style={{ padding: "5px 4px", textAlign: "center", fontSize: "7.5pt" }}>{hsnStr}</td>
+                    <td style={{ padding: "5px 4px", textAlign: "center", fontSize: "8pt", fontWeight: 700 }}>India</td>
+                  </tr>
+                  {/* Filler row for space */}
+                  <tr>
+                    <td colSpan={5} style={{ height: 18 }}>&nbsp;</td>
+                  </tr>
+                </tbody>
+              </table>
 
-          {/* Totals */}
-          <div className="cn-totals">
-            <div>
-              <b>Total Weight In Kg (6):</b>
-              {order.grossWeight != null ? ` ${order.grossWeight.toFixed(3)} kg` : order.netWeight != null ? ` ${order.netWeight.toFixed(3)} kg` : ""}
-            </div>
-            <div><b>Total Value (7):</b> {totalUsd} USD</div>
-          </div>
+              {/* Row 5: Totals */}
+              <table>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: "3px 6px", fontSize: "7.5pt", borderRight: "1px solid #000", width: "50%" }}>
+                      <span style={{ fontWeight: 700 }}>Total weight <em>(in kg)</em>:</span>
+                      &nbsp;{grossWt != null ? grossWt.toFixed(3) : ""}
+                      &nbsp;&nbsp;<span style={{ fontWeight: 700 }}>(6)</span>
+                    </td>
+                    <td style={{ padding: "3px 6px", fontSize: "7.5pt" }}>
+                      <span style={{ fontWeight: 700 }}>Total value:</span>
+                      &nbsp;{typeof totalUsd === "number" ? totalUsd.toFixed(2) : totalUsd} USD
+                      &nbsp;&nbsp;<span style={{ fontWeight: 700 }}>(7)</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
 
-          {/* Declaration */}
-          <div className="cn-declaration">
-            I certify the particulars given in the customs declaration are correct.
-            This form does not contain any undeclared dangerous articles, or
-            articles prohibited by legislation or by postal or customs regulations.
-            I have met all applicable export filing requirements under federal law and regulations.
-          </div>
+              {/* Row 6: Declaration */}
+              <div style={{ padding: "4px 6px", fontSize: "6pt", lineHeight: 1.45, borderTop: "1px solid #000" }}>
+                <strong>I, the undersigned, whose name and address are given on the item,
+                certify that the particulars given in this declaration are correct and that
+                this item does not</strong> contain and dangerous article or articles prohibited by
+                legislation or by postal or customs regulations <strong>(8)</strong>
+              </div>
 
-          {/* Signature */}
-          <div className="cn-signature">DATE AND SENDER&apos;S SIGNATURE (8)</div>
-        </div>
+              {/* Row 7: Signature */}
+              <table>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: "3px 6px", fontSize: "7pt", borderRight: "1px solid #000", width: "50%" }}>
+                      Date and sender&apos;s signature<br />
+                      <span style={{ fontWeight: 700 }}>{dateStr}</span>
+                    </td>
+                    <td style={{ padding: "3px 6px", fontSize: "7pt" }}>
+                      Signature
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
 
-        {/* ── Right panel: Recipient + Sender ── */}
-        <div className="cn-right">
-          <div>
-            <span className="hl">Full Name : {recipientName}</span><br />
-            <span className="hl">Address : {recipientAddr}</span><br />
-            <span className="hl">Country : {recipientCountry}</span>
-          </div>
-          <div className="from-block">
-            FROM –<br />
-            NAME : {companyName ?? "UNNATI PHARMAX"}<br />
-            {companyAddress ?? "1/04 Guruvanada Appartment, Central Ave, Lakadganj, Nagpur 440008"}
-          </div>
-        </div>
-      </div>
+            {/* ═══════════════ RIGHT PANEL ═══════════════ */}
+            <td style={{ width: "48%", padding: 0, verticalAlign: "top" }}>
+
+              {/* Top: Barcode spaces + India Post logo */}
+              <table style={{ borderBottom: "1px solid #000" }}>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: "4px 6px", fontSize: "7pt", textAlign: "center", color: "#555", borderRight: "1px solid #000", width: "40%" }}>
+                      Space for Barcode
+                    </td>
+                    <td style={{ padding: "4px 6px", fontSize: "7pt", textAlign: "center", color: "#555", width: "35%" }}>
+                      Space for Barcode
+                    </td>
+                    <td style={{ padding: "3px 4px", textAlign: "center", borderLeft: "1px solid #000", width: "25%" }}>
+                      {/* India Post logo approximation */}
+                      <div style={{ fontSize: "6pt", fontWeight: 900, color: "#c8000a", lineHeight: 1.1 }}>भारतीय<br />डाक</div>
+                      <div style={{ fontSize: "5.5pt", fontWeight: 700, color: "#c8000a" }}>India Post</div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* FROM section */}
+              <table style={{ borderBottom: "1px solid #000" }}>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: "3px 5px", width: "18%", borderRight: "1px solid #000", textAlign: "center" }}>
+                      <div style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", fontWeight: 900, fontSize: "8pt", letterSpacing: 1 }}>FROM (10)</div>
+                    </td>
+                    <td style={{ padding: "5px 6px", fontSize: "7.5pt", lineHeight: 1.6 }}>
+                      <div style={{ fontWeight: 800 }}>{senderName}</div>
+                      <div>{senderAddr}</div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* TO section */}
+              <table style={{ borderBottom: "1px solid #000" }}>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: "3px 5px", width: "18%", borderRight: "1px solid #000", textAlign: "center" }}>
+                      <div style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", fontWeight: 900, fontSize: "8pt", letterSpacing: 1 }}>TO (11)</div>
+                    </td>
+                    <td style={{ padding: "5px 6px", fontSize: "8pt", lineHeight: 1.7 }}>
+                      <div style={{ fontWeight: 800, fontSize: "9pt" }}>{recipientName}</div>
+                      <div>{recipientAddr}</div>
+                      <div style={{ fontWeight: 800, marginTop: 3 }}>{recipientCountry}</div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* Country-specific badge area */}
+              <div style={{ padding: "4px 8px", minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <RightBadge />
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }
