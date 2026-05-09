@@ -1682,14 +1682,16 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
 
             /* Screen-only section label divider */
             .doc-section-label {
-              background: #1a1a2e !important;
-              color: #fff !important;
-              -webkit-text-fill-color: #fff !important;
+              background: #f3f4f6 !important;
+              color: #6b7280 !important;
+              -webkit-text-fill-color: #6b7280 !important;
               font-size: 10px;
-              font-weight: 700;
+              font-weight: 600;
               padding: 4px 16px;
-              letter-spacing: 0.08em;
+              letter-spacing: 0.06em;
               text-transform: uppercase;
+              border-top: 1px solid #e5e7eb;
+              border-bottom: 1px solid #e5e7eb;
             }
             .doc-section { padding: 12px; }
           `}</style>
