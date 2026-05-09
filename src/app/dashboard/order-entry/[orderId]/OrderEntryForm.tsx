@@ -8,6 +8,12 @@ type ExistingEntry = null | {
   items: Array<{ id: string; productName: string; quantity: number; sellingPrice: any }>;
 };
 type Row = { productId: string; quantity: string; sellingPrice: string };
+type InitialDosage = {
+  dosagePerDay: number | null;
+  totalDosages: number | null;
+  dosageStartDate: string | null;
+  dosageReminderDate: string | null;
+};
 
 // ── Spinner ───────────────────────────────────────────────────────────────────
 function Spinner({ size = 16 }: { size?: number }) {
@@ -197,10 +203,11 @@ function AddProductModal({ onClose, onAdded }: { onClose: () => void; onAdded: (
 
 // ── Main Form ─────────────────────────────────────────────────────────────────
 export default function OrderEntryForm({
-  orderId, products: initialProducts, existingEntry, lastPrices = {},
+  orderId, products: initialProducts, existingEntry, lastPrices = {}, initialDosage,
 }: {
   orderId: string; products: ProductOption[]; existingEntry: ExistingEntry | null;
   lastPrices?: Record<string, string>;
+  initialDosage?: InitialDosage;
 }) {
   const [products, setProducts]           = useState<ProductOption[]>(initialProducts);
   const [showModal, setShowModal]         = useState(false);
@@ -211,6 +218,14 @@ export default function OrderEntryForm({
   const [loading, setLoading]             = useState(false);
   const [ok, setOk]                       = useState<string | null>(null);
   const [err, setErr]                     = useState<string | null>(null);
+
+  const [dosagePerDay, setDosagePerDay]   = useState(String(initialDosage?.dosagePerDay ?? ""));
+  const [totalDosages, setTotalDosages]   = useState(String(initialDosage?.totalDosages ?? ""));
+  const [dosageStartDate, setDosageStartDate] = useState(initialDosage?.dosageStartDate ?? "");
+  const [dosageSaving, setDosageSaving]   = useState(false);
+  const [dosageOk, setDosageOk]           = useState<string | null>(null);
+  const [dosageErr, setDosageErr]         = useState<string | null>(null);
+  const reminderDate = initialDosage?.dosageReminderDate ?? null;
 
   const initialRows: Row[] = useMemo(() => {
     if (existingEntry?.items?.length) {
@@ -247,6 +262,24 @@ export default function OrderEntryForm({
     rows.reduce((s, r) => s + (Number(r.quantity) || 0) * (Number(r.sellingPrice) || 0), 0)
     + (Number(shippingPrice) || 0),
   [rows, shippingPrice]);
+
+  async function saveDosage() {
+    if (!dosagePerDay || !totalDosages) { setDosageErr("Units per day and total units are required"); return; }
+    setDosageSaving(true); setDosageErr(null); setDosageOk(null);
+    const res = await fetch(`/api/orders/${orderId}/dosage`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        dosagePerDay: Number(dosagePerDay),
+        totalDosages: Number(totalDosages),
+        dosageStartDate: dosageStartDate || undefined,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) setDosageErr(data?.error || "Failed to save dosage");
+    else setDosageOk(`Saved — reminder set for ${data.dosageReminderDate} (${data.daysSupply}d supply)`);
+    setDosageSaving(false);
+  }
 
   async function submit() {
     setLoading(true); setErr(null); setOk(null);
@@ -385,6 +418,69 @@ export default function OrderEntryForm({
             <span className="text-base font-bold text-slate-100 tabular-nums">
               ₹{orderTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
+          </div>
+        </div>
+
+        {/* Dosage Tracking */}
+        <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-violet-400">
+              <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <h3 className="text-sm font-semibold text-slate-200">Dosage Tracking</h3>
+            {reminderDate && (
+              <span className="ml-auto text-xs text-violet-400 bg-violet-500/10 border border-violet-500/20 rounded-lg px-2 py-0.5">
+                Reminder: {reminderDate}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-slate-500 mb-3">
+            Set dosage info to auto-calculate when to send a refill reminder (7 days before stock runs out).
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Field label="Units Per Day">
+              <input
+                value={dosagePerDay}
+                onChange={e => { setDosagePerDay(e.target.value); setDosageOk(null); setDosageErr(null); }}
+                type="number" min="1" placeholder="e.g. 1" inputMode="numeric"
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Total Units in Order">
+              <input
+                value={totalDosages}
+                onChange={e => { setTotalDosages(e.target.value); setDosageOk(null); setDosageErr(null); }}
+                type="number" min="1" placeholder="e.g. 30" inputMode="numeric"
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Start Date">
+              <input
+                value={dosageStartDate}
+                onChange={e => { setDosageStartDate(e.target.value); setDosageOk(null); setDosageErr(null); }}
+                type="date"
+                className={inputCls}
+              />
+            </Field>
+          </div>
+          <div className="mt-3 flex items-center gap-3 flex-wrap">
+            <button
+              type="button" onClick={saveDosage} disabled={dosageSaving}
+              className={[
+                "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-150",
+                dosageSaving
+                  ? "bg-violet-700/40 text-white/40 cursor-not-allowed"
+                  : "bg-violet-600 hover:bg-violet-500 active:scale-[0.98] text-white cursor-pointer",
+              ].join(" ")}
+            >
+              {dosageSaving ? <><Spinner size={12} /> Saving...</> : "Save Dosage"}
+            </button>
+            {dosageErr && (
+              <p className="text-xs text-red-400">{dosageErr}</p>
+            )}
+            {dosageOk && (
+              <p className="text-xs text-emerald-400">{dosageOk}</p>
+            )}
           </div>
         </div>
 

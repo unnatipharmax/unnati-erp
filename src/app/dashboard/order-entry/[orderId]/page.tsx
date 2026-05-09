@@ -97,7 +97,18 @@ export default async function OrderEntryPage({
       </p>
 
       <div className="mt-6">
-        <OrderEntryForm orderId={order.id} products={products} existingEntry={existingEntry} lastPrices={lastPrices} />
+        <OrderEntryForm
+          orderId={order.id}
+          products={products}
+          existingEntry={existingEntry}
+          lastPrices={lastPrices}
+          initialDosage={{
+            dosagePerDay: order.dosagePerDay ?? null,
+            totalDosages: order.totalDosages ?? null,
+            dosageStartDate: order.dosageStartDate?.toISOString().split("T")[0] ?? null,
+            dosageReminderDate: order.dosageReminderDate?.toISOString().split("T")[0] ?? null,
+          }}
+        />
       </div>
     </div>
   );

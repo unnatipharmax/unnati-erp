@@ -28,6 +28,19 @@ export async function POST(req: Request) {
     const pendingPrescription = await preparePrescriptionUpload(
       form.get("prescription")
     );
+
+    const dosagePerDay = form.get("dosagePerDay") ? parseInt(String(form.get("dosagePerDay")), 10) : null;
+    const totalDosages = form.get("totalDosages") ? parseInt(String(form.get("totalDosages")), 10) : null;
+    const dosageStartDate = form.get("dosageStartDate") ? new Date(String(form.get("dosageStartDate"))) : null;
+
+    let dosageReminderDate: Date | null = null;
+    if (dosagePerDay && totalDosages && dosagePerDay > 0) {
+      const startDate = dosageStartDate ?? new Date();
+      const daysSupply = Math.floor(totalDosages / dosagePerDay);
+      const reminderOffset = Math.max(0, daysSupply - 7);
+      dosageReminderDate = new Date(startDate);
+      dosageReminderDate.setDate(dosageReminderDate.getDate() + reminderOffset);
+    }
     let orderCreated = false;
     let savedPrescription: Awaited<
       ReturnType<typeof savePrescriptionUpload>
@@ -75,6 +88,10 @@ export async function POST(req: Request) {
           prescriptionOriginalName: savedPrescription?.originalName,
           prescriptionStoredName: savedPrescription?.storedName,
           prescriptionMimeType: savedPrescription?.mimeType,
+          ...(dosagePerDay   ? { dosagePerDay }   : {}),
+          ...(totalDosages   ? { totalDosages }   : {}),
+          ...(dosageStartDate    ? { dosageStartDate }    : {}),
+          ...(dosageReminderDate ? { dosageReminderDate } : {}),
         },
         select: { id: true },
       });

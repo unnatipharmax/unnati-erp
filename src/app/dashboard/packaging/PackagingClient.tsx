@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import PurchaseBillPanel from "./PurchaseBillPanel";
+import SupplierSuggestions from "./SupplierSuggestions";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type Item = {
@@ -2067,6 +2068,7 @@ function OrderCard({
   const [generating, setGenerating] = useState(false);
   const [err, setErr] = useState("");
   const [stockStatus, setStockStatus] = useState<"unset" | "in_stock" | "not_in_stock">("unset");
+  const [showBillPanel, setShowBillPanel] = useState(false);
   const [trackingNo, setTrackingNo] = useState("");
   const [licenseNo, setLicenseNo] = useState("");
   const [netWeight, setNetWeight] = useState("");
@@ -2229,8 +2231,8 @@ function OrderCard({
               </button>
             </>
           ) : (
-            /* not_in_stock — show only a reset option; bill panel is below */
-            <button onClick={() => setStockStatus("unset")} className="btn btn-secondary btn-sm" style={{ fontSize: "0.75rem" }}>
+            /* not_in_stock — show only a reset option; supplier suggestions are below */
+            <button onClick={() => { setStockStatus("unset"); setShowBillPanel(false); }} className="btn btn-secondary btn-sm" style={{ fontSize: "0.75rem" }}>
               ← Change Status
             </button>
           )}
@@ -2243,10 +2245,28 @@ function OrderCard({
         </div>
       )}
 
-      {/* Inline purchase bill upload when not in stock */}
-      {!hasInvoice && stockStatus === "not_in_stock" && (
-        <PurchaseBillPanel onSaved={() => setStockStatus("in_stock")} />
-      )}
+      {/* Not-in-stock: supplier suggestions + optional bill upload */}
+      {!hasInvoice && stockStatus === "not_in_stock" && (() => {
+        const outItems = order.items
+          .filter((i) => i.stockQty == null || i.stockQty < i.quantity)
+          .map((i) => ({
+            productId: i.productId,
+            productName: i.productName,
+            neededQty: i.quantity,
+            stockQty: i.stockQty,
+          }));
+        return (
+          <>
+            <SupplierSuggestions
+              outOfStockItems={outItems}
+              onProceedToUpload={() => setShowBillPanel(true)}
+            />
+            {showBillPanel && (
+              <PurchaseBillPanel onSaved={() => { setShowBillPanel(false); setStockStatus("in_stock"); }} />
+            )}
+          </>
+        );
+      })()}
 
       {/* ── Stock summary banner ── */}
       {(() => {
@@ -2437,49 +2457,60 @@ export default function PackagingClient() {
   async function generateCombined() {
     setBatchGenerating(true);
     setBatchErr("");
-    // 1. Generate one shared invoice number for all selected orders (per-order tracking/license)
-    const invoiceRes = await fetch("/api/packaging/multi-invoice", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        orders: [...selectedIds].map((id) => {
-          const det = orderDetails.get(id) ?? { trackingNo: "", licenseNo: "" };
-          return {
-            id,
-            trackingNo: det.trackingNo.trim() || null,
-            licenseNo:  det.licenseNo.trim()  || null,
-          };
+    let invoiceNo: string | null = null;
+    try {
+      // 1. Generate one shared invoice number for all selected orders
+      const invoiceRes = await fetch("/api/packaging/multi-invoice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orders: [...selectedIds].map((id) => {
+            const det = orderDetails.get(id) ?? { trackingNo: "", licenseNo: "" };
+            return {
+              id,
+              trackingNo: det.trackingNo.trim() || null,
+              licenseNo:  det.licenseNo.trim()  || null,
+            };
+          }),
         }),
-      }),
-    });
-    const invoiceData = await invoiceRes.json();
-    if (!invoiceRes.ok) {
-      setBatchErr(invoiceData?.error || "Failed to generate invoice");
-      setBatchGenerating(false);
-      return;
-    }
-    const invoiceNo: string = invoiceData.invoiceNo;
+      });
 
-    // 2. Download combined documents ZIP automatically
-    const docsRes = await fetch(`/api/packaging/multi-documents?invoiceNo=${encodeURIComponent(invoiceNo)}`);
-    if (!docsRes.ok) {
-      setBatchErr("Invoice created but document download failed. Invoice: " + invoiceNo);
-      setBatchGenerating(false);
+      let invoiceData: any;
+      try { invoiceData = await invoiceRes.json(); } catch { invoiceData = {}; }
+
+      if (!invoiceRes.ok) {
+        setBatchErr(invoiceData?.error || `Invoice generation failed (${invoiceRes.status})`);
+        return;
+      }
+      invoiceNo = invoiceData.invoiceNo as string;
+
+      // 2. Download combined documents ZIP
+      const docsRes = await fetch(`/api/packaging/multi-documents?invoiceNo=${encodeURIComponent(invoiceNo)}`);
+      if (!docsRes.ok) {
+        let errMsg = `Document download failed (${docsRes.status})`;
+        try { const j = await docsRes.json(); errMsg = j?.error || errMsg; } catch { /* non-JSON error */ }
+        setBatchErr(`Invoice ${invoiceNo} created — ${errMsg}. Refresh and retry download.`);
+        load();
+        return;
+      }
+      const blob = await docsRes.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = `${invoiceNo}-multi-documents.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      setSelectedIds(new Set());
+      setOrderDetails(new Map());
       load();
-      return;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Unexpected error";
+      setBatchErr(invoiceNo ? `Invoice ${invoiceNo} created — ${msg}` : msg);
+      load();
+    } finally {
+      setBatchGenerating(false);
     }
-    const blob = await docsRes.blob();
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href     = url;
-    a.download = `${invoiceNo}-multi-documents.zip`;
-    a.click();
-    URL.revokeObjectURL(url);
-
-    setSelectedIds(new Set());
-    setOrderDetails(new Map());
-    setBatchGenerating(false);
-    load();
   }
 
   // ── Split by client type ──

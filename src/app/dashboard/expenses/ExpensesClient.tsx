@@ -271,31 +271,30 @@ export default function ExpensesClient() {
     <div>
       <h2 style={{ margin: "0 0 20px", fontSize: "1.4rem", fontWeight: 700 }}>Expenses</h2>
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
-        {TABS.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActive(tab.key)}
-            style={{
-              padding: "10px 22px",
-              borderRadius: 10,
-              border: `2px solid ${active === tab.key ? tab.color : "var(--border)"}`,
-              background: active === tab.key ? tab.color + "22" : "var(--surface-1)",
-              color: active === tab.key ? tab.color : "var(--text-muted)",
-              fontWeight: active === tab.key ? 700 : 400,
-              fontSize: "0.88rem",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              transition: "all 0.15s",
-            }}
-          >
-            <span>{tab.icon}</span>
-            <span>{tab.label}</span>
-          </button>
-        ))}
+      {/* Category dropdown */}
+      <div style={{ marginBottom: 24 }}>
+        <select
+          value={active}
+          onChange={e => setActive(e.target.value as Category)}
+          style={{
+            padding: "10px 16px",
+            borderRadius: 10,
+            border: `2px solid ${activeTab.color}`,
+            background: "var(--surface-1)",
+            color: activeTab.color,
+            fontWeight: 700,
+            fontSize: "0.92rem",
+            cursor: "pointer",
+            outline: "none",
+            minWidth: 220,
+          }}
+        >
+          {TABS.map(tab => (
+            <option key={tab.key} value={tab.key}>
+              {tab.icon}  {tab.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Active panel */}

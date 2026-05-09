@@ -571,6 +571,25 @@ export default function QuotationClient() {
         {/* ── LEFT PANEL ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
+          {/* To */}
+          <div style={{ background: "var(--surface-1)", borderRadius: 10, padding: 16 }}>
+            <div style={sH}>Bill To (Client)</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div>
+                <label style={lS}>Client / Company Name</label>
+                <input style={iS} value={q.toName} onChange={e => set("toName", e.target.value)} placeholder="Client name" />
+              </div>
+              <div>
+                <label style={lS}>Address</label>
+                <textarea style={{ ...iS, resize: "vertical", minHeight: 56 }} value={q.toAddress} onChange={e => set("toAddress", e.target.value)} placeholder="Street, City, Country" />
+              </div>
+              <div>
+                <label style={lS}>Email</label>
+                <input style={iS} value={q.toEmail} onChange={e => set("toEmail", e.target.value)} placeholder="client@email.com" />
+              </div>
+            </div>
+          </div>
+
           {/* From */}
           <div style={{ background: "var(--surface-1)", borderRadius: 10, padding: 16 }}>
             <div style={sH}>From (Your Details)</div>
@@ -592,25 +611,6 @@ export default function QuotationClient() {
                   <label style={lS}>Phone</label>
                   <input style={iS} value={q.fromPhone} onChange={e => set("fromPhone", e.target.value)} placeholder="+91 ..." />
                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* To */}
-          <div style={{ background: "var(--surface-1)", borderRadius: 10, padding: 16 }}>
-            <div style={sH}>Bill To (Client)</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div>
-                <label style={lS}>Client / Company Name</label>
-                <input style={iS} value={q.toName} onChange={e => set("toName", e.target.value)} placeholder="Client name" />
-              </div>
-              <div>
-                <label style={lS}>Address</label>
-                <textarea style={{ ...iS, resize: "vertical", minHeight: 56 }} value={q.toAddress} onChange={e => set("toAddress", e.target.value)} placeholder="Street, City, Country" />
-              </div>
-              <div>
-                <label style={lS}>Email</label>
-                <input style={iS} value={q.toEmail} onChange={e => set("toEmail", e.target.value)} placeholder="client@email.com" />
               </div>
             </div>
           </div>

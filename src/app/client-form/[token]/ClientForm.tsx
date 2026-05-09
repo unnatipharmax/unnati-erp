@@ -155,6 +155,38 @@ export default function ClientForm({ token }: { token: string }) {
                   </Field>
                 </Grid>
               </Section>
+
+              <Section title="Dosage Information (Optional)">
+                <p className="text-xs text-slate-500 mb-3">
+                  Fill this if your medication requires dosage tracking and refill reminders.
+                </p>
+                <Grid>
+                  <Field label="Units Per Day">
+                    <Input
+                      name="dosagePerDay"
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 1"
+                      inputMode="numeric"
+                    />
+                  </Field>
+                  <Field label="Total Units in This Order">
+                    <Input
+                      name="totalDosages"
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 30"
+                      inputMode="numeric"
+                    />
+                  </Field>
+                  <Field label="Start Date">
+                    <Input
+                      name="dosageStartDate"
+                      type="date"
+                    />
+                  </Field>
+                </Grid>
+              </Section>
             </fieldset>
 
             <div className="flex items-center gap-3">

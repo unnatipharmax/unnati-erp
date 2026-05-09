@@ -1,7 +1,7 @@
 "use client";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { Home, Link, FileText, Users, Package, Settings, BookOpen, Box, ClipboardList, Wallet } from "lucide-react";
+import { Home, Link, FileText, Users, Package, Settings, BookOpen, Box, ClipboardList, Wallet, Tag } from "lucide-react";
 
 type Role = "ADMIN" | "MANAGER" | "SALES" | "ACCOUNTS" | "PACKAGING";
 
@@ -20,6 +20,7 @@ const ALL_MENU = [
   { name: "EXPORT RETURNS", path: "/dashboard/returns",              icon: Box,           roles: ["ADMIN","MANAGER"] },
   { name: "DOSAGE REMINDER", path: "/dashboard/dosage-reminders",     icon: FileText,      roles: ["ADMIN","MANAGER"] },
   { name: "PARTY MASTER",     path: "/dashboard/party",          icon: Users,     roles: ["ADMIN","MANAGER"] },
+  { name: "PRICE LIST",        path: "/dashboard/price-list",     icon: Tag,       roles: ["ADMIN","MANAGER","SALES"] },
   { name: "PRODUCT MASTER",   path: "/dashboard/product-master", icon: Package,   roles: ["ADMIN","MANAGER","SALES","PACKAGING"] },
   { name: "REPORTS & BACKUP", path: "/dashboard/reports",        icon: ClipboardList, roles: ["ADMIN","MANAGER","ACCOUNTS"] },
   { name: "SETUP",            path: "/dashboard/setup",          icon: Settings,  roles: ["ADMIN"] },
