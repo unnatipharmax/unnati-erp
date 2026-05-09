@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import PurchaseBillPanel from "./PurchaseBillPanel";
 import SupplierSuggestions from "./SupplierSuggestions";
+import PackagePhotos from "./PackagePhotos";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type Item = {
@@ -2095,7 +2096,6 @@ function OrderCard({
 
   async function generateInvoice() {
     if (!trackingNo.trim()) { setErr("Please enter a tracking number first."); return; }
-    if (isDHL && (!netWeight.trim() || !grossWeight.trim())) { setErr("Please enter Net Weight and Gross Weight for DHL shipment."); return; }
     setGenerating(true);
     setErr("");
     const res = await fetch("/api/packaging/invoice", {
@@ -2105,8 +2105,8 @@ function OrderCard({
         orderId: order.id,
         trackingNo: trackingNo.trim(),
         licenseNo: licenseNo.trim(),
-        netWeight:   isDHL && netWeight   ? Number(netWeight)   : null,
-        grossWeight: isDHL && grossWeight ? Number(grossWeight) : null,
+        netWeight:   netWeight   ? Number(netWeight)   : null,
+        grossWeight: grossWeight ? Number(grossWeight) : null,
       }),
     });
     const data = await res.json();
@@ -2175,26 +2175,22 @@ function OrderCard({
                 placeholder="Tracking number…"
                 style={{ width: 160, fontSize: "0.82rem", padding: "0.3rem 0.6rem" }}
               />
-              {isDHL && (
-                <>
-                  <input
-                    type="number"
-                    value={netWeight}
-                    onChange={e => setNetWeight(e.target.value)}
-                    placeholder="Net Wt (kg)"
-                    min="0" step="0.01"
-                    style={{ width: 100, fontSize: "0.82rem", padding: "0.3rem 0.6rem" }}
-                  />
-                  <input
-                    type="number"
-                    value={grossWeight}
-                    onChange={e => setGrossWeight(e.target.value)}
-                    placeholder="Gross Wt (kg)"
-                    min="0" step="0.01"
-                    style={{ width: 110, fontSize: "0.82rem", padding: "0.3rem 0.6rem" }}
-                  />
-                </>
-              )}
+              <input
+                type="number"
+                value={netWeight}
+                onChange={e => setNetWeight(e.target.value)}
+                placeholder="Net Wt (kg)"
+                min="0" step="0.01"
+                style={{ width: 100, fontSize: "0.82rem", padding: "0.3rem 0.6rem" }}
+              />
+              <input
+                type="number"
+                value={grossWeight}
+                onChange={e => setGrossWeight(e.target.value)}
+                placeholder="Gross Wt (kg)"
+                min="0" step="0.01"
+                style={{ width: 110, fontSize: "0.82rem", padding: "0.3rem 0.6rem" }}
+              />
               {addingLicense ? (
                 <>
                   <input
@@ -2270,6 +2266,16 @@ function OrderCard({
           </>
         );
       })()}
+
+      {/* Package photos + AI weight extraction */}
+      {!hasInvoice && stockStatus === "in_stock" && (
+        <PackagePhotos
+          onWeightExtracted={w => {
+            setNetWeight(String(w));
+            setGrossWeight(String(w));
+          }}
+        />
+      )}
 
       {/* ── Stock summary banner ── */}
       {(() => {
