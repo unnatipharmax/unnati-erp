@@ -1679,6 +1679,7 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
             #unnati-docs-root { background: #fff !important; }
             #unnati-docs-root table { width: 100%; border-collapse: collapse; }
             #unnati-docs-root td, #unnati-docs-root th { border-color: #000 !important; }
+            #unnati-docs-root tbody tr:hover { background: transparent !important; }
 
             /* Screen-only section label divider */
             .doc-section-label {
