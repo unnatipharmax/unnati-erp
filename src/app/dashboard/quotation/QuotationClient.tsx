@@ -430,9 +430,152 @@ function QuotationPreview({ q, totalWeightKg, websites }: { q: QuotationData; to
   );
 }
 
+// ── Add Product Modal (inline, so Quotation can create products on-the-fly) ───
+const PROD_EMPTY = {
+  name: "", manufacturer: "", hsn: "", pack: "",
+  mrp: "", gstPercent: "", composition: "",
+  batchNo: "", mfgDate: "", expDate: "",
+  minMargin: "", maxMargin: "", qty: "", unitType: "", unitWeightKg: "",
+};
+const UNIT_TYPES_Q = ["Strip","Tube","Bottle","Sachet","Vial","Ampoule","Box","Inhaler","Cream","Ointment","Syrup","Drops","Spray","Injection","Patch","Tablet","Capsule"];
+const DUW: Record<string, number> = { Strip: 0.00823, Tube: 0.0395 };
+
+function AddProductModal({ onClose, onCreated }: {
+  onClose: () => void;
+  onCreated: (p: ProductOption) => void;
+}) {
+  const [form, setForm] = useState({ ...PROD_EMPTY });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })); }
+
+  async function save() {
+    if (!form.name.trim()) { setErr("Product name is required"); return; }
+    setSaving(true); setErr("");
+    const res = await fetch("/api/products", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    const data = await res.json();
+    if (!res.ok) { setErr(data?.error || "Save failed"); setSaving(false); return; }
+    const p = data.product ?? data;
+    onCreated({
+      id:           p.id,
+      name:         p.name,
+      unitType:     p.unitType     ?? null,
+      unitWeightKg: p.unitWeightKg ?? null,
+    });
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal" style={{ maxWidth: 640, width: "100%" }}>
+        <div className="modal-header">
+          <h3>Add Product</h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "1.25rem", cursor: "pointer" }}>✕</button>
+        </div>
+        <div className="modal-body">
+          {err && <div className="alert alert-error" style={{ marginBottom: "0.75rem" }}>{err}</div>}
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
+            <div>
+              <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Product Name *</label>
+              <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. MORNING PILLS" autoFocus />
+            </div>
+            <div>
+              <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Composition</label>
+              <input value={form.composition} onChange={e => set("composition", e.target.value)} placeholder="e.g. LEVONORGESTREL TAB 1.5" />
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
+            <div>
+              <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Manufacturer</label>
+              <input value={form.manufacturer} onChange={e => set("manufacturer", e.target.value)} placeholder="e.g. HEALING PHARMA" />
+            </div>
+            <div>
+              <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>HSN Code</label>
+              <input value={form.hsn} onChange={e => set("hsn", e.target.value)} placeholder="e.g. 30059060" />
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
+            <div>
+              <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Batch No</label>
+              <input value={form.batchNo} onChange={e => set("batchNo", e.target.value)} placeholder="e.g. DH250092B" />
+            </div>
+            <div>
+              <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Mfg Date</label>
+              <input value={form.mfgDate} onChange={e => set("mfgDate", e.target.value)} placeholder="e.g. Jul-25" />
+            </div>
+            <div>
+              <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Exp Date</label>
+              <input value={form.expDate} onChange={e => set("expDate", e.target.value)} placeholder="e.g. Jun-27" />
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
+            <div>
+              <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Quantity</label>
+              <input value={form.qty} onChange={e => set("qty", e.target.value)} inputMode="numeric" placeholder="e.g. 10" />
+            </div>
+            <div>
+              <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Unit Type</label>
+              <select value={form.unitType} onChange={e => {
+                const t = e.target.value;
+                set("unitType", t);
+                if (!form.unitWeightKg && DUW[t]) set("unitWeightKg", String(DUW[t]));
+              }} style={{ width: "100%", fontSize: "0.875rem", padding: "0.5rem 0.6rem" }}>
+                <option value="">— Select type —</option>
+                {UNIT_TYPES_Q.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Unit Weight (kg)</label>
+              <input value={form.unitWeightKg} onChange={e => set("unitWeightKg", e.target.value)} inputMode="decimal"
+                placeholder={form.unitType && DUW[form.unitType] ? String(DUW[form.unitType]) : "kg/unit"} />
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: "0.75rem" }}>
+            <div>
+              <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Pack / Unit</label>
+              <input value={form.pack} onChange={e => set("pack", e.target.value)} placeholder="e.g. 1TAB" />
+            </div>
+            <div>
+              <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>MRP (₹)</label>
+              <input value={form.mrp} onChange={e => set("mrp", e.target.value)} inputMode="decimal" placeholder="0.00" />
+            </div>
+            <div>
+              <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>GST %</label>
+              <input value={form.gstPercent} onChange={e => set("gstPercent", e.target.value)} inputMode="decimal" placeholder="5" />
+            </div>
+            <div>
+              <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Min Margin %</label>
+              <input value={form.minMargin} onChange={e => set("minMargin", e.target.value)} inputMode="decimal" placeholder="10" />
+            </div>
+            <div>
+              <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Max Margin %</label>
+              <input value={form.maxMargin} onChange={e => set("maxMargin", e.target.value)} inputMode="decimal" placeholder="30" />
+            </div>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button onClick={onClose} className="btn btn-secondary">Cancel</button>
+          <button onClick={save} disabled={saving} className="btn btn-primary">
+            {saving ? "Saving…" : "Add Product"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function QuotationClient() {
   const [products, setProducts] = useState<ProductOption[]>([]);
+  const [addProductFor, setAddProductFor] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/products")
@@ -445,6 +588,12 @@ export default function QuotationClient() {
         }))
       ));
   }, []);
+
+  function handleProductCreated(p: ProductOption) {
+    setProducts(prev => [...prev, p].sort((a, b) => a.name.localeCompare(b.name)));
+    if (addProductFor != null) handleProductSelect(addProductFor, p.id);
+    setAddProductFor(null);
+  }
 
   const [q, setQ] = useState<QuotationData>(() => ({
     fromName:    "UNNATI PHARMAX",
@@ -676,7 +825,17 @@ export default function QuotationClient() {
                       <label style={{ ...lS, marginBottom: 3 }}>
                         Link to Product <span style={{ color: "var(--text-muted)" }}>(optional — auto-fills weight)</span>
                       </label>
-                      <select value={item.productId} onChange={e => handleProductSelect(item.id, e.target.value)} style={{ ...iS, fontSize: "0.8rem" }}>
+                      <select
+                        value={item.productId}
+                        onChange={e => {
+                          if (e.target.value === "__add_new__") {
+                            setAddProductFor(item.id);
+                          } else {
+                            handleProductSelect(item.id, e.target.value);
+                          }
+                        }}
+                        style={{ ...iS, fontSize: "0.8rem" }}
+                      >
                         <option value="">— Free text / no product —</option>
                         {products.map(p => (
                           <option key={p.id} value={p.id}>
@@ -684,6 +843,7 @@ export default function QuotationClient() {
                             {resolveUnitWeight(p) != null ? ` · ${resolveUnitWeight(p)!.toFixed(5)} kg/unit` : ""}
                           </option>
                         ))}
+                        <option value="__add_new__">＋ Add new product…</option>
                       </select>
                     </div>
 
@@ -810,6 +970,13 @@ export default function QuotationClient() {
           </div>
         </div>
       </div>
+
+      {addProductFor != null && (
+        <AddProductModal
+          onClose={() => setAddProductFor(null)}
+          onCreated={handleProductCreated}
+        />
+      )}
     </>
   );
 }
