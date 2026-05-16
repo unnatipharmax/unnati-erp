@@ -94,10 +94,13 @@ export async function PUT(req: Request) {
     bankSwift:   (body.bankSwift   ?? current.bankSwift).trim(),
   };
 
-  // Ensure data dir exists
-  const dir = path.dirname(SETTINGS_PATH);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-  fs.writeFileSync(SETTINGS_PATH, JSON.stringify(updated, null, 2), "utf-8");
+  try {
+    const dir = path.dirname(SETTINGS_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(SETTINGS_PATH, JSON.stringify(updated, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Failed to write company-settings.json:", err);
+    return NextResponse.json({ error: "Failed to save settings to disk." }, { status: 500 });
+  }
   return NextResponse.json(updated);
 }

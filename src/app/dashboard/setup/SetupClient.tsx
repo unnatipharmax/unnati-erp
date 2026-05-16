@@ -170,14 +170,20 @@ function CompanySettingsPanel() {
 
   async function handleSave() {
     setSaving(true); setMsg(null);
-    const res = await fetch("/api/settings/company", {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    const data = await res.json();
-    setSaving(false);
-    if (res.ok) { setForm({ ...CS_EMPTY, ...data }); setMsg({ ok: true, text: "Company settings saved successfully." }); }
-    else setMsg({ ok: false, text: data?.error || "Failed to save." });
+    try {
+      const res = await fetch("/api/settings/company", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      let data: Record<string, unknown> = {};
+      try { data = await res.json(); } catch { /* server returned non-JSON */ }
+      if (res.ok) { setForm({ ...CS_EMPTY, ...(data as CS) }); setMsg({ ok: true, text: "Company settings saved successfully." }); }
+      else setMsg({ ok: false, text: (data?.error as string) || `Error ${res.status}` });
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof Error ? e.message : "Network error — could not save." });
+    } finally {
+      setSaving(false);
+    }
   }
 
   const iS: React.CSSProperties = { width: "100%", padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--text-primary)", fontSize: "0.85rem", boxSizing: "border-box" };

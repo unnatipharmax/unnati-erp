@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     const email = String(form.get("email") ?? "").trim();
     const phone = String(form.get("phone") ?? "").trim();
     const remitterName = String(form.get("remitterName") ?? "").trim();
-    const amountPaid = String(form.get("amountPaid") ?? "").trim();
+    const amountPaid = String(form.get("amountPaid") ?? "").trim().replace(/[^0-9.-]/g, "");
     const currency = String(form.get("currency") ?? "").trim();
     const pendingPrescription = await preparePrescriptionUpload(
       form.get("prescription")
