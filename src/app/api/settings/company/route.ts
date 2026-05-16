@@ -99,8 +99,9 @@ export async function PUT(req: Request) {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(SETTINGS_PATH, JSON.stringify(updated, null, 2), "utf-8");
   } catch (err) {
-    console.error("Failed to write company-settings.json:", err);
-    return NextResponse.json({ error: "Failed to save settings to disk." }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Failed to write company-settings.json:", msg, "cwd:", process.cwd(), "path:", SETTINGS_PATH);
+    return NextResponse.json({ error: `Disk write failed: ${msg}` }, { status: 500 });
   }
   return NextResponse.json(updated);
 }
