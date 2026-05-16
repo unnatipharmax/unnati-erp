@@ -28,6 +28,7 @@ export type CompanySettings = {
   bankSwift: string;
 };
 
+// These are the real defaults for this company — used only if DB is empty and file is missing
 const DEFAULTS: CompanySettings = {
   name:       "UNNATI PHARMAX",
   address:    "1/04 Guruvanada Appartment, Central Ave, Lakadganj, Nagpur 440008",
@@ -43,11 +44,11 @@ const DEFAULTS: CompanySettings = {
   chaNo:      "11/2623",
   stampB64:   "",
   sigB64:     "",
-  bankName:   "",
-  bankAccount:"",
+  bankName:   "ICICI BANK",
+  bankAccount:"146305501090",
   bankIfsc:   "",
-  bankBranch: "",
-  bankSwift:  "",
+  bankBranch: "Pushpak Plaza, New Itwari Road, Near Gandhi Putla, Nagpur - 440018",
+  bankSwift:  "ICICINBBXXX",
 };
 
 const FILE_PATH = path.join(process.cwd(), "data", "company-settings.json");
@@ -61,43 +62,59 @@ function readFromFile(): CompanySettings | null {
   }
 }
 
-function toSettings(row: Record<string, unknown> | null): CompanySettings {
-  if (!row) return { ...DEFAULTS };
+function toSettings(row: Record<string, unknown>): CompanySettings {
   return {
-    name:        (row.name        as string) ?? DEFAULTS.name,
-    address:     (row.address     as string) ?? DEFAULTS.address,
-    email:       (row.email       as string) ?? DEFAULTS.email,
-    phone:       (row.phone       as string) ?? DEFAULTS.phone,
-    website:     (row.website     as string) ?? DEFAULTS.website,
-    indiamart:   (row.indiamart   as string) ?? DEFAULTS.indiamart,
-    marketing:   (row.marketing   as string) ?? DEFAULTS.marketing,
-    gstin:       (row.gstin       as string) ?? DEFAULTS.gstin,
-    iec:         (row.iec         as string) ?? DEFAULTS.iec,
-    drugLic:     (row.drugLic     as string) ?? DEFAULTS.drugLic,
-    chaName:     (row.chaName     as string) ?? DEFAULTS.chaName,
-    chaNo:       (row.chaNo       as string) ?? DEFAULTS.chaNo,
-    stampB64:    (row.stampB64    as string) ?? "",
-    sigB64:      (row.sigB64      as string) ?? "",
-    bankName:    (row.bankName    as string) ?? "",
-    bankAccount: (row.bankAccount as string) ?? "",
-    bankIfsc:    (row.bankIfsc    as string) ?? "",
-    bankBranch:  (row.bankBranch  as string) ?? "",
-    bankSwift:   (row.bankSwift   as string) ?? "",
+    name:        String(row.name        ?? DEFAULTS.name),
+    address:     String(row.address     ?? DEFAULTS.address),
+    email:       String(row.email       ?? DEFAULTS.email),
+    phone:       String(row.phone       ?? DEFAULTS.phone),
+    website:     String(row.website     ?? DEFAULTS.website),
+    indiamart:   String(row.indiamart   ?? DEFAULTS.indiamart),
+    marketing:   String(row.marketing   ?? DEFAULTS.marketing),
+    gstin:       String(row.gstin       ?? DEFAULTS.gstin),
+    iec:         String(row.iec         ?? DEFAULTS.iec),
+    drugLic:     String(row.drugLic     ?? DEFAULTS.drugLic),
+    chaName:     String(row.chaName     ?? DEFAULTS.chaName),
+    chaNo:       String(row.chaNo       ?? DEFAULTS.chaNo),
+    stampB64:    String(row.stampB64    ?? ""),
+    sigB64:      String(row.sigB64      ?? ""),
+    bankName:    String(row.bankName    ?? DEFAULTS.bankName),
+    bankAccount: String(row.bankAccount ?? DEFAULTS.bankAccount),
+    bankIfsc:    String(row.bankIfsc    ?? DEFAULTS.bankIfsc),
+    bankBranch:  String(row.bankBranch  ?? DEFAULTS.bankBranch),
+    bankSwift:   String(row.bankSwift   ?? DEFAULTS.bankSwift),
   };
 }
 
+// Seed DB with the provided settings (best-effort, fire-and-forget)
+function seedDb(settings: CompanySettings) {
+  prisma.companySetting.upsert({
+    where:  { id: "1" },
+    update: settings,
+    create: { id: "1", ...settings },
+  }).catch(() => {/* ignore — will retry on next request */});
+}
+
 export async function GET() {
-  // 1. Try database (primary store after migration)
+  // 1. Try DB (primary source after migration)
   try {
     const row = await prisma.companySetting.findUnique({ where: { id: "1" } });
-    if (row) return NextResponse.json(toSettings(row as Record<string, unknown>));
-  } catch { /* DB not ready yet — fall through */ }
+    if (row) {
+      return NextResponse.json(toSettings(row as Record<string, unknown>));
+    }
+    // Table exists but row missing — seed it from file or defaults, then return
+    const seed = readFromFile() ?? DEFAULTS;
+    seedDb(seed);
+    return NextResponse.json(seed);
+  } catch {
+    // Table not created yet (migration pending) — fall through to file
+  }
 
-  // 2. Fall back to local JSON file (works on local dev and pre-migration Vercel deploys)
+  // 2. Fall back to local JSON file (local dev / pre-migration)
   const fromFile = readFromFile();
   if (fromFile) return NextResponse.json(fromFile);
 
-  // 3. Hard-coded defaults
+  // 3. Hard-coded defaults (always have real bank data)
   return NextResponse.json(DEFAULTS);
 }
 
@@ -108,8 +125,7 @@ export async function PUT(req: Request) {
 
   const body = await req.json();
 
-  // Read current values from DB first, then file, then defaults
-  let current: CompanySettings = { ...DEFAULTS };
+  let current: CompanySettings = DEFAULTS;
   try {
     const row = await prisma.companySetting.findUnique({ where: { id: "1" } });
     if (row) current = toSettings(row as Record<string, unknown>);
@@ -131,8 +147,8 @@ export async function PUT(req: Request) {
     drugLic:     String(body.drugLic     ?? current.drugLic).trim(),
     chaName:     String(body.chaName     ?? current.chaName).trim(),
     chaNo:       String(body.chaNo       ?? current.chaNo).trim(),
-    stampB64:    body.stampB64  !== undefined ? String(body.stampB64)  : current.stampB64,
-    sigB64:      body.sigB64    !== undefined ? String(body.sigB64)    : current.sigB64,
+    stampB64:    body.stampB64 !== undefined ? String(body.stampB64) : current.stampB64,
+    sigB64:      body.sigB64   !== undefined ? String(body.sigB64)   : current.sigB64,
     bankName:    String(body.bankName    ?? current.bankName).trim(),
     bankAccount: String(body.bankAccount ?? current.bankAccount).trim(),
     bankIfsc:    String(body.bankIfsc    ?? current.bankIfsc).trim(),
@@ -149,7 +165,7 @@ export async function PUT(req: Request) {
     return NextResponse.json(toSettings(row as Record<string, unknown>));
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("Failed to save company settings to DB:", msg);
+    console.error("Failed to save company settings:", msg);
     return NextResponse.json({ error: `Save failed: ${msg}` }, { status: 500 });
   }
 }
