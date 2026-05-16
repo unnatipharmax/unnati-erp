@@ -399,7 +399,7 @@ function QuotationPreview({ q, totalWeightKg, websites }: { q: QuotationData; to
                 ].filter(([, v]) => v).map(([label, val]) => (
                   <tr key={label}>
                     <td style={{ padding: "2px 10px 2px 0", fontSize: "8pt", color: "#666", fontWeight: 600, whiteSpace: "nowrap" }}>{label}</td>
-                    <td style={{ padding: "2px 0", fontSize: "8.5pt", fontFamily: label === "Account No." || label === "IFSC Code" ? "monospace" : undefined }}>{val}</td>
+                    <td style={{ padding: "2px 0", fontSize: "8.5pt", color: "#111", fontFamily: label === "Account No." || label === "IFSC Code" ? "monospace" : undefined }}>{val}</td>
                   </tr>
                 ))}
               </tbody>
