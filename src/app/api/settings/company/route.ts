@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSession } from "../../../../lib/auth";
 import { prisma } from "../../../../lib/prisma";
+import fs from "fs";
+import path from "path";
 
 export const runtime = "nodejs";
 
@@ -48,6 +50,17 @@ const DEFAULTS: CompanySettings = {
   bankSwift:  "",
 };
 
+const FILE_PATH = path.join(process.cwd(), "data", "company-settings.json");
+
+function readFromFile(): CompanySettings | null {
+  try {
+    const raw = fs.readFileSync(FILE_PATH, "utf-8");
+    return { ...DEFAULTS, ...JSON.parse(raw) };
+  } catch {
+    return null;
+  }
+}
+
 function toSettings(row: Record<string, unknown> | null): CompanySettings {
   if (!row) return { ...DEFAULTS };
   return {
@@ -74,12 +87,18 @@ function toSettings(row: Record<string, unknown> | null): CompanySettings {
 }
 
 export async function GET() {
+  // 1. Try database (primary store after migration)
   try {
     const row = await prisma.companySetting.findUnique({ where: { id: "1" } });
-    return NextResponse.json(toSettings(row as Record<string, unknown> | null));
-  } catch {
-    return NextResponse.json(DEFAULTS);
-  }
+    if (row) return NextResponse.json(toSettings(row as Record<string, unknown>));
+  } catch { /* DB not ready yet — fall through */ }
+
+  // 2. Fall back to local JSON file (works on local dev and pre-migration Vercel deploys)
+  const fromFile = readFromFile();
+  if (fromFile) return NextResponse.json(fromFile);
+
+  // 3. Hard-coded defaults
+  return NextResponse.json(DEFAULTS);
 }
 
 export async function PUT(req: Request) {
@@ -88,9 +107,16 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
-  const current = toSettings(
-    await prisma.companySetting.findUnique({ where: { id: "1" } }) as Record<string, unknown> | null
-  );
+
+  // Read current values from DB first, then file, then defaults
+  let current: CompanySettings = { ...DEFAULTS };
+  try {
+    const row = await prisma.companySetting.findUnique({ where: { id: "1" } });
+    if (row) current = toSettings(row as Record<string, unknown>);
+    else current = readFromFile() ?? DEFAULTS;
+  } catch {
+    current = readFromFile() ?? DEFAULTS;
+  }
 
   const updated: CompanySettings = {
     name:        String(body.name        ?? current.name).trim(),
@@ -114,11 +140,16 @@ export async function PUT(req: Request) {
     bankSwift:   String(body.bankSwift   ?? current.bankSwift).trim(),
   };
 
-  const row = await prisma.companySetting.upsert({
-    where:  { id: "1" },
-    update: updated,
-    create: { id: "1", ...updated },
-  });
-
-  return NextResponse.json(toSettings(row as Record<string, unknown>));
+  try {
+    const row = await prisma.companySetting.upsert({
+      where:  { id: "1" },
+      update: updated,
+      create: { id: "1", ...updated },
+    });
+    return NextResponse.json(toSettings(row as Record<string, unknown>));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Failed to save company settings to DB:", msg);
+    return NextResponse.json({ error: `Save failed: ${msg}` }, { status: 500 });
+  }
 }
