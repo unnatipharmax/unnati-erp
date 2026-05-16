@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSession } from "../../../../lib/auth";
-import fs from "fs";
-import path from "path";
+import { prisma } from "../../../../lib/prisma";
 
 export const runtime = "nodejs";
-
-const SETTINGS_PATH = path.join(process.cwd(), "data", "company-settings.json");
 
 export type CompanySettings = {
   name: string;
@@ -51,17 +48,38 @@ const DEFAULTS: CompanySettings = {
   bankSwift:  "",
 };
 
-function readSettings(): CompanySettings {
-  try {
-    const raw = fs.readFileSync(SETTINGS_PATH, "utf-8");
-    return { ...DEFAULTS, ...JSON.parse(raw) };
-  } catch {
-    return { ...DEFAULTS };
-  }
+function toSettings(row: Record<string, unknown> | null): CompanySettings {
+  if (!row) return { ...DEFAULTS };
+  return {
+    name:        (row.name        as string) ?? DEFAULTS.name,
+    address:     (row.address     as string) ?? DEFAULTS.address,
+    email:       (row.email       as string) ?? DEFAULTS.email,
+    phone:       (row.phone       as string) ?? DEFAULTS.phone,
+    website:     (row.website     as string) ?? DEFAULTS.website,
+    indiamart:   (row.indiamart   as string) ?? DEFAULTS.indiamart,
+    marketing:   (row.marketing   as string) ?? DEFAULTS.marketing,
+    gstin:       (row.gstin       as string) ?? DEFAULTS.gstin,
+    iec:         (row.iec         as string) ?? DEFAULTS.iec,
+    drugLic:     (row.drugLic     as string) ?? DEFAULTS.drugLic,
+    chaName:     (row.chaName     as string) ?? DEFAULTS.chaName,
+    chaNo:       (row.chaNo       as string) ?? DEFAULTS.chaNo,
+    stampB64:    (row.stampB64    as string) ?? "",
+    sigB64:      (row.sigB64      as string) ?? "",
+    bankName:    (row.bankName    as string) ?? "",
+    bankAccount: (row.bankAccount as string) ?? "",
+    bankIfsc:    (row.bankIfsc    as string) ?? "",
+    bankBranch:  (row.bankBranch  as string) ?? "",
+    bankSwift:   (row.bankSwift   as string) ?? "",
+  };
 }
 
 export async function GET() {
-  return NextResponse.json(readSettings());
+  try {
+    const row = await prisma.companySetting.findUnique({ where: { id: "1" } });
+    return NextResponse.json(toSettings(row as Record<string, unknown> | null));
+  } catch {
+    return NextResponse.json(DEFAULTS);
+  }
 }
 
 export async function PUT(req: Request) {
@@ -70,38 +88,37 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
-  const current = readSettings();
+  const current = toSettings(
+    await prisma.companySetting.findUnique({ where: { id: "1" } }) as Record<string, unknown> | null
+  );
+
   const updated: CompanySettings = {
-    name:        (body.name        ?? current.name).trim(),
-    address:     (body.address     ?? current.address).trim(),
-    email:       (body.email       ?? current.email).trim(),
-    phone:       (body.phone       ?? current.phone).trim(),
-    website:     (body.website     ?? current.website).trim(),
-    indiamart:   (body.indiamart   ?? current.indiamart).trim(),
-    marketing:   (body.marketing   ?? current.marketing).trim(),
-    gstin:       (body.gstin       ?? current.gstin).trim(),
-    iec:         (body.iec         ?? current.iec).trim(),
-    drugLic:     (body.drugLic     ?? current.drugLic).trim(),
-    chaName:     (body.chaName     ?? current.chaName).trim(),
-    chaNo:       (body.chaNo       ?? current.chaNo).trim(),
-    // base64 images — keep existing if not provided in body
-    stampB64:    body.stampB64  !== undefined ? body.stampB64  : current.stampB64,
-    sigB64:      body.sigB64    !== undefined ? body.sigB64    : current.sigB64,
-    bankName:    (body.bankName    ?? current.bankName).trim(),
-    bankAccount: (body.bankAccount ?? current.bankAccount).trim(),
-    bankIfsc:    (body.bankIfsc    ?? current.bankIfsc).trim(),
-    bankBranch:  (body.bankBranch  ?? current.bankBranch).trim(),
-    bankSwift:   (body.bankSwift   ?? current.bankSwift).trim(),
+    name:        String(body.name        ?? current.name).trim(),
+    address:     String(body.address     ?? current.address).trim(),
+    email:       String(body.email       ?? current.email).trim(),
+    phone:       String(body.phone       ?? current.phone).trim(),
+    website:     String(body.website     ?? current.website).trim(),
+    indiamart:   String(body.indiamart   ?? current.indiamart).trim(),
+    marketing:   String(body.marketing   ?? current.marketing).trim(),
+    gstin:       String(body.gstin       ?? current.gstin).trim(),
+    iec:         String(body.iec         ?? current.iec).trim(),
+    drugLic:     String(body.drugLic     ?? current.drugLic).trim(),
+    chaName:     String(body.chaName     ?? current.chaName).trim(),
+    chaNo:       String(body.chaNo       ?? current.chaNo).trim(),
+    stampB64:    body.stampB64  !== undefined ? String(body.stampB64)  : current.stampB64,
+    sigB64:      body.sigB64    !== undefined ? String(body.sigB64)    : current.sigB64,
+    bankName:    String(body.bankName    ?? current.bankName).trim(),
+    bankAccount: String(body.bankAccount ?? current.bankAccount).trim(),
+    bankIfsc:    String(body.bankIfsc    ?? current.bankIfsc).trim(),
+    bankBranch:  String(body.bankBranch  ?? current.bankBranch).trim(),
+    bankSwift:   String(body.bankSwift   ?? current.bankSwift).trim(),
   };
 
-  try {
-    const dir = path.dirname(SETTINGS_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(SETTINGS_PATH, JSON.stringify(updated, null, 2), "utf-8");
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("Failed to write company-settings.json:", msg, "cwd:", process.cwd(), "path:", SETTINGS_PATH);
-    return NextResponse.json({ error: `Disk write failed: ${msg}` }, { status: 500 });
-  }
-  return NextResponse.json(updated);
+  const row = await prisma.companySetting.upsert({
+    where:  { id: "1" },
+    update: updated,
+    create: { id: "1", ...updated },
+  });
+
+  return NextResponse.json(toSettings(row as Record<string, unknown>));
 }

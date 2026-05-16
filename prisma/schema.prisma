@@ -426,3 +426,28 @@ model ExportReturnItem {
   @@index([returnId])
   @@index([productId])
 }
+
+// ── Singleton company settings (id always "1") ────────────────────────────────
+model CompanySetting {
+  id          String   @id @default("1")
+  name        String   @default("UNNATI PHARMAX")
+  address     String   @default("")
+  email       String   @default("")
+  phone       String   @default("")
+  website     String   @default("")
+  indiamart   String   @default("")
+  marketing   String   @default("")
+  gstin       String   @default("")
+  iec         String   @default("")
+  drugLic     String   @default("")
+  chaName     String   @default("")
+  chaNo       String   @default("")
+  stampB64    String   @default("") @db.Text
+  sigB64      String   @default("") @db.Text
+  bankName    String   @default("")
+  bankAccount String   @default("")
+  bankIfsc    String   @default("")
+  bankBranch  String   @default("")
+  bankSwift   String   @default("")
+  updatedAt   DateTime @updatedAt
+}
