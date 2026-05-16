@@ -189,8 +189,9 @@ function InvoiceInlineEditor({ invoice, onClose, onSaved }: {
   }
 
   // Table cell base styles (invoice format)
-  const td:  React.CSSProperties = { border: "1px solid #000", padding: "2px 4px", verticalAlign: "top", color: "#000" };
-  const tbl: React.CSSProperties = { width: "100%", borderCollapse: "collapse" as const };
+  const td:   React.CSSProperties = { border: "1px solid #000", padding: "3px 5px", verticalAlign: "top", color: "#000", fontSize: "9px" };
+  const tdSm: React.CSSProperties = { ...td, fontSize: "8px" };
+  const tbl:  React.CSSProperties = { width: "100%", borderCollapse: "collapse" as const };
 
   // Shared style for below-invoice auxiliary input boxes
   const auxInput: React.CSSProperties = { border: "1px solid #ccc", borderRadius: 4, padding: "4px 6px", width: "100%", fontSize: 12, color: "#000", background: "#fff", outline: "none" };
@@ -217,7 +218,7 @@ function InvoiceInlineEditor({ invoice, onClose, onSaved }: {
 
       {/* ── Scrollable body ── */}
       <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem", background: "#e5e7eb" }}>
-        <div id="invoice-edit-root" style={{ maxWidth: 960, margin: "0 auto", background: "#fff", padding: 14, boxShadow: "0 2px 12px rgba(0,0,0,0.18)", fontFamily: "Arial,sans-serif", fontSize: "8.5px" }}>
+        <div id="invoice-edit-root" style={{ maxWidth: 960, margin: "0 auto", background: "#fff", padding: 14, boxShadow: "0 2px 12px rgba(0,0,0,0.18)", fontFamily: "Arial,sans-serif", fontSize: "9px" }}>
           <style>{`
             #invoice-edit-root * { box-sizing: border-box; }
             #invoice-edit-root input, #invoice-edit-root select {
@@ -248,7 +249,7 @@ function InvoiceInlineEditor({ invoice, onClose, onSaved }: {
 
           {/* Title */}
           <table style={tbl}><tbody><tr>
-            <td style={{ ...td, textAlign: "center", fontWeight: "bold", fontSize: 13, padding: "5px" }}>EXPORT INVOICE</td>
+            <td style={{ ...td, textAlign: "center", fontWeight: "bold", fontSize: 14, padding: "7px", letterSpacing: "0.08em" }}>EXPORT INVOICE</td>
           </tr></tbody></table>
 
           {/* Exporter + Invoice meta */}
@@ -291,11 +292,11 @@ function InvoiceInlineEditor({ invoice, onClose, onSaved }: {
                 <td style={td}><strong>Consignee<br/>Name &amp; Address</strong></td>
                 <td style={td}></td>
                 <td style={td}><strong>Buyer(If Other than Consignee)</strong></td>
-                <td style={{ ...td, fontSize: "7.5px" }}>As per the Annexure</td>
+                <td style={tdSm}>As per the Annexure</td>
               </tr>
               <tr>
                 <td style={td}><strong>To</strong></td>
-                <td style={{ ...td, fontSize: "7.5px" }}>AS PER PACKING LIST</td>
+                <td style={tdSm}>AS PER PACKING LIST</td>
                 <td style={td}>India</td>
                 <td style={td}>
                   <input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Full Name" style={{ fontWeight: "bold" }} />
@@ -310,19 +311,19 @@ function InvoiceInlineEditor({ invoice, onClose, onSaved }: {
               </tr>
               <tr>
                 <td style={td}></td>
-                <td style={{ ...td, fontSize: "7.5px" }}>(As per Annexure/Packing List)</td>
+                <td style={tdSm}>(As per Annexure/Packing List)</td>
                 <td style={td}></td><td style={td}></td>
               </tr>
               <tr>
                 <td style={td}></td>
-                <td style={{ ...td, fontSize: "7.5px" }}>AS PER PACKING LIST / As per Annexure</td>
-                <td style={{ ...td, fontSize: "7.5px" }} colSpan={2}>Third Party Transfer</td>
+                <td style={tdSm}>AS PER PACKING LIST / As per Annexure</td>
+                <td style={tdSm} colSpan={2}>Third Party Transfer</td>
               </tr>
               <tr>
                 <td style={td}></td>
                 <td style={td}>Country of Origin: <strong>INDIA</strong></td>
                 <td style={td}>Country of final Destination:</td>
-                <td style={{ ...td, fontSize: "7.5px" }}>AS PER PACKING LIST</td>
+                <td style={tdSm}>AS PER PACKING LIST</td>
               </tr>
             </tbody>
           </table>
@@ -342,7 +343,7 @@ function InvoiceInlineEditor({ invoice, onClose, onSaved }: {
                   </select>
                 </td>
                 <td style={td}>Place of Receipt by</td>
-                <td style={td}><span style={{ fontSize: "7.5px" }}>Pre-carrier:</span> Mumbai</td>
+                <td style={tdSm}><span style={{ fontWeight: "bold" }}>Pre-carrier:</span> Mumbai</td>
                 <td style={td} colSpan={2}>Terms of Delivery and payment</td>
                 <td style={{ ...td, fontWeight: "bold", textAlign: "center" }}>CFR</td>
               </tr>
@@ -354,12 +355,12 @@ function InvoiceInlineEditor({ invoice, onClose, onSaved }: {
                   </select>
                 </td>
                 <td style={td} colSpan={2}>Port of Loading: <strong>Mumbai</strong></td>
-                <td style={{ ...td, fontSize: "7.5px" }}>END USE CODE : DCX900</td>
-                <td style={{ ...td, fontSize: "7.5px" }} colSpan={2}>NATURE PAYMENT : ADVANCE PAYMENT</td>
+                <td style={tdSm}>END USE CODE : DCX900</td>
+                <td style={tdSm} colSpan={2}>NATURE PAYMENT : ADVANCE PAYMENT</td>
               </tr>
               <tr>
-                <td style={{ ...td, fontSize: "7.5px" }} colSpan={2}>Port of Discharge: <strong>AS PER PACKING LIST</strong></td>
-                <td style={{ ...td, fontSize: "7.5px" }} colSpan={2}>Final Destination: <strong>AS PER PACKING LIST</strong></td>
+                <td style={tdSm} colSpan={2}>Port of Discharge: <strong>AS PER PACKING LIST</strong></td>
+                <td style={tdSm} colSpan={2}>Final Destination: <strong>AS PER PACKING LIST</strong></td>
                 <td style={td}><strong>EXCHANGE RATE $</strong></td>
                 <td style={{ ...td, fontWeight: "bold", textAlign: "right" }} colSpan={2}>
                   <input type="number" min="1" step="0.01" value={exchangeRate} onChange={e => setExchangeRate(e.target.value)} style={{ textAlign: "right" }} />
@@ -388,7 +389,7 @@ function InvoiceInlineEditor({ invoice, onClose, onSaved }: {
             <thead>
               <tr>
                 {["#","HS Code","Product Name","Generic Name","Mfd. Date","Exp.Date","Batch","Mfg by","Unit Packing","Unit","Price/unit","TOTAL PRICE"].map(h => (
-                  <th key={h} style={{ ...td, fontWeight: "bold", textAlign: "center", fontSize: "7.5px" }}>{h}</th>
+                  <th key={h} style={{ ...td, fontWeight: "bold", textAlign: "center", fontSize: "8px", background: "#e8e8e8" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -454,7 +455,7 @@ function InvoiceInlineEditor({ invoice, onClose, onSaved }: {
                 <td style={{ ...td, fontWeight: "bold", textAlign: "right" }}>$ {expFobUsd.toFixed(2)}</td>
               </tr>
               <tr>
-                <td style={{ ...td, fontSize: "7.5px" }} colSpan={3}>Total article Qty</td>
+                <td style={tdSm} colSpan={3}>Total article Qty</td>
                 <td style={{ ...td, textAlign: "center", fontWeight: "bold" }}>{totalQty}</td>
                 <td style={{ ...td, fontWeight: "bold", textAlign: "center" }}>{currency}</td>
                 <td style={td}><strong>Shipping Charges</strong></td>
@@ -477,7 +478,7 @@ function InvoiceInlineEditor({ invoice, onClose, onSaved }: {
             <colgroup><col style={{ width: "35%" }}/><col style={{ width: "45%" }}/><col style={{ width: "20%" }}/></colgroup>
             <tbody>
               <tr>
-                <td style={{ ...td, fontSize: "7.5px", lineHeight: "1.7" }}>
+                <td style={{ ...tdSm, lineHeight: "1.7" }}>
                   <strong>DL NO. MH-NG2-526036, MH-NAG-526037</strong><br/>
                   IEC Code / PAN &nbsp;<strong>FNXPP3883B</strong><br/>
                   Bank A/C No.: <strong>146305501090</strong><br/>
@@ -487,7 +488,7 @@ function InvoiceInlineEditor({ invoice, onClose, onSaved }: {
                   1. Supply meant for export on payment of integrated tax<br/>
                   2. Supply meant for export under bond or LUT without payment of integrated tax.
                 </td>
-                <td style={{ ...td, fontSize: "7.5px", lineHeight: "1.6" }}>
+                <td style={{ ...tdSm, lineHeight: "1.6" }}>
                   <strong>Declaration:</strong><br/>
                   We declare that this Invoice shows actual price of goods described and that all particulars are true and correct.<br/><br/>
                   &ldquo;As per the regulatory requirements of importing countries as per specific needs&rdquo;
