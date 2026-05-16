@@ -309,7 +309,7 @@ function ExportInvoiceDoc({ order }: { order: Order }) {
   }
 
   const td: React.CSSProperties = { border: "1px solid #000", padding: "2px 4px", verticalAlign: "top" };
-  const yw: React.CSSProperties = { ...td, background: "#fff59d" };
+  const yw: React.CSSProperties = { ...td };
   const tbl: React.CSSProperties = { width: "100%", borderCollapse: "collapse" as const };
 
   return (
