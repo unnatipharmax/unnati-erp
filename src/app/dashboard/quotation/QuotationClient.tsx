@@ -465,7 +465,7 @@ export default function QuotationClient() {
     bankIfsc:    "",
     bankBranch:  "",
     bankSwift:   "",
-    notes: "Email: Unnatipharmax@gmail.com\n\nBank Details:\nBank Name: ICICI BANK\nA/C Name: UNNATI PHARMAX\nA/C No.: 146305501090\nSWIFT Code: ICICINBBXXX\n\nBank Address:\nICICI Bank, Pushpak Plaza, New Itwari Road,\nNear Gandhi Putla, Nagpur - 440018, India",
+    notes: "Email: Unnatipharmax@gmail.com",
     terms: "From Unnati Pharmax, India. We assured you our best services at all times.\nOnly Lab tested and Approved products we sell.\nGoods once sold shall not be returned back or exchanged.\nCustom clearance of destination country is the responsibility of the purchaser.\nProduct shall get dispatched only on the remittance of amount in our account.\n\nSave A Tree. Please do not print this unless you really need to.",
   }));
 
@@ -639,37 +639,6 @@ export default function QuotationClient() {
               <div>
                 <label style={lS}>Valid Until</label>
                 <input style={iS} type="date" value={q.validUntil} onChange={e => set("validUntil", e.target.value)} />
-              </div>
-            </div>
-          </div>
-
-          {/* Bank Details */}
-          <div style={{ background: "var(--surface-1)", borderRadius: 10, padding: 16 }}>
-            <div style={sH}>Bank Details</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                <div>
-                  <label style={lS}>Bank Name</label>
-                  <input style={iS} value={q.bankName} onChange={e => set("bankName", e.target.value)} placeholder="e.g. State Bank of India" />
-                </div>
-                <div>
-                  <label style={lS}>Branch</label>
-                  <input style={iS} value={q.bankBranch} onChange={e => set("bankBranch", e.target.value)} placeholder="Branch name" />
-                </div>
-              </div>
-              <div>
-                <label style={lS}>Account Number</label>
-                <input style={{ ...iS, fontFamily: "monospace" }} value={q.bankAccount} onChange={e => set("bankAccount", e.target.value)} placeholder="Account number" />
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                <div>
-                  <label style={lS}>IFSC Code</label>
-                  <input style={{ ...iS, fontFamily: "monospace" }} value={q.bankIfsc} onChange={e => set("bankIfsc", e.target.value.toUpperCase())} placeholder="SBIN0001234" />
-                </div>
-                <div>
-                  <label style={lS}>SWIFT / BIC Code</label>
-                  <input style={{ ...iS, fontFamily: "monospace" }} value={q.bankSwift} onChange={e => set("bankSwift", e.target.value.toUpperCase())} placeholder="For international wire" />
-                </div>
               </div>
             </div>
           </div>

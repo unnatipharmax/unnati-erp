@@ -1,6 +1,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import JSZip from "jszip";
+import { chromium } from "playwright";
 import {
   getPrescriptionAbsolutePath,
   sanitizeDownloadName,
@@ -83,6 +84,10 @@ function formatDateShort(date: Date) {
 
 function formatDateSlash(date: Date) {
   return date.toLocaleDateString("en-GB");
+}
+
+function formatDateDot(date: Date) {
+  return date.toLocaleDateString("en-GB").replaceAll("/", ".");
 }
 
 function formatMoney(value: number | null | undefined, digits = 2) {
@@ -204,16 +209,36 @@ async function loadTemplate(fileName: string) {
   return readFile(path.join(TEMPLATE_DIR, fileName), "utf8");
 }
 
+async function htmlsToPdfs(
+  entries: Array<{ html: string; landscape?: boolean }>
+): Promise<Buffer[]> {
+  const browser = await chromium.launch({ args: ["--no-sandbox", "--disable-setuid-sandbox"] });
+  try {
+    return await Promise.all(
+      entries.map(async ({ html, landscape }) => {
+        const page = await browser.newPage();
+        await page.setContent(html, { waitUntil: "load" });
+        const buf = await page.pdf({ printBackground: true, preferCSSPageSize: true, landscape: landscape ?? false, format: "A4" });
+        await page.close();
+        return Buffer.from(buf);
+      })
+    );
+  } finally {
+    await browser.close();
+  }
+}
+
 export async function buildOrderDocumentBundle(order: DocumentBundleOrder) {
   if (order.shipmentMode === "DHL") {
     return buildDHLDocumentBundle(order);
   }
-  const [gstTemplate, packingTemplate, form2Template, edfTemplate] =
+  const [gstTemplate, packingTemplate, form2Template, edfTemplate, exportTemplate] =
     await Promise.all([
       loadTemplate("gst-invoice.html"),
       loadTemplate("product-list-invoice.html"),
       loadTemplate("form-2-invoice.html"),
       loadTemplate("edf-invoice.html"),
+      loadTemplate("export-invoice.html"),
     ]);
 
   const invoiceDate = order.invoiceGeneratedAt ?? order.createdAt;
@@ -282,11 +307,73 @@ export async function buildOrderDocumentBundle(order: DocumentBundleOrder) {
     shipping_country: escapeHtml(order.country),
   }));
 
+  // ── Export Invoice calculations ────────────────────────────────────────
+  const expCnfUsd    = order.dollarAmount ?? 0;
+  const expShipUsd   = order.shippingPrice;
+  const expFobUsd    = Math.max(0, expCnfUsd - expShipUsd);
+  const expFobInr    = Math.round(expFobUsd * exchangeRate * 100) / 100;
+  const expCnfInr    = Math.round(expCnfUsd * exchangeRate * 100) / 100;
+  const expTotalQty  = order.items.reduce((s, i) => s + i.quantity, 0);
+  const expTotalItemInr = order.items.reduce((s, i) => s + (i.amount ?? 0), 0);
+
+  const exportItems = order.items.map((item, index) => {
+    const rawUsdTotal = expTotalItemInr > 0 && expFobUsd > 0
+      ? (item.amount ?? 0) / expTotalItemInr * expFobUsd
+      : item.inrUnit != null ? item.inrUnit * item.quantity / exchangeRate : 0;
+    const usdTotal = Math.round(rawUsdTotal * 100) / 100;
+    const usdUnit  = item.quantity > 0 ? Math.round(usdTotal / item.quantity * 100) / 100 : 0;
+    return {
+      sr:           String(index + 1),
+      hsn:          escapeHtml(item.hsn ?? ""),
+      product:      escapeHtml(item.productName),
+      composition:  escapeHtml(item.composition ?? ""),
+      mfg_date:     escapeHtml(item.mfgDate ?? ""),
+      exp_date:     escapeHtml(item.expDate ?? ""),
+      batch:        escapeHtml(item.batchNo ?? ""),
+      manufacturer: escapeHtml(item.manufacturer ?? ""),
+      packing:      escapeHtml(item.pack ?? ""),
+      qty:          String(item.quantity),
+      usd_unit:     formatMoney(usdUnit),
+      usd_total:    formatMoney(usdTotal),
+    };
+  });
+
+  const exportValues = {
+    invoice_no:            escapeHtml(order.invoiceNo ?? order.id),
+    invoice_date:          escapeHtml(formatDateDot(invoiceDate)),
+    buyer_reference:       escapeHtml(order.remitterName),
+    email_order:           "",
+    other_reference:       "",
+    consignee_name:        escapeHtml(order.fullName),
+    consignee_address:     escapeHtml(order.address),
+    consignee_city_line:   escapeHtml(cityLine),
+    consignee_country:     escapeHtml(order.country),
+    shipment_mode:         escapeHtml(order.shipmentMode ?? "EMS"),
+    currency:              escapeHtml(order.currency),
+    exchange_rate:         formatMoney(exchangeRate),
+    fob_inr:               formatMoney(expFobInr),
+    cnf_inr:               formatMoney(expCnfInr),
+    total_boxes:           "1",
+    total_qty:             String(expTotalQty),
+    total_fob_usd:         formatMoney(expFobUsd),
+    shipping_charges_usd:  formatMoney(expShipUsd),
+    total_cnf_usd:         formatMoney(expCnfUsd),
+  };
+
+  const docEntries = [
+    { name: "gst-invoice",     html: renderTemplate(gstTemplate,    values,       { items }),               landscape: false },
+    { name: "packing-list",    html: renderTemplate(packingTemplate, values,       { items }),               landscape: false },
+    { name: "form-2",          html: renderTemplate(form2Template,   values,       { items }),               landscape: false },
+    { name: "edf",             html: renderTemplate(edfTemplate,     values,       { items }),               landscape: false },
+    { name: "export-invoice",  html: renderTemplate(exportTemplate,  exportValues, { items: exportItems }),  landscape: true  },
+  ];
+
+  const pdfBuffers = await htmlsToPdfs(docEntries.map(d => ({ html: d.html, landscape: d.landscape })));
+
   const zip = new JSZip();
-  zip.file(`${safeBaseName}-gst-invoice.html`, renderTemplate(gstTemplate, values, { items }));
-  zip.file(`${safeBaseName}-packing-list.html`, renderTemplate(packingTemplate, values, { items }));
-  zip.file(`${safeBaseName}-form-2.html`, renderTemplate(form2Template, values, { items }));
-  zip.file(`${safeBaseName}-edf.html`, renderTemplate(edfTemplate, values, { items }));
+  docEntries.forEach((doc, i) => {
+    zip.file(`${safeBaseName}-${doc.name}.pdf`, pdfBuffers[i]);
+  });
 
   if (order.prescriptionStoredName) {
     try {
@@ -726,15 +813,22 @@ passenger carrying aircraft (DGR, 8.1.23.) of International Air Transport Associ
 </body></html>`;
 
   // ── Build ZIP ─────────────────────────────────────────────────────────────
+  const dhlDocs = [
+    { name: "dhl-invoice",            html: exportsInvoice },
+    { name: "dhl-packing-list",       html: packingList },
+    { name: "dhl-adc-sheet",          html: adcSheet },
+    { name: "dhl-shippers-letter",    html: shipperLetter },
+    { name: "dhl-export-declaration", html: exportDeclaration },
+    { name: "dhl-custom-declaration", html: customDeclaration },
+    { name: "dhl-authorization",      html: authorizationLetter },
+    { name: "dhl-non-dgr-cert",       html: nonDgrCert },
+  ];
+  const dhlPdfs = await htmlsToPdfs(dhlDocs.map(d => ({ html: d.html })));
+
   const zip = new JSZip();
-  zip.file(`${safeBaseName}-dhl-invoice.html`,         exportsInvoice);
-  zip.file(`${safeBaseName}-dhl-packing-list.html`,    packingList);
-  zip.file(`${safeBaseName}-dhl-adc-sheet.html`,       adcSheet);
-  zip.file(`${safeBaseName}-dhl-shippers-letter.html`, shipperLetter);
-  zip.file(`${safeBaseName}-dhl-export-declaration.html`, exportDeclaration);
-  zip.file(`${safeBaseName}-dhl-custom-declaration.html`, customDeclaration);
-  zip.file(`${safeBaseName}-dhl-authorization.html`,   authorizationLetter);
-  zip.file(`${safeBaseName}-dhl-non-dgr-cert.html`,    nonDgrCert);
+  dhlDocs.forEach((doc, i) => {
+    zip.file(`${safeBaseName}-${doc.name}.pdf`, dhlPdfs[i]);
+  });
 
   if (order.prescriptionStoredName) {
     try {

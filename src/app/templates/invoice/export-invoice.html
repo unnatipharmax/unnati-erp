@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>EXPORT INVOICE</title>
+  <style>
+    @page { size: A4 landscape; margin: 8mm; }
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 8.5px; color: #000; }
+    table { width: 100%; border-collapse: collapse; }
+    td, th { border: 1px solid #000; padding: 2px 4px; vertical-align: top; }
+    .center { text-align: center; }
+    .right  { text-align: right; }
+    .bold   { font-weight: bold; }
+    .yellow { background: #fff59d; }
+    .no-border { border: none; }
+    .sm { font-size: 7.5px; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════  TITLE  ═══════════════════════════════════ -->
+<table>
+  <tr>
+    <td colspan="6" class="center bold" style="font-size:13px;padding:5px">EXPORT INVOICE</td>
+  </tr>
+</table>
+
+<!-- ═══════════════════  EXPORTER  +  INVOICE DETAILS  ═══════════════════ -->
+<table>
+  <colgroup>
+    <col style="width:8%">
+    <col style="width:47%">
+    <col style="width:22%">
+    <col style="width:23%">
+  </colgroup>
+  <tr>
+    <td class="bold">Exporter<br>Name &amp; Address</td>
+    <td rowspan="6" class="bold">
+      From: UNNATI PHARMAX<br>
+      SHOP NO 181 GURUKRUPA APARTMENT<br>
+      CENTRAL AVE<br>
+      LAKADGANJ NAGPUR<br>
+      MAHARSHTRA 440008
+    </td>
+    <td class="bold">Invoice No.</td>
+    <td class="yellow bold">{{invoice_no}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td class="bold">Date</td>
+    <td class="yellow">{{invoice_date}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>Buyer Reference :</td>
+    <td class="yellow">{{buyer_reference}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>Email Order</td>
+    <td class="yellow">{{email_order}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>Other Reference:</td>
+    <td class="yellow">{{other_reference}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td colspan="2"></td>
+  </tr>
+</table>
+
+<!-- ═══════════════════  CONSIGNEE  +  BUYER  ════════════════════════════ -->
+<table>
+  <colgroup>
+    <col style="width:8%">
+    <col style="width:27%">
+    <col style="width:20%">
+    <col style="width:45%">
+  </colgroup>
+  <tr>
+    <td class="bold">Consignee<br>Name &amp; Address</td>
+    <td></td>
+    <td class="bold">Buyer(If Other than Consignee)</td>
+    <td class="yellow sm">As per the Annexure</td>
+  </tr>
+  <tr>
+    <td class="bold">To</td>
+    <td class="yellow sm">AS PER PACKING LIST</td>
+    <td>India</td>
+    <td class="yellow bold">
+      {{consignee_name}}<br>
+      {{consignee_address}}<br>
+      {{consignee_city_line}}<br>
+      {{consignee_country}}
+    </td>
+  </tr>
+  <tr>
+    <td></td>
+    <td class="sm">(As per Annexure/Packing List)</td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td></td>
+    <td class="sm">AS PER PACKING LIST / As per Annexure</td>
+    <td colspan="2" class="yellow sm">Third Party Transfer</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>Country of Origin: <span class="bold">INDIA</span></td>
+    <td>Country of final Destination:</td>
+    <td class="yellow sm">AS PER PACKING LIST</td>
+  </tr>
+</table>
+
+<!-- ═══════════════════  SHIPPING DETAILS  ═══════════════════════════════ -->
+<table>
+  <colgroup>
+    <col style="width:10%">
+    <col style="width:14%">
+    <col style="width:11%">
+    <col style="width:14%">
+    <col style="width:22%">
+    <col style="width:15%">
+    <col style="width:14%">
+  </colgroup>
+  <tr>
+    <td class="bold">Carriage by Air</td>
+    <td class="yellow bold">{{shipment_mode}}</td>
+    <td>Place of Receipt by</td>
+    <td><span class="sm">Pre-carrier:</span> Mumbai</td>
+    <td colspan="2">Terms of Delivery and payment</td>
+    <td class="yellow bold center">CFR</td>
+  </tr>
+  <tr>
+    <td class="bold">Currency</td>
+    <td class="yellow bold">{{currency}}</td>
+    <td colspan="2">Port of Loading: <span class="bold">Mumbai</span></td>
+    <td class="sm">END USE CODE : DCX900</td>
+    <td colspan="2" class="sm">NATURE PAYMENT : ADVANCE PAYMENT</td>
+  </tr>
+  <tr>
+    <td colspan="2" class="sm">Port of Discharge: <span class="bold">AS PER PACKING LIST</span></td>
+    <td colspan="2" class="sm">Final Destination: <span class="bold">AS PER PACKING LIST / As per Annexure</span></td>
+    <td class="bold">EXCHANGE RATE $</td>
+    <td colspan="2" class="yellow bold right">{{exchange_rate}}</td>
+  </tr>
+  <tr>
+    <td colspan="4"></td>
+    <td class="bold">F.O.B INR</td>
+    <td colspan="2" class="yellow bold right">{{fob_inr}}</td>
+  </tr>
+  <tr>
+    <td colspan="4"></td>
+    <td class="bold">C&amp;F AMOUNT INR :</td>
+    <td colspan="2" class="yellow bold right">{{cnf_inr}}</td>
+  </tr>
+</table>
+
+<!-- ═══════════════════  MARKS &amp; NOS HEADER  ══════════════════════════ -->
+<table>
+  <colgroup>
+    <col style="width:4%">
+    <col style="width:8%">
+    <col style="width:13%">
+    <col style="width:12%">
+    <col style="width:6%">
+    <col style="width:6%">
+    <col style="width:8%">
+    <col style="width:12%">
+    <col style="width:7%">
+    <col style="width:5%">
+    <col style="width:9%">
+    <col style="width:10%">
+  </colgroup>
+  <tr>
+    <td class="bold center">Marks &amp; Nos</td>
+    <td colspan="8" class="bold center">Description of Goods</td>
+    <td class="bold center">Unit</td>
+    <td class="bold center">Price/unit</td>
+    <td class="bold center">TOTAL PRICE</td>
+  </tr>
+  <tr class="bold center">
+    <th>#</th>
+    <th>HS Code</th>
+    <th>Product Name</th>
+    <th>Generic Name</th>
+    <th>Mfd. Date</th>
+    <th>Exp.Date</th>
+    <th>Batch</th>
+    <th>Mfg by</th>
+    <th>Unit Packing</th>
+    <th>Unit</th>
+    <th>Price/unit</th>
+    <th>TOTAL PRICE</th>
+  </tr>
+  {{#items}}
+  <tr class="center">
+    <td>{{sr}}</td>
+    <td>{{hsn}}</td>
+    <td style="text-align:left">{{product}}</td>
+    <td style="text-align:left">{{composition}}</td>
+    <td>{{mfg_date}}</td>
+    <td>{{exp_date}}</td>
+    <td>{{batch}}</td>
+    <td style="text-align:left">{{manufacturer}}</td>
+    <td>{{packing}}</td>
+    <td class="bold">{{qty}}</td>
+    <td class="right">$ {{usd_unit}}</td>
+    <td class="right bold">$ {{usd_total}}</td>
+  </tr>
+  {{/items}}
+  <tr>
+    <td colspan="12" style="height:10px"></td>
+  </tr>
+</table>
+
+<!-- ═══════════════════  TOTALS  ══════════════════════════════════════════ -->
+<table>
+  <colgroup>
+    <col style="width:30%">
+    <col style="width:8%">
+    <col style="width:8%">
+    <col style="width:8%">
+    <col style="width:22%">
+    <col style="width:12%">
+    <col style="width:12%">
+  </colgroup>
+  <tr>
+    <td colspan="4" class="yellow bold" style="font-size:9px">TOTAL NO OF BOX = {{total_boxes}}</td>
+    <td></td>
+    <td class="bold right">TOTAL QTY</td>
+    <td class="yellow bold center">{{total_qty}}</td>
+  </tr>
+  <tr>
+    <td class="yellow bold center">LP</td>
+    <td class="yellow bold center">EMS</td>
+    <td class="yellow bold center">CM</td>
+    <td></td>
+    <td></td>
+    <td class="bold">Total (FOB)</td>
+    <td class="yellow bold right">$ {{total_fob_usd}}</td>
+  </tr>
+  <tr>
+    <td colspan="3">
+      <span class="sm">Total article Qty</span>
+    </td>
+    <td class="yellow center bold">{{total_qty}}</td>
+    <td class="bold center">{{currency}}</td>
+    <td class="bold">Shipping Charges</td>
+    <td class="yellow bold right">$ {{shipping_charges_usd}}</td>
+  </tr>
+  <tr>
+    <td colspan="5"></td>
+    <td class="bold">Total Amount (C &amp; F)</td>
+    <td class="yellow bold right">$ {{total_cnf_usd}}</td>
+  </tr>
+</table>
+
+<!-- ═══════════════════  FOOTER — BANK / DECLARATION  ════════════════════ -->
+<table>
+  <colgroup>
+    <col style="width:35%">
+    <col style="width:45%">
+    <col style="width:20%">
+  </colgroup>
+  <tr>
+    <td class="sm" style="line-height:1.7">
+      <span class="bold">DL NO. MH-NG2-526036, MH-NAG-526037</span><br>
+      IEC Code / PAN &nbsp;<span class="bold">FNXPP3883B</span><br>
+      Bank A/C No.: <span class="bold">146305501090</span><br>
+      Bank Name : <span class="bold">ICICI BANK</span><br>
+      Swift Code : <span class="bold">ICICINBBXXX</span><br>
+      GSTIN No : <span class="bold">27FNXPP3883B1ZA</span><br>
+      1. Supply meant for export on payment of integrated tax<br>
+      2. Supply meant for export under bond or LUT without payment of integrated tax.
+    </td>
+    <td class="sm" style="line-height:1.6">
+      <span class="bold">Declaration:</span><br>
+      We declare that this Invoice shows actual price of goods described and that all particulars are true and correct.<br><br>
+      &ldquo;As per the regulatory requirements of importing countries as per specific needs&rdquo;
+    </td>
+    <td class="center" style="vertical-align:bottom;padding-bottom:6px">
+      <br><br><br><br>
+      <span class="bold">Authorised Signatory</span><br>
+      <span class="bold">UNNATI PHARMAX</span>
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>
