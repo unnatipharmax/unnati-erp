@@ -1849,18 +1849,20 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
 </html>`);
     win.document.close();
 
+    // Close window only after the print dialog is dismissed
+    win.onafterprint = () => win.close();
+
     // Wait for images to load before printing
     const imgs = win.document.images;
     if (imgs.length === 0) {
       win.focus();
       win.print();
-      win.close();
     } else {
       let loaded = 0;
       const total = imgs.length;
       const tryPrint = () => {
         loaded++;
-        if (loaded >= total) { win.focus(); win.print(); win.close(); }
+        if (loaded >= total) { win.focus(); win.print(); }
       };
       Array.from(imgs).forEach(img => {
         if (img.complete) { tryPrint(); }
