@@ -777,128 +777,122 @@ function ExportInvoiceINRDoc({ order }: { order: Order }) {
 
 // ── DOC 2: Packing List ──────────────────────────────────────────────────────
 function PackingListDoc({ order }: { order: Order }) {
-  const invDate = getInvoiceDate(order);
-  const dateStr = formatDateLongIN(invDate);
-  const shipping = (order.shipmentMode ?? "").toUpperCase() || "—";
-  const country = (order.country ?? "").toUpperCase() || "—";
+  const invDate        = getInvoiceDate(order);
+  const dateStr        = invDate.toLocaleDateString("en-GB").replaceAll("/", ".");
+  const totalWeightGms = order.netWeight != null ? Math.round(order.netWeight * 1000) : null;
+
+  const YEL = "#FFD700";
+  const BLK = "#000";
+  const WHT = "#fff";
+
+  // Cell base styles — backgrounds set per-cell so the unnati-docs-root tr/thead overrides don't interfere
+  const border = `1px solid ${BLK}`;
+  const base: React.CSSProperties = { border, padding: "3px 5px", verticalAlign: "top", color: BLK, fontSize: "9pt" };
+  const yel:  React.CSSProperties = { ...base, background: YEL, fontWeight: "bold" };
+  const th:   React.CSSProperties = { ...base, background: BLK, color: WHT, fontWeight: "bold", textAlign: "center", fontSize: "8.5pt", verticalAlign: "middle" };
+  const td:   React.CSSProperties = { ...base };
+  const tdc:  React.CSSProperties = { ...base, textAlign: "center" };
+  const tbl:  React.CSSProperties = { width: "100%", borderCollapse: "collapse" as const };
+
+  const COLS = ["Sr No","Customer","Product Name","Mfd. Date","Exp.Date","Batch No.","Mfg by.","Packing","Qty","Country","Zipcode","Tracking No","Weight(IN GMS)"];
 
   return (
-    <div id="packing-list-print" style={{ fontFamily: "'Arial', sans-serif", fontSize: "9pt", color: "#111", background: "#fff" }}>
-      <style>{`
-        #packing-list-print .pl-border { border: 2px solid #c8960c; border-radius: 4px; overflow: hidden; }
-        #packing-list-print .pl-header { background: #fef9e7; border-bottom: 2px solid #c8960c; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }
-        #packing-list-print .pl-header-logo { height: 48px; width: auto; object-fit: contain; }
-        #packing-list-print .pl-header-company { text-align: right; color: #111; }
-        #packing-list-print .pl-header-company .co-name { font-size: 14pt; font-weight: 800; letter-spacing: 0.04em; color: #7a5c00; }
-        #packing-list-print .pl-header-company .co-addr { font-size: 7pt; color: #555; margin-top: 2px; line-height: 1.4; }
-        #packing-list-print .pl-title-bar { background: #fffbeb; padding: 5px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e8d080; }
-        #packing-list-print .pl-title-text { font-size: 12pt; font-weight: 800; color: #7a5c00; letter-spacing: 0.1em; }
-        #packing-list-print .pl-meta { display: flex; gap: 32px; font-size: 8.5pt; color: #555; font-weight: 700; }
-        #packing-list-print .pl-meta .meta-val { background: #fff3b0; padding: 2px 10px; border-radius: 3px; border: 1px solid #c8960c; font-size: 9pt; color: #111; }
-        #packing-list-print table.pl-table { width: 100%; border-collapse: collapse; }
-        #packing-list-print table.pl-table td,
-        #packing-list-print table.pl-table th { border: 1px solid #e8d080; padding: 5px 6px; vertical-align: middle; }
-        #packing-list-print table.pl-table thead tr { background: #fef3c7; }
-        #packing-list-print table.pl-table thead th { color: #7a5c00; font-weight: 800; text-align: center; font-size: 8pt; letter-spacing: 0.03em; border-color: #c8960c; }
-        #packing-list-print table.pl-table tbody tr:nth-child(even) { background: #fffdf0; }
-        #packing-list-print table.pl-table tbody td { font-weight: 600; }
-        #packing-list-print .pl-footer { background: #fef9e7; padding: 6px 14px; font-size: 7.5pt; color: #444; border-top: 2px solid #c8960c; display: flex; justify-content: space-between; align-items: flex-end; }
-        #packing-list-print .pl-footer .sig { text-align: right; color: #7a5c00; font-weight: 700; font-size: 8pt; }
-      `}</style>
+    <div style={{ fontFamily: "Arial, sans-serif", fontSize: "9pt", color: BLK, background: WHT }}>
 
-      <div className="pl-border">
-        {/* ── Header ── */}
-        <div className="pl-header">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Unnati Pharmax" className="pl-header-logo" />
-          <div className="pl-header-company">
-            <div className="co-name">UNNATI PHARMAX</div>
-            <div className="co-addr">
-              Ground Floor, House No 307/4, Guru Vandana Apartment,<br />
-              Kakasaheb Cholkar Marg, Lakadganj, Nagpur – 440008, Maharashtra
-            </div>
-          </div>
-        </div>
+      {/* ── Company header ── */}
+      <table style={tbl}><tbody>
+        <tr>
+          <td style={{ ...yel, textAlign: "center", fontSize: "17pt", padding: "6px 8px", letterSpacing: "0.04em" }}>
+            UNNATI PHARMAX
+          </td>
+        </tr>
+        <tr>
+          <td style={{ ...yel, textAlign: "center", fontSize: "13pt", padding: "4px 8px", letterSpacing: "0.06em" }}>
+            PACKING LIST (Annexure)
+          </td>
+        </tr>
+      </tbody></table>
 
-        {/* ── Title bar ── */}
-        <div className="pl-title-bar">
-          <span className="pl-title-text">PACKING LIST</span>
-          <div className="pl-meta">
-            <span>Invoice No: <span className="meta-val">{order.invoiceNo ?? "—"}</span></span>
-            <span>Date: <span className="meta-val">{dateStr}</span></span>
-          </div>
-        </div>
-
-        {/* ── Table ── */}
-        <table className="pl-table">
-          <thead>
-            <tr>
-              <th style={{ width: 40 }}>SR.NO</th>
-              <th style={{ minWidth: 160 }}>CUSTOMER NAME</th>
-              <th>PRODUCT NAME</th>
-              <th style={{ width: 76 }}>PACKING</th>
-              <th style={{ minWidth: 140 }}>MANUFACTURER</th>
-              <th style={{ width: 100 }}>BATCH NO</th>
-              <th style={{ width: 80 }}>EXP DATE</th>
-              <th style={{ width: 46 }}>QTY</th>
-              <th style={{ width: 100 }}>TRACKING NO</th>
-              <th style={{ width: 70 }}>SHIPPING</th>
-              <th style={{ width: 90 }}>COUNTRY</th>
+      {/* ── Meta info (IEC No, Invoice No, Date, GST NO) ── */}
+      <table style={tbl}>
+        <colgroup>
+          <col style={{ width: "12%" }}/><col style={{ width: "22%" }}/>
+          <col/><col/><col/><col/>
+        </colgroup>
+        <tbody>
+          {[
+            ["IEC No :",    "FNXPP3883B"],
+            ["Invoice No:", order.invoiceNo ?? "—"],
+            ["Date:",       dateStr],
+            ["GST NO :",    "27FNXPP3883B1ZA"],
+          ].map(([label, value]) => (
+            <tr key={label}>
+              <td style={yel}>{label}</td>
+              <td style={yel}>{value}</td>
+              <td style={yel}></td><td style={yel}></td><td style={yel}></td><td style={yel}></td>
             </tr>
-          </thead>
-          <tbody>
-            {order.items.map((it, idx) => (
-              <tr key={it.productId}>
-                <td style={{ textAlign: "center" }}>{idx + 1}</td>
+          ))}
+        </tbody>
+      </table>
 
-                {idx === 0 && (
-                  <td rowSpan={order.items.length} style={{ textAlign: "center", verticalAlign: "middle" }}>
-                    {order.fullName}
-                  </td>
-                )}
-
-                <td style={{ textAlign: "center" }}>{it.productName}</td>
-                <td style={{ textAlign: "center" }}>{(it.pack ?? "").toUpperCase()}</td>
-                <td style={{ textAlign: "center" }}>{(it.manufacturer ?? "").toUpperCase()}</td>
-                <td style={{ textAlign: "center" }}>{(it.batchNo ?? "").toUpperCase()}</td>
-                <td style={{ textAlign: "center" }}>{it.expDate ?? ""}</td>
-                <td style={{ textAlign: "center" }}>{it.quantity.toFixed(2)}</td>
-
-                {idx === 0 && (
-                  <td rowSpan={order.items.length} style={{ textAlign: "center", verticalAlign: "middle" }}>
-                    {order.trackingNo ?? ""}
-                  </td>
-                )}
-
-                {idx === 0 && (
-                  <td rowSpan={order.items.length} style={{ textAlign: "center", verticalAlign: "middle" }}>
-                    {shipping}
-                  </td>
-                )}
-
-                {idx === 0 && (
-                  <td rowSpan={order.items.length} style={{ textAlign: "center", verticalAlign: "middle" }}>
-                    {country}
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {/* ── Footer ── */}
-        <div className="pl-footer">
-          <div>
-            <b>GST No:</b> 27FNXPP3883B1ZA &nbsp;|&nbsp; <b>PAN:</b> FNXPP3883B<br />
-            <b>Lic 20B:</b> MH-NG2-526036 &nbsp;|&nbsp; <b>Lic 21B:</b> MH-NAG-526037
-          </div>
-          <div className="sig">
-            <div style={{ height: 32 }}></div>
-            For UNNATI PHARMAX<br />
-            Authorized Signatory
-          </div>
-        </div>
-      </div>
+      {/* ── Product table ── */}
+      <table style={tbl}>
+        <colgroup>
+          <col style={{ width: "4%" }}/>   {/* Sr No */}
+          <col style={{ width: "9%" }}/>   {/* Customer */}
+          <col style={{ width: "17%" }}/>  {/* Product Name */}
+          <col style={{ width: "7%" }}/>   {/* Mfd. Date */}
+          <col style={{ width: "7%" }}/>   {/* Exp.Date */}
+          <col style={{ width: "9%" }}/>   {/* Batch No. */}
+          <col style={{ width: "14%" }}/>  {/* Mfg by. */}
+          <col style={{ width: "6%" }}/>   {/* Packing */}
+          <col style={{ width: "4%" }}/>   {/* Qty */}
+          <col style={{ width: "8%" }}/>   {/* Country */}
+          <col style={{ width: "6%" }}/>   {/* Zipcode */}
+          <col style={{ width: "9%" }}/>   {/* Tracking No */}
+          <col style={{ width: "10%" }}/>  {/* Weight */}
+        </colgroup>
+        <thead>
+          <tr>{COLS.map(h => <th key={h} style={th}>{h}</th>)}</tr>
+        </thead>
+        <tbody>
+          {order.items.map((item, idx) => (
+            <tr key={item.productId + idx}>
+              {/* Sr No — spans all product rows */}
+              {idx === 0 && (
+                <td rowSpan={order.items.length} style={{ ...tdc, verticalAlign: "middle" }}>1</td>
+              )}
+              {/* Customer — spans all product rows */}
+              {idx === 0 && (
+                <td rowSpan={order.items.length} style={{ ...tdc, verticalAlign: "middle" }}>{order.fullName}</td>
+              )}
+              {/* Per-product columns */}
+              <td style={td}>{item.productName}</td>
+              <td style={tdc}>{item.mfgDate ?? ""}</td>
+              <td style={tdc}>{item.expDate ?? ""}</td>
+              <td style={{ ...tdc, fontFamily: "monospace" }}>{item.batchNo ?? ""}</td>
+              <td style={td}>{item.manufacturer ?? ""}</td>
+              <td style={tdc}>{item.pack ?? ""}</td>
+              <td style={{ ...tdc, fontWeight: "bold" }}>{item.quantity}</td>
+              {/* Country / Zipcode / Tracking / Weight — span all rows */}
+              {idx === 0 && (
+                <td rowSpan={order.items.length} style={{ ...tdc, verticalAlign: "middle" }}>{order.country}</td>
+              )}
+              {idx === 0 && (
+                <td rowSpan={order.items.length} style={{ ...tdc, verticalAlign: "middle", fontFamily: "monospace" }}>{order.postalCode}</td>
+              )}
+              {idx === 0 && (
+                <td rowSpan={order.items.length} style={{ ...tdc, verticalAlign: "middle", fontFamily: "monospace" }}>{order.trackingNo ?? ""}</td>
+              )}
+              {idx === 0 && (
+                <td rowSpan={order.items.length} style={{ ...tdc, verticalAlign: "middle" }}>
+                  {totalWeightGms != null ? `${totalWeightGms} GMS` : ""}
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
