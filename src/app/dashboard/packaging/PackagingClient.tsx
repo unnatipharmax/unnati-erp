@@ -2078,11 +2078,15 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
   body { margin: 0; padding: 0; background: #fff; font-family: Arial, sans-serif; }
   .doc-section-label { display: none !important; }
   .doc-section {
+    width: 100%;
+    height: 277mm;
+    box-sizing: border-box;
+    overflow: hidden;
     page-break-after: always;
     break-after: page;
-    page-break-inside: auto;
+    page-break-inside: avoid;
+    break-inside: avoid;
     padding: 0;
-    overflow: visible;
   }
   .doc-section:last-child {
     page-break-after: auto;
@@ -2161,7 +2165,7 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
               opacity: 1 !important;
               text-shadow: none !important;
             }
-            #unnati-docs-root { background: #fff !important; }
+            #unnati-docs-root { background: #e5e7eb !important; padding: 0 !important; }
             #unnati-docs-root table { width: 100%; border-collapse: collapse; }
             #unnati-docs-root td, #unnati-docs-root th { border-color: #000 !important; }
             /* Reset global dark-theme table backgrounds */
@@ -2169,20 +2173,32 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
             #unnati-docs-root tbody tr { background: transparent !important; border-bottom: none !important; }
             #unnati-docs-root tbody tr:hover { background: transparent !important; }
 
-            /* Screen-only section label divider */
+            /* Screen-only section label */
             .doc-section-label {
-              background: #f3f4f6 !important;
-              color: #6b7280 !important;
-              -webkit-text-fill-color: #6b7280 !important;
+              background: #374151 !important;
+              color: #d1d5db !important;
+              -webkit-text-fill-color: #d1d5db !important;
               font-size: 10px;
               font-weight: 600;
-              padding: 4px 16px;
+              padding: 5px 16px;
               letter-spacing: 0.06em;
               text-transform: uppercase;
-              border-top: 1px solid #e5e7eb;
-              border-bottom: 1px solid #e5e7eb;
+              width: 210mm;
+              margin: 0 auto;
+              box-sizing: border-box;
             }
-            .doc-section { padding: 12px; }
+
+            /* Each doc = one A4 page on screen */
+            .doc-section {
+              width: 210mm;
+              height: 277mm;
+              margin: 0 auto 24px;
+              padding: 10mm;
+              background: #fff !important;
+              box-sizing: border-box;
+              overflow: hidden;
+              box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+            }
           `}</style>
 
           {docs.map(({ label, comp }, i) => (
