@@ -781,15 +781,13 @@ function PackingListDoc({ order }: { order: Order }) {
   const dateStr        = invDate.toLocaleDateString("en-GB").replaceAll("/", ".");
   const totalWeightGms = order.netWeight != null ? Math.round(order.netWeight * 1000) : null;
 
-  const YEL = "#FFD700";
   const BLK = "#000";
   const WHT = "#fff";
 
-  // Cell base styles — backgrounds set per-cell so the unnati-docs-root tr/thead overrides don't interfere
-  const border = `1px solid ${BLK}`;
-  const base: React.CSSProperties = { border, padding: "3px 5px", verticalAlign: "top", color: BLK, fontSize: "9pt" };
-  const yel:  React.CSSProperties = { ...base, background: YEL, fontWeight: "bold" };
-  const th:   React.CSSProperties = { ...base, background: BLK, color: WHT, fontWeight: "bold", textAlign: "center", fontSize: "8.5pt", verticalAlign: "middle" };
+  const border = "1px solid #000";
+  const base: React.CSSProperties = { border, padding: "3px 5px", verticalAlign: "top", color: BLK, fontSize: "9pt", background: WHT };
+  const hdr:  React.CSSProperties = { ...base, fontWeight: "bold" };
+  const th:   React.CSSProperties = { ...base, background: "#e8e8e8", fontWeight: "bold", textAlign: "center", fontSize: "8.5pt", verticalAlign: "middle" };
   const td:   React.CSSProperties = { ...base };
   const tdc:  React.CSSProperties = { ...base, textAlign: "center" };
   const tbl:  React.CSSProperties = { width: "100%", borderCollapse: "collapse" as const };
@@ -802,12 +800,12 @@ function PackingListDoc({ order }: { order: Order }) {
       {/* ── Company header ── */}
       <table style={tbl}><tbody>
         <tr>
-          <td style={{ ...yel, textAlign: "center", fontSize: "17pt", padding: "6px 8px", letterSpacing: "0.04em" }}>
+          <td style={{ ...hdr, textAlign: "center", fontSize: "17pt", padding: "6px 8px", letterSpacing: "0.04em" }}>
             UNNATI PHARMAX
           </td>
         </tr>
         <tr>
-          <td style={{ ...yel, textAlign: "center", fontSize: "13pt", padding: "4px 8px", letterSpacing: "0.06em" }}>
+          <td style={{ ...hdr, textAlign: "center", fontSize: "13pt", padding: "4px 8px", letterSpacing: "0.06em" }}>
             PACKING LIST (Annexure)
           </td>
         </tr>
@@ -827,9 +825,9 @@ function PackingListDoc({ order }: { order: Order }) {
             ["GST NO :",    "27FNXPP3883B1ZA"],
           ].map(([label, value]) => (
             <tr key={label}>
-              <td style={yel}>{label}</td>
-              <td style={yel}>{value}</td>
-              <td style={yel}></td><td style={yel}></td><td style={yel}></td><td style={yel}></td>
+              <td style={hdr}>{label}</td>
+              <td style={td}>{value}</td>
+              <td style={td}></td><td style={td}></td><td style={td}></td><td style={td}></td>
             </tr>
           ))}
         </tbody>
