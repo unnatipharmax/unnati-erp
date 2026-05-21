@@ -2027,25 +2027,27 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
     })).catch(() => {});
   }, []);
 
+  // landscape: print in A4 landscape (297×210mm) — for wide tables
+  // multiPage: allow content to flow to a second page instead of being clipped
   const nonDHLDocs = [
-    { label: "Export Invoice",     comp: <ExportInvoiceDoc    order={order} /> },
-    { label: "Export Invoice INR", comp: <ExportInvoiceINRDoc order={order} /> },
-    { label: "Packing List",       comp: <PackingListDoc      order={order} /> },
-    { label: "Form II",           comp: <Form2Doc          order={order} /> },
-    { label: "EDF",               comp: <EdfDoc            order={order} /> },
-    { label: "Covering Letter",   comp: <CoveringLetterDoc order={order} chaName={ds.chaName} chaNo={ds.chaNo} /> },
-    { label: "CN22 Label",        comp: <CN22LabelDoc      order={order} companyName={ds.companyName} companyAddress={ds.companyAddress} /> },
+    { label: "Export Invoice",     landscape: true,  multiPage: false, comp: <ExportInvoiceDoc    order={order} /> },
+    { label: "Export Invoice INR", landscape: true,  multiPage: false, comp: <ExportInvoiceINRDoc order={order} /> },
+    { label: "Packing List",       landscape: true,  multiPage: false, comp: <PackingListDoc      order={order} /> },
+    { label: "Form II",           landscape: false, multiPage: false, comp: <Form2Doc          order={order} /> },
+    { label: "EDF",               landscape: false, multiPage: true,  comp: <EdfDoc            order={order} /> },
+    { label: "Covering Letter",   landscape: false, multiPage: true,  comp: <CoveringLetterDoc order={order} chaName={ds.chaName} chaNo={ds.chaNo} /> },
+    { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={order} companyName={ds.companyName} companyAddress={ds.companyAddress} /> },
   ];
 
   const dhlDocs = [
-    { label: "DHL Invoice",          comp: <DHLInvoiceDoc    order={order} /> },
-    { label: "DHL Packing List",     comp: <DHLPackingDoc    order={order} /> },
-    { label: "ADC Sheet",            comp: <DHLAdcDoc        order={order} /> },
-    { label: "Shipper's Letter",     comp: <DHLShipperDoc    order={order} /> },
-    { label: "Export Declaration",   comp: <DHLExportDeclDoc order={order} /> },
-    { label: "Custom Declaration",   comp: <DHLCustomDeclDoc order={order} /> },
-    { label: "Authorization Letter", comp: <DHLAuthDoc       order={order} /> },
-    { label: "Non-DGR Certificate",  comp: <DHLNonDgrDoc     order={order} /> },
+    { label: "DHL Invoice",          landscape: false, multiPage: false, comp: <DHLInvoiceDoc    order={order} /> },
+    { label: "DHL Packing List",     landscape: true,  multiPage: false, comp: <DHLPackingDoc    order={order} /> },
+    { label: "ADC Sheet",            landscape: false, multiPage: false, comp: <DHLAdcDoc        order={order} /> },
+    { label: "Shipper's Letter",     landscape: false, multiPage: false, comp: <DHLShipperDoc    order={order} /> },
+    { label: "Export Declaration",   landscape: false, multiPage: true,  comp: <DHLExportDeclDoc order={order} /> },
+    { label: "Custom Declaration",   landscape: false, multiPage: false, comp: <DHLCustomDeclDoc order={order} /> },
+    { label: "Authorization Letter", landscape: false, multiPage: false, comp: <DHLAuthDoc       order={order} /> },
+    { label: "Non-DGR Certificate",  landscape: false, multiPage: false, comp: <DHLNonDgrDoc     order={order} /> },
   ];
 
   const docs = isDHL ? dhlDocs : nonDHLDocs;
@@ -2077,6 +2079,11 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
   }
   body { margin: 0; padding: 0; background: #fff; font-family: Arial, sans-serif; }
   .doc-section-label { display: none !important; }
+
+  /* Default: portrait, single page */
+  @page          { size: A4 portrait;  margin: 10mm; }
+  @page landscape { size: A4 landscape; margin: 10mm; }
+
   .doc-section {
     width: 100%;
     height: 277mm;
@@ -2084,15 +2091,24 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
     overflow: hidden;
     page-break-after: always;
     break-after: page;
-    page-break-inside: avoid;
-    break-inside: avoid;
     padding: 0;
+  }
+  /* Landscape: 297mm wide × 190mm tall content area */
+  .doc-section.landscape {
+    page: landscape;
+    height: 190mm;
+  }
+  /* Multi-page: let content flow naturally; page-break-after still ends the section */
+  .doc-section.multi-page {
+    height: auto;
+    overflow: visible;
+    page-break-inside: auto;
+    break-inside: auto;
   }
   .doc-section:last-child {
     page-break-after: auto;
     break-after: auto;
   }
-  @page { size: A4 portrait; margin: 10mm; }
 </style>
 </head>
 <body>${html}</body>
@@ -2123,7 +2139,7 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000, overflowY: "auto" }}>
-      <div style={{ maxWidth: 960, margin: "20px auto", background: "#fff", padding: "0 0 40px" }}>
+      <div style={{ maxWidth: 1160, margin: "20px auto", background: "#fff", padding: "0 0 40px" }}>
 
         {/* ── Control bar ── */}
         <div style={{
@@ -2187,8 +2203,9 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
               margin: 0 auto;
               box-sizing: border-box;
             }
+            .doc-section-label.landscape { width: 277mm; }
 
-            /* Each doc = one A4 page on screen */
+            /* Portrait single-page (default) */
             .doc-section {
               width: 210mm;
               height: 277mm;
@@ -2199,21 +2216,37 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
               overflow: hidden;
               box-shadow: 0 2px 10px rgba(0,0,0,0.25);
             }
+            /* Landscape: A4 rotated — 277mm wide, 190mm tall */
+            .doc-section.landscape {
+              width: 277mm;
+              height: 190mm;
+            }
+            /* Multi-page: no height cap, content flows naturally */
+            .doc-section.multi-page {
+              height: auto;
+              min-height: 277mm;
+              overflow: visible;
+            }
+            .doc-section.landscape.multi-page {
+              min-height: 190mm;
+            }
           `}</style>
 
-          {docs.map(({ label, comp }, i) => (
-            // Use Fragment so label + section are siblings at the same level.
-            // This makes .doc-section:last-child match ONLY the final section,
-            // so page-break-after:always fires correctly between every document.
-            <React.Fragment key={i}>
-              <div className="doc-section-label">
-                {i + 1} / {docs.length} — {label}
-              </div>
-              <div className="doc-section">
-                {comp}
-              </div>
-            </React.Fragment>
-          ))}
+          {docs.map(({ label, comp, landscape, multiPage }, i) => {
+            const secCls  = ["doc-section",       landscape && "landscape", multiPage && "multi-page"].filter(Boolean).join(" ");
+            const lblCls  = ["doc-section-label", landscape && "landscape"].filter(Boolean).join(" ");
+            return (
+              // Fragment keeps label + section as siblings so :last-child works correctly
+              <React.Fragment key={i}>
+                <div className={lblCls}>
+                  {i + 1} / {docs.length} — {label}
+                </div>
+                <div className={secCls}>
+                  {comp}
+                </div>
+              </React.Fragment>
+            );
+          })}
         </div>
       </div>
     </div>
