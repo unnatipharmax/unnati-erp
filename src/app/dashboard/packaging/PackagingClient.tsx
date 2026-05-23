@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import PurchaseBillPanel from "./PurchaseBillPanel";
 import SupplierSuggestions from "./SupplierSuggestions";
 import PackagePhotos from "./PackagePhotos";
@@ -2547,8 +2547,9 @@ function MultiPackingListDoc({ orders }: { orders: Order[] }) {
 
 // ── Multi-order Documents Overlay ─────────────────────────────────────────────
 function MultiDocumentsOverlay({ orders, onClose }: { orders: Order[]; onClose: () => void }) {
-  const first = orders[0];
   const [ds, setDs] = useState<DocSettings>(DOC_SETTINGS_DEFAULT);
+  // Per-order weight overrides captured from scale photos
+  const [weightMap, setWeightMap] = useState<Record<string, number>>({});
   useEffect(() => {
     fetch("/api/settings/company").then(r => r.json()).then(s => setDs({
       chaName: s.chaName || DOC_SETTINGS_DEFAULT.chaName,
@@ -2560,10 +2561,16 @@ function MultiDocumentsOverlay({ orders, onClose }: { orders: Order[]; onClose: 
     })).catch(() => {});
   }, []);
 
+  // Apply weight overrides to each order
+  const effectiveOrders = orders.map(o =>
+    weightMap[o.id] != null ? { ...o, netWeight: weightMap[o.id], grossWeight: weightMap[o.id] } : o
+  );
+  const first = effectiveOrders[0];
+
   const docs = [
-    { label: "Export Invoice",     landscape: true,  multiPage: true,  comp: <MultiExportInvoiceDoc    orders={orders} /> },
-    { label: "Export Invoice INR", landscape: true,  multiPage: true,  comp: <MultiExportInvoiceINRDoc orders={orders} /> },
-    { label: "Packing List",       landscape: true,  multiPage: true,  comp: <MultiPackingListDoc      orders={orders} /> },
+    { label: "Export Invoice",     landscape: true,  multiPage: true,  comp: <MultiExportInvoiceDoc    orders={effectiveOrders} /> },
+    { label: "Export Invoice INR", landscape: true,  multiPage: true,  comp: <MultiExportInvoiceINRDoc orders={effectiveOrders} /> },
+    { label: "Packing List",       landscape: true,  multiPage: true,  comp: <MultiPackingListDoc      orders={effectiveOrders} /> },
     { label: "Form II",           landscape: false, multiPage: false, comp: <Form2Doc          order={first} /> },
     { label: "EDF",               landscape: false, multiPage: true,  comp: <EdfDoc            order={first} /> },
     { label: "Covering Letter",   landscape: false, multiPage: true,  comp: <CoveringLetterDoc order={first} chaName={ds.chaName} chaNo={ds.chaNo} /> },
@@ -2623,6 +2630,21 @@ function MultiDocumentsOverlay({ orders, onClose }: { orders: Order[]; onClose: 
           </button>
         </div>
 
+        {/* ── Per-order scale photo bars ── */}
+        {orders.map(o => (
+          <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "#0f172a", paddingLeft: 20 }}>
+            <span style={{ fontSize: "0.72rem", color: "#6b7280", minWidth: 120, flexShrink: 0 }}>
+              {o.fullName} ({o.invoiceNo ?? "—"}):
+            </span>
+            <div style={{ flex: 1 }}>
+              <WeightCaptureBar
+                currentWeight={o.netWeight}
+                onExtracted={kg => setWeightMap(prev => ({ ...prev, [o.id]: kg }))}
+              />
+            </div>
+          </div>
+        ))}
+
         <div id="unnati-multi-docs-root" style={{ background: "#fff", color: "#000" }}>
           <style>{`
             #unnati-multi-docs-root, #unnati-multi-docs-root * { color: #000 !important; -webkit-text-fill-color: #000 !important; opacity: 1 !important; text-shadow: none !important; }
@@ -2656,6 +2678,115 @@ function MultiDocumentsOverlay({ orders, onClose }: { orders: Order[]; onClose: 
   );
 }
 
+// ── Inline weight-capture bar (used inside doc overlays) ─────────────────────
+// Lets the user upload a weighing-machine photo; AI reads the weight and the
+// parent passes it down to all document components via weightKg override.
+function WeightCaptureBar({
+  currentWeight,
+  onExtracted,
+}: {
+  currentWeight: number | null;
+  onExtracted: (kg: number) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [preview,    setPreview]    = useState<string | null>(null);
+  const [extracting, setExtracting] = useState(false);
+  const [err,        setErr]        = useState("");
+  const [captured,   setCaptured]   = useState<number | null>(null);
+
+  const displayed = captured ?? currentWeight;
+
+  async function handleFile(file: File) {
+    const reader = new FileReader();
+    reader.onload = async e => {
+      const dataUrl = e.target?.result as string;
+      setPreview(dataUrl);
+      const base64 = dataUrl.split(",")[1];
+      const mime   = file.type || "image/jpeg";
+      setExtracting(true);
+      setErr("");
+      try {
+        const res  = await fetch("/api/packaging/extract-weight", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64: base64, mimeType: mime }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.netWeight == null) {
+          setErr(data?.error || "Could not read weight — enter manually");
+        } else {
+          setCaptured(data.netWeight);
+          onExtracted(data.netWeight);
+        }
+      } catch {
+        setErr("Network error during weight extraction");
+      }
+      setExtracting(false);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  return (
+    <div style={{
+      background: "#111827",
+      borderBottom: "1px solid #374151",
+      padding: "8px 20px",
+      display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
+    }}>
+      {/* Label */}
+      <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#9ca3af" }}>
+        ⚖ Scale photo:
+      </span>
+
+      {/* Thumbnail */}
+      {preview && (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img src={preview} alt="scale" style={{ height: 36, width: 52, objectFit: "cover", borderRadius: 4 }} />
+      )}
+
+      {/* Status */}
+      {extracting ? (
+        <span style={{ fontSize: "0.78rem", color: "#f59e0b" }}>Reading scale…</span>
+      ) : captured != null ? (
+        <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#10b981" }}>✓ {captured} kg</span>
+      ) : currentWeight != null ? (
+        <span style={{ fontSize: "0.78rem", color: "#6ee7b7" }}>Stored: {currentWeight} kg</span>
+      ) : (
+        <span style={{ fontSize: "0.75rem", color: "#f87171" }}>No weight recorded</span>
+      )}
+
+      {err && <span style={{ fontSize: "0.73rem", color: "#f87171" }}>{err}</span>}
+
+      {/* Upload button */}
+      <button
+        onClick={() => fileRef.current?.click()}
+        style={{
+          padding: "4px 12px", fontSize: "0.78rem", fontWeight: 600,
+          background: displayed != null ? "rgba(255,255,255,0.08)" : "#f59e0b",
+          color: displayed != null ? "#d1d5db" : "#000",
+          border: "none", borderRadius: 5, cursor: "pointer",
+        }}
+      >
+        {displayed != null ? "Re-upload" : "Upload scale photo"}
+      </button>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: "none" }}
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
+      />
+
+      {displayed != null && (
+        <span style={{ fontSize: "0.72rem", color: "#6b7280", marginLeft: "auto" }}>
+          Weight used in all documents: <strong style={{ color: "#d1d5db" }}>{displayed} kg ({Math.round(displayed * 1000)} g)</strong>
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ── Documents overlay — all docs stacked, single print/download ───────────────
 type DocSettings = { chaName: string; chaNo: string; stampB64: string; sigB64: string; companyName: string; companyAddress: string; };
 const DOC_SETTINGS_DEFAULT: DocSettings = { chaName: "AARPEE CLEARING & LOGISTICS", chaNo: "11/2623", stampB64: "", sigB64: "", companyName: "UNNATI PHARMAX", companyAddress: "1/04 Guruvanada Appartment, Central Ave, Lakadganj, Nagpur 440008" };
@@ -2665,6 +2796,10 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
   const downloadHref = `/api/packaging/orders/${order.id}/documents`;
 
   const [ds, setDs] = useState<DocSettings>(DOC_SETTINGS_DEFAULT);
+  // Weight captured from scale photo — overrides order.netWeight in all docs
+  const [weightKg, setWeightKg] = useState<number | null>(null);
+  const o = weightKg != null ? { ...order, netWeight: weightKg, grossWeight: weightKg } : order;
+
   useEffect(() => {
     fetch("/api/settings/company").then(r => r.json()).then(s => setDs({
       chaName: s.chaName || DOC_SETTINGS_DEFAULT.chaName,
@@ -2679,13 +2814,13 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
   // landscape: print in A4 landscape (297×210mm) — for wide tables
   // multiPage: allow content to flow to a second page instead of being clipped
   const nonDHLDocs = [
-    { label: "Export Invoice",     landscape: true,  multiPage: false, comp: <ExportInvoiceDoc    order={order} /> },
-    { label: "Export Invoice INR", landscape: true,  multiPage: false, comp: <ExportInvoiceINRDoc order={order} /> },
-    { label: "Packing List",       landscape: true,  multiPage: false, comp: <PackingListDoc      order={order} /> },
-    { label: "Form II",           landscape: false, multiPage: false, comp: <Form2Doc          order={order} /> },
-    { label: "EDF",               landscape: false, multiPage: true,  comp: <EdfDoc            order={order} /> },
-    { label: "Covering Letter",   landscape: false, multiPage: true,  comp: <CoveringLetterDoc order={order} chaName={ds.chaName} chaNo={ds.chaNo} /> },
-    { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={order} companyName={ds.companyName} companyAddress={ds.companyAddress} /> },
+    { label: "Export Invoice",     landscape: true,  multiPage: false, comp: <ExportInvoiceDoc    order={o} /> },
+    { label: "Export Invoice INR", landscape: true,  multiPage: false, comp: <ExportInvoiceINRDoc order={o} /> },
+    { label: "Packing List",       landscape: true,  multiPage: false, comp: <PackingListDoc      order={o} /> },
+    { label: "Form II",           landscape: false, multiPage: false, comp: <Form2Doc          order={o} /> },
+    { label: "EDF",               landscape: false, multiPage: true,  comp: <EdfDoc            order={o} /> },
+    { label: "Covering Letter",   landscape: false, multiPage: true,  comp: <CoveringLetterDoc order={o} chaName={ds.chaName} chaNo={ds.chaNo} /> },
+    { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={o} companyName={ds.companyName} companyAddress={ds.companyAddress} /> },
   ];
 
   const dhlDocs = [
@@ -2819,6 +2954,12 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
             ✕ Close
           </button>
         </div>
+
+        {/* ── Scale photo / weight capture bar ── */}
+        <WeightCaptureBar
+          currentWeight={order.netWeight}
+          onExtracted={kg => setWeightKg(kg)}
+        />
 
         {/* ── All documents stacked (screen view) ── */}
         <div id="unnati-docs-root" style={{ background: "#fff", color: "#000" }}>
