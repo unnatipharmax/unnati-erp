@@ -2007,6 +2007,655 @@ function EdfDoc({ order }: { order: Order }) {
   );
 }
 
+// ── Multi-order: Export Invoice (USD) ────────────────────────────────────────
+function MultiExportInvoiceDoc({ orders }: { orders: Order[] }) {
+  const first     = orders[0];
+  const exchRate  = first.exchangeRate || 84;
+  const invDate   = getInvoiceDate(first);
+  const dateStr   = invDate.toLocaleDateString("en-GB").replaceAll("/", ".");
+
+  // Combined totals
+  const expCnfUsd  = orders.reduce((s, o) => s + (o.dollarAmount ?? 0), 0);
+  const expShipUsd = orders.reduce((s, o) => s + o.shippingPrice, 0);
+  const expFobUsd  = Math.max(0, expCnfUsd - expShipUsd);
+  const expFobInr  = Math.round(expFobUsd * exchRate * 100) / 100;
+  const expCnfInr  = Math.round(expCnfUsd * exchRate * 100) / 100;
+
+  // Flat list of all items across all orders with USD pricing
+  const allItems = orders.flatMap(o => {
+    const totalItemInr = o.items.reduce((s, i) => s + (i.amount ?? 0), 0);
+    const fobUsd = Math.max(0, (o.dollarAmount ?? 0) - o.shippingPrice);
+    return o.items.map(item => {
+      const rawTotal = totalItemInr > 0 && fobUsd > 0
+        ? (item.amount ?? 0) / totalItemInr * fobUsd
+        : item.inrUnit != null ? item.inrUnit * item.quantity / exchRate : 0;
+      const total = Math.round(rawTotal * 100) / 100;
+      const unit  = item.quantity > 0 ? Math.round(total / item.quantity * 100) / 100 : 0;
+      return { ...item, usdUnit: unit, usdTotal: total };
+    });
+  });
+  const totalQty = allItems.reduce((s, i) => s + i.quantity, 0);
+  const invoiceLabel = orders.map(o => o.invoiceNo).filter(Boolean).join(" / ") || "—";
+
+  const td:   React.CSSProperties = { border: "1px solid #000", padding: "3px 5px", verticalAlign: "top", fontSize: "9px" };
+  const tdSm: React.CSSProperties = { ...td, fontSize: "8px" };
+  const yw:   React.CSSProperties = { ...td };
+  const tbl:  React.CSSProperties = { width: "100%", borderCollapse: "collapse" as const };
+
+  return (
+    <div style={{ fontFamily: "Arial,sans-serif", fontSize: "9px", color: "#000", background: "#fff", minWidth: 900 }}>
+      <table style={tbl}><tbody><tr>
+        <td style={{ ...td, textAlign: "center", fontWeight: "bold", fontSize: "14px", padding: "7px", letterSpacing: "0.08em" }}>EXPORT INVOICE</td>
+      </tr></tbody></table>
+
+      <table style={{ ...tbl, tableLayout: "fixed" }}>
+        <colgroup><col style={{ width: "8%" }}/><col style={{ width: "47%" }}/><col style={{ width: "22%" }}/><col style={{ width: "23%" }}/></colgroup>
+        <tbody>
+          <tr>
+            <td style={td} rowSpan={6}><strong>Exporter<br/>Name &amp; Address</strong></td>
+            <td style={{ ...td, fontWeight: "bold" }} rowSpan={6}>
+              From: UNNATI PHARMAX<br/>SHOP NO 181 GURUKRUPA APARTMENT<br/>CENTRAL AVE<br/>LAKADGANJ NAGPUR<br/>MAHARSHTRA 440008
+            </td>
+            <td style={td}><strong>Invoice No.</strong></td>
+            <td style={{ ...yw, fontWeight: "bold" }}>{invoiceLabel}</td>
+          </tr>
+          <tr><td style={td}><strong>Date</strong></td><td style={yw}>{dateStr}</td></tr>
+          <tr><td style={td}>Buyer Reference :</td><td style={yw}>AS PER PACKING LIST</td></tr>
+          <tr><td style={td}>Email Order</td><td style={yw}></td></tr>
+          <tr><td style={td}>Other Reference:</td><td style={yw}></td></tr>
+          <tr><td style={td}></td><td style={td} colSpan={2}></td></tr>
+        </tbody>
+      </table>
+
+      <table style={{ ...tbl, tableLayout: "fixed" }}>
+        <colgroup><col style={{ width: "8%" }}/><col style={{ width: "27%" }}/><col style={{ width: "20%" }}/><col style={{ width: "45%" }}/></colgroup>
+        <tbody>
+          <tr>
+            <td style={td}><strong>Consignee<br/>Name &amp; Address</strong></td>
+            <td style={td}></td>
+            <td style={td}><strong>Buyer(If Other than Consignee)</strong></td>
+            <td style={tdSm}>As per the Annexure</td>
+          </tr>
+          <tr>
+            <td style={td}><strong>To</strong></td>
+            <td style={tdSm}>AS PER PACKING LIST</td>
+            <td style={td}>India</td>
+            <td style={{ ...yw, fontWeight: "bold" }}>AS PER PACKING LIST</td>
+          </tr>
+          <tr><td style={td}></td><td style={tdSm}>(As per Annexure/Packing List)</td><td style={td}></td><td style={td}></td></tr>
+          <tr><td style={td}></td><td style={tdSm}>AS PER PACKING LIST / As per Annexure</td><td style={tdSm} colSpan={2}>Third Party Transfer</td></tr>
+          <tr><td style={td}></td><td style={td}>Country of Origin: <strong>INDIA</strong></td><td style={td}>Country of final Destination:</td><td style={tdSm}>AS PER PACKING LIST</td></tr>
+        </tbody>
+      </table>
+
+      <table style={{ ...tbl, tableLayout: "fixed" }}>
+        <colgroup><col style={{ width: "10%" }}/><col style={{ width: "14%" }}/><col style={{ width: "11%" }}/><col style={{ width: "14%" }}/><col style={{ width: "22%" }}/><col style={{ width: "15%" }}/><col style={{ width: "14%" }}/></colgroup>
+        <tbody>
+          <tr>
+            <td style={td}><strong>Carriage by Air</strong></td>
+            <td style={{ ...yw, fontWeight: "bold" }}>{first.shipmentMode ?? "EMS"}</td>
+            <td style={td}>Place of Receipt by</td>
+            <td style={tdSm}><span style={{ fontWeight: "bold" }}>Pre-carrier:</span> Mumbai</td>
+            <td style={td} colSpan={2}>Terms of Delivery and payment</td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "center" }}>CFR</td>
+          </tr>
+          <tr>
+            <td style={td}><strong>Currency</strong></td>
+            <td style={{ ...yw, fontWeight: "bold" }}>{first.currency}</td>
+            <td style={td} colSpan={2}>Port of Loading: <strong>Mumbai</strong></td>
+            <td style={tdSm}>END USE CODE : DCX900</td>
+            <td style={tdSm} colSpan={2}>NATURE PAYMENT : ADVANCE PAYMENT</td>
+          </tr>
+          <tr>
+            <td style={tdSm} colSpan={2}>Port of Discharge: <strong>AS PER PACKING LIST</strong></td>
+            <td style={tdSm} colSpan={2}>Final Destination: <strong>AS PER PACKING LIST</strong></td>
+            <td style={td}><strong>EXCHANGE RATE $</strong></td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "right" }} colSpan={2}>{exchRate.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style={td} colSpan={4}></td>
+            <td style={td}><strong>F.O.B INR</strong></td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "right" }} colSpan={2}>{expFobInr.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+          </tr>
+          <tr>
+            <td style={td} colSpan={4}></td>
+            <td style={td}><strong>C&amp;F AMOUNT INR :</strong></td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "right" }} colSpan={2}>{expCnfInr.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table style={{ ...tbl, tableLayout: "fixed" }}>
+        <colgroup>
+          <col style={{ width: "4%" }}/><col style={{ width: "8%" }}/><col style={{ width: "13%" }}/><col style={{ width: "12%" }}/>
+          <col style={{ width: "6%" }}/><col style={{ width: "6%" }}/><col style={{ width: "8%" }}/><col style={{ width: "12%" }}/>
+          <col style={{ width: "7%" }}/><col style={{ width: "5%" }}/><col style={{ width: "9%" }}/><col style={{ width: "10%" }}/>
+        </colgroup>
+        <thead>
+          <tr>
+            <th style={{ ...td, fontWeight: "bold", textAlign: "center", background: "#d9d9d9", fontSize: "9px" }}>Marks &amp; Nos</th>
+            <th style={{ ...td, fontWeight: "bold", textAlign: "center", background: "#d9d9d9", fontSize: "9px" }} colSpan={8}>Description of Goods</th>
+            <th style={{ ...td, fontWeight: "bold", textAlign: "center", background: "#d9d9d9", fontSize: "9px" }}>Unit</th>
+            <th style={{ ...td, fontWeight: "bold", textAlign: "center", background: "#d9d9d9", fontSize: "9px" }}>Price/unit</th>
+            <th style={{ ...td, fontWeight: "bold", textAlign: "center", background: "#d9d9d9", fontSize: "9px" }}>TOTAL PRICE</th>
+          </tr>
+          <tr>
+            {["#","HS Code","Product Name","Generic Name","Mfd. Date","Exp.Date","Batch","Mfg by","Unit Packing","Unit","Price/unit ($)","TOTAL PRICE ($)"].map(h => (
+              <th key={h} style={{ ...td, fontWeight: "bold", textAlign: "center", fontSize: "8px", background: "#ececec" }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {allItems.map((item, idx) => (
+            <tr key={idx} style={{ textAlign: "center" }}>
+              <td style={td}>{idx + 1}</td>
+              <td style={td}>{item.hsn ?? ""}</td>
+              <td style={{ ...td, textAlign: "left" }}>{item.productName}</td>
+              <td style={{ ...td, textAlign: "left" }}>{item.composition ?? ""}</td>
+              <td style={td}>{item.mfgDate ?? ""}</td>
+              <td style={td}>{item.expDate ?? ""}</td>
+              <td style={td}>{item.batchNo ?? ""}</td>
+              <td style={{ ...td, textAlign: "left" }}>{item.manufacturer ?? ""}</td>
+              <td style={td}>{item.pack ?? ""}</td>
+              <td style={{ ...td, fontWeight: "bold" }}>{item.quantity}</td>
+              <td style={{ ...td, textAlign: "right" }}>$ {item.usdUnit.toFixed(2)}</td>
+              <td style={{ ...td, textAlign: "right", fontWeight: "bold" }}>$ {item.usdTotal.toFixed(2)}</td>
+            </tr>
+          ))}
+          <tr><td style={{ ...td, height: "10px" }} colSpan={12}></td></tr>
+        </tbody>
+      </table>
+
+      <table style={{ ...tbl, tableLayout: "fixed" }}>
+        <colgroup><col style={{ width: "30%" }}/><col style={{ width: "8%" }}/><col style={{ width: "8%" }}/><col style={{ width: "8%" }}/><col style={{ width: "22%" }}/><col style={{ width: "12%" }}/><col style={{ width: "12%" }}/></colgroup>
+        <tbody>
+          <tr>
+            <td style={{ ...yw, fontWeight: "bold", fontSize: "9px" }} colSpan={4}>TOTAL NO OF BOX = {orders.length}</td>
+            <td style={td}></td>
+            <td style={{ ...td, fontWeight: "bold", textAlign: "right" }}>TOTAL QTY</td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "center" }}>{totalQty}</td>
+          </tr>
+          <tr>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "center" }}>LP</td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "center" }}>EMS</td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "center" }}>CM</td>
+            <td style={td}></td><td style={td}></td>
+            <td style={td}><strong>Total (FOB)</strong></td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "right" }}>$ {expFobUsd.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style={tdSm} colSpan={3}>Total article Qty</td>
+            <td style={{ ...yw, textAlign: "center", fontWeight: "bold" }}>{totalQty}</td>
+            <td style={{ ...td, fontWeight: "bold", textAlign: "center" }}>{first.currency}</td>
+            <td style={td}><strong>Shipping Charges</strong></td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "right" }}>$ {expShipUsd.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style={td} colSpan={5}></td>
+            <td style={td}><strong>Total Amount (C &amp; F)</strong></td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "right" }}>$ {expCnfUsd.toFixed(2)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table style={{ ...tbl, tableLayout: "fixed" }}>
+        <colgroup><col style={{ width: "35%" }}/><col style={{ width: "45%" }}/><col style={{ width: "20%" }}/></colgroup>
+        <tbody>
+          <tr>
+            <td style={{ ...tdSm, lineHeight: "1.7" }}>
+              <strong>DL NO. MH-NG2-526036, MH-NAG-526037</strong><br/>
+              IEC Code / PAN &nbsp;<strong>FNXPP3883B</strong><br/>
+              Bank A/C No.: <strong>146305501090</strong><br/>
+              Bank Name : <strong>ICICI BANK</strong><br/>
+              Swift Code : <strong>ICICINBBXXX</strong><br/>
+              GSTIN No : <strong>27FNXPP3883B1ZA</strong><br/>
+              1. Supply meant for export on payment of integrated tax<br/>
+              2. Supply meant for export under bond or LUT without payment of integrated tax.
+            </td>
+            <td style={{ ...tdSm, lineHeight: "1.6" }}>
+              <strong>Declaration:</strong><br/>
+              We declare that this Invoice shows actual price of goods described and that all particulars are true and correct.<br/><br/>
+              &ldquo;As per the regulatory requirements of importing countries as per specific needs&rdquo;
+            </td>
+            <td style={{ ...td, textAlign: "center", verticalAlign: "bottom", paddingBottom: "6px" }}>
+              <br/><br/><br/>
+              <strong>Authorised Signatory</strong><br/>
+              <strong>UNNATI PHARMAX</strong>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Multi-order: Export Invoice (INR) ────────────────────────────────────────
+function MultiExportInvoiceINRDoc({ orders }: { orders: Order[] }) {
+  const first    = orders[0];
+  const exchRate = first.exchangeRate || 84;
+  const invDate  = getInvoiceDate(first);
+  const dateStr  = invDate.toLocaleDateString("en-GB").replaceAll("/", ".");
+
+  const expCnfInr  = orders.reduce((s, o) => {
+    const cnf = (o.inrAmount != null && o.inrAmount > 0) ? o.inrAmount : Math.round((o.dollarAmount ?? 0) * exchRate * 100) / 100;
+    return s + cnf;
+  }, 0);
+  const expShipInr = orders.reduce((s, o) => s + Math.round(o.shippingPrice * exchRate * 100) / 100, 0);
+  const expFobInr  = Math.max(0, expCnfInr - expShipInr);
+
+  function itemInr(item: Item): { unit: number; total: number } {
+    let total: number;
+    if (item.amount != null && item.amount > 0)      total = item.amount;
+    else if (item.inrUnit != null)                   total = Math.round(item.inrUnit * item.quantity * 100) / 100;
+    else total = Math.round(item.sellingPrice * exchRate * item.quantity * 100) / 100;
+    return { total: Math.round(total * 100) / 100, unit: item.quantity > 0 ? Math.round(total / item.quantity * 100) / 100 : 0 };
+  }
+
+  const allItems = orders.flatMap(o => o.items.map(item => ({ ...item, ...itemInr(item) })));
+  const totalQty = allItems.reduce((s, i) => s + i.quantity, 0);
+  const invoiceLabel = orders.map(o => o.invoiceNo).filter(Boolean).join(" / ") || "—";
+
+  const td:   React.CSSProperties = { border: "1px solid #000", padding: "3px 5px", verticalAlign: "top", fontSize: "9px" };
+  const tdSm: React.CSSProperties = { ...td, fontSize: "8px" };
+  const yw:   React.CSSProperties = { ...td };
+  const tbl:  React.CSSProperties = { width: "100%", borderCollapse: "collapse" as const };
+
+  return (
+    <div style={{ fontFamily: "Arial,sans-serif", fontSize: "9px", color: "#000", background: "#fff", minWidth: 900 }}>
+      <table style={tbl}><tbody><tr>
+        <td style={{ ...td, textAlign: "center", fontWeight: "bold", fontSize: "14px", padding: "7px", letterSpacing: "0.08em" }}>EXPORT INVOICE</td>
+      </tr></tbody></table>
+
+      <table style={{ ...tbl, tableLayout: "fixed" }}>
+        <colgroup><col style={{ width: "8%" }}/><col style={{ width: "47%" }}/><col style={{ width: "22%" }}/><col style={{ width: "23%" }}/></colgroup>
+        <tbody>
+          <tr>
+            <td style={td} rowSpan={6}><strong>Exporter<br/>Name &amp; Address</strong></td>
+            <td style={{ ...td, fontWeight: "bold" }} rowSpan={6}>
+              From: UNNATI PHARMAX<br/>SHOP NO 181 GURUKRUPA APARTMENT<br/>CENTRAL AVE<br/>LAKADGANJ NAGPUR<br/>MAHARSHTRA 440008
+            </td>
+            <td style={td}><strong>Invoice No.</strong></td>
+            <td style={{ ...yw, fontWeight: "bold" }}>{invoiceLabel}</td>
+          </tr>
+          <tr><td style={td}><strong>Date</strong></td><td style={yw}>{dateStr}</td></tr>
+          <tr><td style={td}>Buyer Reference :</td><td style={yw}>AS PER PACKING LIST</td></tr>
+          <tr><td style={td}>Email Order</td><td style={yw}></td></tr>
+          <tr><td style={td}>Other Reference:</td><td style={yw}></td></tr>
+          <tr><td style={td}></td><td style={td} colSpan={2}></td></tr>
+        </tbody>
+      </table>
+
+      <table style={{ ...tbl, tableLayout: "fixed" }}>
+        <colgroup><col style={{ width: "8%" }}/><col style={{ width: "27%" }}/><col style={{ width: "20%" }}/><col style={{ width: "45%" }}/></colgroup>
+        <tbody>
+          <tr>
+            <td style={td}><strong>Consignee<br/>Name &amp; Address</strong></td>
+            <td style={td}></td>
+            <td style={td}><strong>Buyer(If Other than Consignee)</strong></td>
+            <td style={tdSm}>As per the Annexure</td>
+          </tr>
+          <tr>
+            <td style={td}><strong>To</strong></td>
+            <td style={tdSm}>AS PER PACKING LIST</td>
+            <td style={td}>India</td>
+            <td style={{ ...yw, fontWeight: "bold" }}>AS PER PACKING LIST</td>
+          </tr>
+          <tr><td style={td}></td><td style={tdSm}>(As per Annexure/Packing List)</td><td style={td}></td><td style={td}></td></tr>
+          <tr><td style={td}></td><td style={tdSm}>AS PER PACKING LIST / As per Annexure</td><td style={tdSm} colSpan={2}>Third Party Transfer</td></tr>
+          <tr><td style={td}></td><td style={td}>Country of Origin: <strong>INDIA</strong></td><td style={td}>Country of final Destination:</td><td style={tdSm}>AS PER PACKING LIST</td></tr>
+        </tbody>
+      </table>
+
+      <table style={{ ...tbl, tableLayout: "fixed" }}>
+        <colgroup><col style={{ width: "10%" }}/><col style={{ width: "14%" }}/><col style={{ width: "11%" }}/><col style={{ width: "14%" }}/><col style={{ width: "22%" }}/><col style={{ width: "15%" }}/><col style={{ width: "14%" }}/></colgroup>
+        <tbody>
+          <tr>
+            <td style={td}><strong>Carriage by Air</strong></td>
+            <td style={{ ...yw, fontWeight: "bold" }}>{first.shipmentMode ?? "EMS"}</td>
+            <td style={td}>Place of Receipt by</td>
+            <td style={tdSm}><span style={{ fontWeight: "bold" }}>Pre-carrier:</span> Mumbai</td>
+            <td style={td} colSpan={2}>Terms of Delivery and payment</td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "center" }}>CFR</td>
+          </tr>
+          <tr>
+            <td style={td}><strong>Currency</strong></td>
+            <td style={{ ...yw, fontWeight: "bold" }}>INR</td>
+            <td style={td} colSpan={2}>Port of Loading: <strong>Mumbai</strong></td>
+            <td style={tdSm}>END USE CODE : DCX900</td>
+            <td style={tdSm} colSpan={2}>NATURE PAYMENT : ADVANCE PAYMENT</td>
+          </tr>
+          <tr>
+            <td style={tdSm} colSpan={2}>Port of Discharge: <strong>AS PER PACKING LIST</strong></td>
+            <td style={tdSm} colSpan={2}>Final Destination: <strong>AS PER PACKING LIST</strong></td>
+            <td style={td}><strong>EXCHANGE RATE ₹</strong></td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "right" }} colSpan={2}>{exchRate.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style={td} colSpan={4}></td>
+            <td style={td}><strong>F.O.B INR</strong></td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "right" }} colSpan={2}>₹ {expFobInr.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+          </tr>
+          <tr>
+            <td style={td} colSpan={4}></td>
+            <td style={td}><strong>C&amp;F AMOUNT INR :</strong></td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "right" }} colSpan={2}>₹ {expCnfInr.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table style={{ ...tbl, tableLayout: "fixed" }}>
+        <colgroup>
+          <col style={{ width: "4%" }}/><col style={{ width: "8%" }}/><col style={{ width: "13%" }}/><col style={{ width: "12%" }}/>
+          <col style={{ width: "6%" }}/><col style={{ width: "6%" }}/><col style={{ width: "8%" }}/><col style={{ width: "12%" }}/>
+          <col style={{ width: "7%" }}/><col style={{ width: "5%" }}/><col style={{ width: "9%" }}/><col style={{ width: "10%" }}/>
+        </colgroup>
+        <thead>
+          <tr>
+            <th style={{ ...td, fontWeight: "bold", textAlign: "center", background: "#d9d9d9", fontSize: "9px" }}>Marks &amp; Nos</th>
+            <th style={{ ...td, fontWeight: "bold", textAlign: "center", background: "#d9d9d9", fontSize: "9px" }} colSpan={8}>Description of Goods</th>
+            <th style={{ ...td, fontWeight: "bold", textAlign: "center", background: "#d9d9d9", fontSize: "9px" }}>Unit</th>
+            <th style={{ ...td, fontWeight: "bold", textAlign: "center", background: "#d9d9d9", fontSize: "9px" }}>Price/unit (₹)</th>
+            <th style={{ ...td, fontWeight: "bold", textAlign: "center", background: "#d9d9d9", fontSize: "9px" }}>TOTAL PRICE (₹)</th>
+          </tr>
+          <tr>
+            {["#","HS Code","Product Name","Generic Name","Mfd. Date","Exp.Date","Batch","Mfg by","Unit Packing","Unit","Price/unit (₹)","TOTAL PRICE (₹)"].map(h => (
+              <th key={h} style={{ ...td, fontWeight: "bold", textAlign: "center", fontSize: "8px", background: "#ececec" }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {allItems.map((item, idx) => (
+            <tr key={idx} style={{ textAlign: "center" }}>
+              <td style={td}>{idx + 1}</td>
+              <td style={td}>{item.hsn ?? ""}</td>
+              <td style={{ ...td, textAlign: "left" }}>{item.productName}</td>
+              <td style={{ ...td, textAlign: "left" }}>{item.composition ?? ""}</td>
+              <td style={td}>{item.mfgDate ?? ""}</td>
+              <td style={td}>{item.expDate ?? ""}</td>
+              <td style={td}>{item.batchNo ?? ""}</td>
+              <td style={{ ...td, textAlign: "left" }}>{item.manufacturer ?? ""}</td>
+              <td style={td}>{item.pack ?? ""}</td>
+              <td style={{ ...td, fontWeight: "bold" }}>{item.quantity}</td>
+              <td style={{ ...td, textAlign: "right" }}>₹ {item.unit.toFixed(2)}</td>
+              <td style={{ ...td, textAlign: "right", fontWeight: "bold" }}>₹ {item.total.toFixed(2)}</td>
+            </tr>
+          ))}
+          <tr><td style={{ ...td, height: "10px" }} colSpan={12}></td></tr>
+        </tbody>
+      </table>
+
+      <table style={{ ...tbl, tableLayout: "fixed" }}>
+        <colgroup><col style={{ width: "30%" }}/><col style={{ width: "8%" }}/><col style={{ width: "8%" }}/><col style={{ width: "8%" }}/><col style={{ width: "22%" }}/><col style={{ width: "12%" }}/><col style={{ width: "12%" }}/></colgroup>
+        <tbody>
+          <tr>
+            <td style={{ ...yw, fontWeight: "bold", fontSize: "9px" }} colSpan={4}>TOTAL NO OF BOX = {orders.length}</td>
+            <td style={td}></td>
+            <td style={{ ...td, fontWeight: "bold", textAlign: "right" }}>TOTAL QTY</td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "center" }}>{totalQty}</td>
+          </tr>
+          <tr>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "center" }}>LP</td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "center" }}>EMS</td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "center" }}>CM</td>
+            <td style={td}></td><td style={td}></td>
+            <td style={td}><strong>Total (FOB)</strong></td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "right" }}>₹ {expFobInr.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+          </tr>
+          <tr>
+            <td style={tdSm} colSpan={3}>Total article Qty</td>
+            <td style={{ ...yw, textAlign: "center", fontWeight: "bold" }}>{totalQty}</td>
+            <td style={{ ...td, fontWeight: "bold", textAlign: "center" }}>INR</td>
+            <td style={td}><strong>Shipping Charges</strong></td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "right" }}>₹ {expShipInr.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+          </tr>
+          <tr>
+            <td style={td} colSpan={5}></td>
+            <td style={td}><strong>Total Amount (C &amp; F)</strong></td>
+            <td style={{ ...yw, fontWeight: "bold", textAlign: "right" }}>₹ {expCnfInr.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table style={{ ...tbl, tableLayout: "fixed" }}>
+        <colgroup><col style={{ width: "35%" }}/><col style={{ width: "45%" }}/><col style={{ width: "20%" }}/></colgroup>
+        <tbody>
+          <tr>
+            <td style={{ ...tdSm, lineHeight: "1.7" }}>
+              <strong>DL NO. MH-NG2-526036, MH-NAG-526037</strong><br/>
+              IEC Code / PAN &nbsp;<strong>FNXPP3883B</strong><br/>
+              Bank A/C No.: <strong>146305501090</strong><br/>
+              Bank Name : <strong>ICICI BANK</strong><br/>
+              Swift Code : <strong>ICICINBBXXX</strong><br/>
+              GSTIN No : <strong>27FNXPP3883B1ZA</strong>
+            </td>
+            <td style={{ ...tdSm, lineHeight: "1.6" }}>
+              <strong>Declaration:</strong><br/>
+              We declare that this Invoice shows actual price of goods described and that all particulars are true and correct.
+            </td>
+            <td style={{ ...td, textAlign: "center", verticalAlign: "bottom", paddingBottom: "6px" }}>
+              <br/><br/><br/>
+              <strong>Authorised Signatory</strong><br/>
+              <strong>UNNATI PHARMAX</strong>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Multi-order: Packing List ─────────────────────────────────────────────────
+function MultiPackingListDoc({ orders }: { orders: Order[] }) {
+  const first   = orders[0];
+  const invDate = getInvoiceDate(first);
+  const dateStr = invDate.toLocaleDateString("en-GB").replaceAll("/", ".");
+  const invoiceLabel = orders.map(o => o.invoiceNo).filter(Boolean).join(" / ") || "—";
+
+  const BLK = "#000";
+  const WHT = "#fff";
+  const border = "1px solid #000";
+  const base: React.CSSProperties = { border, padding: "3px 5px", verticalAlign: "top", color: BLK, fontSize: "9pt", background: WHT };
+  const hdr:  React.CSSProperties = { ...base, fontWeight: "bold" };
+  const th:   React.CSSProperties = { ...base, background: "#e8e8e8", fontWeight: "bold", textAlign: "center" as const, fontSize: "8.5pt", verticalAlign: "middle" as const };
+  const td:   React.CSSProperties = { ...base };
+  const tdc:  React.CSSProperties = { ...base, textAlign: "center" as const };
+  const tbl:  React.CSSProperties = { width: "100%", borderCollapse: "collapse" as const };
+
+  const COLS = ["Sr No","Customer","Product Name","Mfd. Date","Exp.Date","Batch No.","Mfg by.","Packing","Qty","Country","Zipcode","Tracking No","Weight(IN GMS)"];
+
+  return (
+    <div style={{ fontFamily: "Arial, sans-serif", fontSize: "9pt", color: BLK, background: WHT }}>
+      <table style={tbl}><tbody>
+        <tr><td style={{ ...hdr, textAlign: "center", fontSize: "17pt", padding: "6px 8px" }}>UNNATI PHARMAX</td></tr>
+        <tr><td style={{ ...hdr, textAlign: "center", fontSize: "13pt", padding: "4px 8px" }}>PACKING LIST (Annexure)</td></tr>
+      </tbody></table>
+
+      <table style={tbl}>
+        <colgroup>
+          <col style={{ width: "12%" }}/><col style={{ width: "22%" }}/>
+          <col/><col/><col/><col/>
+        </colgroup>
+        <tbody>
+          {[
+            ["IEC No :",    "FNXPP3883B"],
+            ["Invoice No:", invoiceLabel],
+            ["Date:",       dateStr],
+            ["GST NO :",    "27FNXPP3883B1ZA"],
+          ].map(([label, value]) => (
+            <tr key={label}>
+              <td style={hdr}>{label}</td>
+              <td style={td}>{value}</td>
+              <td style={td}></td><td style={td}></td><td style={td}></td><td style={td}></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <table style={tbl}>
+        <colgroup>
+          <col style={{ width: "4%" }}/><col style={{ width: "9%" }}/><col style={{ width: "17%" }}/>
+          <col style={{ width: "7%" }}/><col style={{ width: "7%" }}/><col style={{ width: "9%" }}/>
+          <col style={{ width: "14%" }}/><col style={{ width: "6%" }}/><col style={{ width: "4%" }}/>
+          <col style={{ width: "8%" }}/><col style={{ width: "6%" }}/><col style={{ width: "9%" }}/><col style={{ width: "10%" }}/>
+        </colgroup>
+        <thead>
+          <tr>{COLS.map(h => <th key={h} style={th}>{h}</th>)}</tr>
+        </thead>
+        <tbody>
+          {orders.map((order, srIdx) => {
+            const totalWeightGms = order.netWeight != null ? Math.round(order.netWeight * 1000) : null;
+            return order.items.map((item, itemIdx) => (
+              <tr key={`${order.id}-${itemIdx}`}>
+                {/* Sr No — spans all items for this order */}
+                {itemIdx === 0 && (
+                  <td rowSpan={order.items.length} style={{ ...tdc, verticalAlign: "middle" }}>{srIdx + 1}</td>
+                )}
+                {/* Customer — spans all items for this order */}
+                {itemIdx === 0 && (
+                  <td rowSpan={order.items.length} style={{ ...tdc, verticalAlign: "middle" }}>{order.fullName}</td>
+                )}
+                <td style={td}>{item.productName}</td>
+                <td style={tdc}>{item.mfgDate ?? ""}</td>
+                <td style={tdc}>{item.expDate ?? ""}</td>
+                <td style={{ ...tdc, fontFamily: "monospace" }}>{item.batchNo ?? ""}</td>
+                <td style={td}>{item.manufacturer ?? ""}</td>
+                <td style={tdc}>{item.pack ?? ""}</td>
+                <td style={{ ...tdc, fontWeight: "bold" }}>{item.quantity}</td>
+                {/* Country / Zipcode / Tracking / Weight — span all items for this order */}
+                {itemIdx === 0 && (
+                  <td rowSpan={order.items.length} style={{ ...tdc, verticalAlign: "middle" }}>{order.country}</td>
+                )}
+                {itemIdx === 0 && (
+                  <td rowSpan={order.items.length} style={{ ...tdc, verticalAlign: "middle", fontFamily: "monospace" }}>{order.postalCode}</td>
+                )}
+                {itemIdx === 0 && (
+                  <td rowSpan={order.items.length} style={{ ...tdc, verticalAlign: "middle", fontFamily: "monospace" }}>{order.trackingNo ?? ""}</td>
+                )}
+                {itemIdx === 0 && (
+                  <td rowSpan={order.items.length} style={{ ...tdc, verticalAlign: "middle" }}>
+                    {totalWeightGms != null ? `${totalWeightGms} GMS` : ""}
+                  </td>
+                )}
+              </tr>
+            ));
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Multi-order Documents Overlay ─────────────────────────────────────────────
+function MultiDocumentsOverlay({ orders, onClose }: { orders: Order[]; onClose: () => void }) {
+  const first = orders[0];
+  const [ds, setDs] = useState<DocSettings>(DOC_SETTINGS_DEFAULT);
+  useEffect(() => {
+    fetch("/api/settings/company").then(r => r.json()).then(s => setDs({
+      chaName: s.chaName || DOC_SETTINGS_DEFAULT.chaName,
+      chaNo:   s.chaNo   || DOC_SETTINGS_DEFAULT.chaNo,
+      stampB64: s.stampB64 || "",
+      sigB64:   s.sigB64   || "",
+      companyName:    s.name    || DOC_SETTINGS_DEFAULT.companyName,
+      companyAddress: s.address || DOC_SETTINGS_DEFAULT.companyAddress,
+    })).catch(() => {});
+  }, []);
+
+  const docs = [
+    { label: "Export Invoice",     landscape: true,  multiPage: true,  comp: <MultiExportInvoiceDoc    orders={orders} /> },
+    { label: "Export Invoice INR", landscape: true,  multiPage: true,  comp: <MultiExportInvoiceINRDoc orders={orders} /> },
+    { label: "Packing List",       landscape: true,  multiPage: true,  comp: <MultiPackingListDoc      orders={orders} /> },
+    { label: "Form II",           landscape: false, multiPage: false, comp: <Form2Doc          order={first} /> },
+    { label: "EDF",               landscape: false, multiPage: true,  comp: <EdfDoc            order={first} /> },
+    { label: "Covering Letter",   landscape: false, multiPage: true,  comp: <CoveringLetterDoc order={first} chaName={ds.chaName} chaNo={ds.chaNo} /> },
+    { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={first} companyName={ds.companyName} companyAddress={ds.companyAddress} /> },
+  ];
+
+  function handlePrint() {
+    const root = document.getElementById("unnati-multi-docs-root");
+    if (!root) return;
+    const origin = window.location.origin;
+    const html = root.innerHTML.replace(/src="\/([^"]+)"/g, `src="${origin}/$1"`);
+    const win = window.open("", "_blank", "width=900,height=700");
+    if (!win) { alert("Pop-up blocked — allow pop-ups for this site and try again."); return; }
+    win.document.write(`<!DOCTYPE html>
+<html><head><meta charset="utf-8" />
+<title>${orders.map(o => o.invoiceNo).filter(Boolean).join("-") || "Multi-Documents"}</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body { margin: 0; padding: 0; background: #fff; font-family: Arial, sans-serif; }
+  .doc-section-label { display: none !important; }
+  @page          { size: A4 portrait;  margin: 10mm; }
+  @page landscape { size: A4 landscape; margin: 10mm; }
+  .doc-section { width: 100%; height: 277mm; box-sizing: border-box; overflow: hidden; page-break-after: always; break-after: page; padding: 0; }
+  .doc-section.landscape { page: landscape; height: 190mm; }
+  .doc-section.multi-page { height: auto; overflow: visible; page-break-inside: auto; break-inside: auto; }
+  .doc-section:last-child { page-break-after: auto; break-after: auto; }
+</style></head><body>${html}</body></html>`);
+    win.document.close();
+    win.onafterprint = () => win.close();
+    const imgs = win.document.images;
+    if (imgs.length === 0) { win.focus(); win.print(); }
+    else {
+      let loaded = 0;
+      Array.from(imgs).forEach(img => {
+        const tryPrint = () => { loaded++; if (loaded >= imgs.length) { win.focus(); win.print(); } };
+        if (img.complete) tryPrint(); else { img.onload = tryPrint; img.onerror = tryPrint; }
+      });
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000, overflowY: "auto" }}>
+      <div style={{ maxWidth: 1160, margin: "20px auto", background: "#fff", padding: "0 0 40px" }}>
+        <div style={{
+          background: "#1a1a2e", color: "#fff", padding: "10px 20px",
+          display: "flex", gap: 10, alignItems: "center",
+          position: "sticky", top: 0, zIndex: 10, flexWrap: "wrap",
+        }}>
+          <span style={{ fontWeight: 700, marginRight: "auto" }}>
+            {orders.length} orders combined &nbsp;·&nbsp; {docs.length} documents
+          </span>
+          <button onClick={handlePrint} style={{ padding: "6px 18px", background: "#27ae60", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>
+            Print All
+          </button>
+          <button onClick={onClose} style={{ padding: "6px 16px", background: "rgba(255,255,255,0.12)", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>
+            ✕ Close
+          </button>
+        </div>
+
+        <div id="unnati-multi-docs-root" style={{ background: "#fff", color: "#000" }}>
+          <style>{`
+            #unnati-multi-docs-root, #unnati-multi-docs-root * { color: #000 !important; -webkit-text-fill-color: #000 !important; opacity: 1 !important; text-shadow: none !important; }
+            #unnati-multi-docs-root { background: #e5e7eb !important; padding: 0 !important; }
+            #unnati-multi-docs-root table { width: 100%; border-collapse: collapse; }
+            #unnati-multi-docs-root td, #unnati-multi-docs-root th { border-color: #000 !important; }
+            #unnati-multi-docs-root thead { background: transparent !important; }
+            #unnati-multi-docs-root tbody tr { background: transparent !important; border-bottom: none !important; }
+            #unnati-multi-docs-root tbody tr:hover { background: transparent !important; }
+            .doc-section-label { background: #374151 !important; color: #d1d5db !important; -webkit-text-fill-color: #d1d5db !important; font-size: 10px; font-weight: 600; padding: 5px 16px; letter-spacing: 0.06em; text-transform: uppercase; width: 210mm; margin: 0 auto; box-sizing: border-box; }
+            .doc-section-label.landscape { width: 277mm; }
+            .doc-section { width: 210mm; height: 277mm; margin: 0 auto 24px; padding: 10mm; background: #fff !important; box-sizing: border-box; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.25); }
+            .doc-section.landscape { width: 277mm; height: 190mm; }
+            .doc-section.multi-page { height: auto; min-height: 277mm; overflow: visible; }
+            .doc-section.landscape.multi-page { min-height: 190mm; }
+          `}</style>
+
+          {docs.map(({ label, comp, landscape, multiPage }, i) => {
+            const secCls = ["doc-section", landscape && "landscape", multiPage && "multi-page"].filter(Boolean).join(" ");
+            const lblCls = ["doc-section-label", landscape && "landscape"].filter(Boolean).join(" ");
+            return (
+              <React.Fragment key={i}>
+                <div className={lblCls}>{i + 1} / {docs.length} — {label}</div>
+                <div className={secCls}>{comp}</div>
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Documents overlay — all docs stacked, single print/download ───────────────
 type DocSettings = { chaName: string; chaNo: string; stampB64: string; sigB64: string; companyName: string; companyAddress: string; };
 const DOC_SETTINGS_DEFAULT: DocSettings = { chaName: "AARPEE CLEARING & LOGISTICS", chaNo: "11/2623", stampB64: "", sigB64: "", companyName: "UNNATI PHARMAX", companyAddress: "1/04 Guruvanada Appartment, Central Ave, Lakadganj, Nagpur 440008" };
@@ -2552,12 +3201,14 @@ function SquareCheckbox({ checked, onChange }: { checked: boolean; onChange: () 
 function BatchActionBar({
   selectedCount,
   onGenerate,
+  onViewDocs,
   onClear,
   generating,
   err,
 }: {
   selectedCount: number;
   onGenerate: () => void;
+  onViewDocs: () => void;
   onClear: () => void;
   generating: boolean;
   err: string;
@@ -2580,7 +3231,10 @@ function BatchActionBar({
         Tracking &amp; license numbers are set per order above
       </span>
       <div style={{ flex: 1 }} />
-      <button onClick={onClear} className="btn btn-secondary btn-sm">✕ Clear selection</button>
+      <button onClick={onClear} className="btn btn-secondary btn-sm">✕ Clear</button>
+      <button onClick={onViewDocs} className="btn btn-secondary" style={{ fontSize: "0.9rem" }}>
+        View Combined Docs
+      </button>
       <button
         onClick={onGenerate}
         disabled={generating}
@@ -2945,7 +3599,8 @@ function OrderCard({
 export default function PackagingClient() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeDocsOrder, setActiveDocsOrder] = useState<Order | null>(null);
+  const [activeDocsOrder, setActiveDocsOrder]   = useState<Order | null>(null);
+  const [activeDocsOrders, setActiveDocsOrders] = useState<Order[] | null>(null);
   const [mainMode, setMainMode] = useState<"single" | "multi">("single");
   const [singleStatusTab, setSingleStatusTab] = useState<"ready" | "packing">("ready");
   const [multiStatusTab, setMultiStatusTab]   = useState<"ready" | "packing">("ready");
@@ -3270,13 +3925,22 @@ export default function PackagingClient() {
         </>
       )}
 
-      {/* Documents overlay */}
+      {/* Single-order documents overlay */}
       {activeDocsOrder && <DocumentsOverlay order={activeDocsOrder} onClose={() => setActiveDocsOrder(null)} />}
+
+      {/* Multi-order combined documents overlay */}
+      {activeDocsOrders && (
+        <MultiDocumentsOverlay orders={activeDocsOrders} onClose={() => setActiveDocsOrders(null)} />
+      )}
 
       {/* Batch action bar — slides in from bottom when orders are selected */}
       <BatchActionBar
         selectedCount={selectedIds.size}
         onGenerate={generateCombined}
+        onViewDocs={() => {
+          const selected = singleReady.filter(o => selectedIds.has(o.id));
+          if (selected.length > 0) setActiveDocsOrders(selected);
+        }}
         onClear={() => { setSelectedIds(new Set()); setOrderDetails(new Map()); setBatchErr(""); }}
         generating={batchGenerating}
         err={batchErr}
