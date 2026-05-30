@@ -1015,7 +1015,7 @@ function getCN22Variant(country: string): CN22Variant {
   return "standard";
 }
 
-function CN22LabelDoc({ order, companyName, companyAddress }: { order: Order; companyName?: string; companyAddress?: string }) {
+function CN22LabelDoc({ order, companyName, companyAddress, customDesc }: { order: Order; companyName?: string; companyAddress?: string; customDesc?: string }) {
   const invDate = getInvoiceDate(order);
   const dateStr = invDate.toISOString().split("T")[0]; // YYYY-MM-DD
 
@@ -1030,7 +1030,7 @@ function CN22LabelDoc({ order, companyName, companyAddress }: { order: Order; co
   const hsnStr = hsnSet.length ? hsnSet.join(", ") : "3004";
 
   const descRaw = order.items.map(i => i.productName).join(", ");
-  const desc    = descRaw.length > 55 ? "PHARMACEUTICAL PRODUCTS" : descRaw.toUpperCase();
+  const desc    = customDesc?.trim() || (descRaw.length > 55 ? "PHARMACEUTICAL PRODUCTS" : descRaw.toUpperCase());
 
   const senderName = companyName ?? "UNNATI PHARMAX";
   const senderAddr = companyAddress ?? "1/04 Guruvanada Appartment, Central Ave, Lakadganj, Nagpur 440008";
@@ -1319,7 +1319,7 @@ function Form2Doc({ order }: { order: Order }) {
   const b = "1px solid #000";
   const td:  React.CSSProperties = { border: b, padding: "2px 3px", verticalAlign: "middle", fontSize: "7px", color: "#000", background: "#fff" };
   const th:  React.CSSProperties = { ...td, fontWeight: "bold", textAlign: "center", fontSize: "6.5px" };
-  const yw:  React.CSSProperties = { ...td, background: "#FFD700", fontWeight: "bold" };
+  const yw:  React.CSSProperties = { ...td };
   const ctr: React.CSSProperties = { textAlign: "center" as const };
   const tbl: React.CSSProperties = { width: "100%", borderCollapse: "collapse" as const };
 
@@ -1623,7 +1623,7 @@ function EdfDoc({ order }: { order: Order }) {
   const td:  React.CSSProperties = { border: b, padding: "1px 3px", verticalAlign: "top", fontSize: "7px", color: "#000", background: "#fff" };
   const th:  React.CSSProperties = { ...td, fontWeight: "bold", textAlign: "center", fontSize: "6.5px" };
   const tbl: React.CSSProperties = { width: "100%", borderCollapse: "collapse" as const };
-  const hl:  React.CSSProperties = { ...td, background: "#FFD700", fontWeight: "bold", textAlign: "center", fontSize: "9px" };
+  const hl:  React.CSSProperties = { ...td, fontWeight: "bold", textAlign: "center", fontSize: "9px" };
 
   return (
     <div style={{ fontFamily: "Arial, sans-serif", fontSize: "7px", color: "#000", background: "#fff", display: "flex", gap: 0, alignItems: "stretch" }}>
@@ -1770,7 +1770,7 @@ function EdfDoc({ order }: { order: Order }) {
               <td style={{ ...td, fontWeight: "bold" }}>Custom Assessable value (INR)*:</td>
             </tr>
             <tr>
-              <td style={{ ...td, fontStyle: "italic", background: "#FFD700", fontWeight: "bold" }}>{fobWords}</td>
+              <td style={{ ...td, fontStyle: "italic", fontWeight: "bold" }}>{fobWords}</td>
               <td style={hl}>Rs &nbsp;{fobInr.toLocaleString("en-IN", { minimumFractionDigits: 2 })} /-</td>
             </tr>
           </tbody>
@@ -2460,9 +2460,9 @@ function MultiPackingListDoc({ orders }: { orders: Order[] }) {
 
 // ── Multi-order Documents Overlay ─────────────────────────────────────────────
 function MultiDocumentsOverlay({ orders, onClose }: { orders: Order[]; onClose: () => void }) {
-  const [ds, setDs] = useState<DocSettings>(DOC_SETTINGS_DEFAULT);
-  // Per-order weight overrides captured from scale photos
+  const [ds, setDs]           = useState<DocSettings>(DOC_SETTINGS_DEFAULT);
   const [weightMap, setWeightMap] = useState<Record<string, number>>({});
+  const [cn22Desc, setCn22Desc]   = useState("");
   useEffect(() => {
     fetch("/api/settings/company").then(r => r.json()).then(s => setDs({
       chaName: s.chaName || DOC_SETTINGS_DEFAULT.chaName,
@@ -2487,7 +2487,7 @@ function MultiDocumentsOverlay({ orders, onClose }: { orders: Order[]; onClose: 
     { label: "Form II",           landscape: true,  multiPage: false, comp: <Form2Doc          order={first} /> },
     { label: "EDF",               landscape: true,  multiPage: false, comp: <EdfDoc            order={first} /> },
     { label: "Covering Letter",   landscape: false, multiPage: true,  comp: <CoveringLetterDoc order={first} chaName={ds.chaName} chaNo={ds.chaNo} /> },
-    { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={first} companyName={ds.companyName} companyAddress={ds.companyAddress} /> },
+    { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={first} companyName={ds.companyName} companyAddress={ds.companyAddress} customDesc={cn22Desc || undefined} /> },
   ];
 
   function handlePrint() {
@@ -2557,6 +2557,35 @@ function MultiDocumentsOverlay({ orders, onClose }: { orders: Order[]; onClose: 
             </div>
           </div>
         ))}
+
+        {/* ── CN22 label description input ── */}
+        <div style={{
+          background: "#1a1a2e", borderBottom: "1px solid #374151",
+          padding: "7px 20px", display: "flex", alignItems: "center", gap: 10,
+        }}>
+          <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#9ca3af", whiteSpace: "nowrap" }}>
+            📦 Label description:
+          </span>
+          <input
+            type="text"
+            value={cn22Desc}
+            onChange={e => setCn22Desc(e.target.value)}
+            placeholder="Auto-generated from product names…"
+            style={{
+              flex: 1, padding: "4px 10px", fontSize: "0.8rem",
+              background: "#0f172a", color: "#f1f5f9",
+              border: "1px solid #374151", borderRadius: 5, outline: "none",
+            }}
+          />
+          {cn22Desc && (
+            <button
+              onClick={() => setCn22Desc("")}
+              style={{ padding: "3px 10px", fontSize: "0.75rem", background: "rgba(255,255,255,0.08)", color: "#9ca3af", border: "none", borderRadius: 4, cursor: "pointer" }}
+            >
+              ✕ Clear
+            </button>
+          )}
+        </div>
 
         <div id="unnati-multi-docs-root" style={{ background: "#fff", color: "#000" }}>
           <style>{`
@@ -2709,8 +2738,8 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
   const downloadHref = `/api/packaging/orders/${order.id}/documents`;
 
   const [ds, setDs] = useState<DocSettings>(DOC_SETTINGS_DEFAULT);
-  // Weight captured from scale photo — overrides order.netWeight in all docs
-  const [weightKg, setWeightKg] = useState<number | null>(null);
+  const [weightKg,  setWeightKg]  = useState<number | null>(null);
+  const [cn22Desc,  setCn22Desc]  = useState("");
   const o = weightKg != null ? { ...order, netWeight: weightKg, grossWeight: weightKg } : order;
 
   useEffect(() => {
@@ -2733,7 +2762,7 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
     { label: "Form II",           landscape: true,  multiPage: false, comp: <Form2Doc          order={o} /> },
     { label: "EDF",               landscape: true,  multiPage: false, comp: <EdfDoc            order={o} /> },
     { label: "Covering Letter",   landscape: false, multiPage: true,  comp: <CoveringLetterDoc order={o} chaName={ds.chaName} chaNo={ds.chaNo} /> },
-    { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={o} companyName={ds.companyName} companyAddress={ds.companyAddress} /> },
+    { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={o} companyName={ds.companyName} companyAddress={ds.companyAddress} customDesc={cn22Desc || undefined} /> },
   ];
 
   const dhlDocs = [
@@ -2873,6 +2902,35 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
           currentWeight={order.netWeight}
           onExtracted={kg => setWeightKg(kg)}
         />
+
+        {/* ── CN22 label description input ── */}
+        <div style={{
+          background: "#1a1a2e", borderBottom: "1px solid #374151",
+          padding: "7px 20px", display: "flex", alignItems: "center", gap: 10,
+        }}>
+          <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#9ca3af", whiteSpace: "nowrap" }}>
+            📦 Label description:
+          </span>
+          <input
+            type="text"
+            value={cn22Desc}
+            onChange={e => setCn22Desc(e.target.value)}
+            placeholder={`Auto: ${order.items.map(i => i.productName).join(", ").slice(0, 60)}…`}
+            style={{
+              flex: 1, padding: "4px 10px", fontSize: "0.8rem",
+              background: "#0f172a", color: "#f1f5f9",
+              border: "1px solid #374151", borderRadius: 5, outline: "none",
+            }}
+          />
+          {cn22Desc && (
+            <button
+              onClick={() => setCn22Desc("")}
+              style={{ padding: "3px 10px", fontSize: "0.75rem", background: "rgba(255,255,255,0.08)", color: "#9ca3af", border: "none", borderRadius: 4, cursor: "pointer" }}
+            >
+              ✕ Clear
+            </button>
+          )}
+        </div>
 
         {/* ── All documents stacked (screen view) ── */}
         <div id="unnati-docs-root" style={{ background: "#fff", color: "#000" }}>
