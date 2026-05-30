@@ -1076,7 +1076,7 @@ function CN22LabelDoc({ order, companyName, companyAddress }: { order: Order; co
           <tr style={{ verticalAlign: "top" }}>
 
             {/* ═══════════════ LEFT PANEL ═══════════════ */}
-            <td style={{ width: "52%", padding: 0, borderRight: "2px solid #000" }}>
+            <td style={{ width: "43%", padding: 0, borderRight: "2px solid #000" }}>
 
               {/* Row 1: CUSTOMS DECLARATION | May be opened officially | CN 22 */}
               <table style={{ marginBottom: 0 }}>
@@ -1207,7 +1207,7 @@ function CN22LabelDoc({ order, companyName, companyAddress }: { order: Order; co
             </td>
 
             {/* ═══════════════ RIGHT PANEL ═══════════════ */}
-            <td style={{ width: "48%", padding: 0, verticalAlign: "top" }}>
+            <td style={{ width: "57%", padding: 0, verticalAlign: "top" }}>
 
               {/* Top: Country logo | Barcode space | India Post logo */}
               <table style={{ borderBottom: "1px solid #000" }}>
