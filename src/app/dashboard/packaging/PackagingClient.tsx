@@ -1076,7 +1076,7 @@ function CN22LabelDoc({ order, companyName, companyAddress }: { order: Order; co
           <tr style={{ verticalAlign: "top" }}>
 
             {/* ═══════════════ LEFT PANEL ═══════════════ */}
-            <td style={{ width: "43%", padding: 0, borderRight: "2px solid #000" }}>
+            <td style={{ width: "52%", padding: 0, borderRight: "2px solid #000" }}>
 
               {/* Row 1: CUSTOMS DECLARATION | May be opened officially | CN 22 */}
               <table style={{ marginBottom: 0 }}>
@@ -1207,7 +1207,7 @@ function CN22LabelDoc({ order, companyName, companyAddress }: { order: Order; co
             </td>
 
             {/* ═══════════════ RIGHT PANEL ═══════════════ */}
-            <td style={{ width: "57%", padding: 0, verticalAlign: "top" }}>
+            <td style={{ width: "48%", padding: 0, verticalAlign: "top" }}>
 
               {/* Top: Country logo | Barcode space | India Post logo */}
               <table style={{ borderBottom: "1px solid #000" }}>
@@ -1262,14 +1262,14 @@ function CN22LabelDoc({ order, companyName, companyAddress }: { order: Order; co
                 </tbody>
               </table>
 
-              {/* TO section */}
+              {/* TO section — tall to match original label design */}
               <table style={{ borderBottom: "1px solid #000" }}>
                 <tbody>
-                  <tr>
-                    <td style={{ padding: "3px 5px", width: "18%", borderRight: "1px solid #000", textAlign: "center" }}>
+                  <tr style={{ height: 90 }}>
+                    <td style={{ padding: "3px 5px", width: "18%", borderRight: "1px solid #000", textAlign: "center", verticalAlign: "middle" }}>
                       <div style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", fontWeight: 900, fontSize: "8pt", letterSpacing: 1 }}>TO (11)</div>
                     </td>
-                    <td style={{ padding: "5px 6px", fontSize: "8pt", lineHeight: 1.7 }}>
+                    <td style={{ padding: "5px 6px", fontSize: "8pt", lineHeight: 1.7, verticalAlign: "top" }}>
                       <div style={{ fontWeight: 800, fontSize: "9pt" }}>{recipientName}</div>
                       <div>{recipientAddr}</div>
                       <div style={{ fontWeight: 800, marginTop: 3 }}>{recipientCountry}</div>
@@ -1278,10 +1278,21 @@ function CN22LabelDoc({ order, companyName, companyAddress }: { order: Order; co
                 </tbody>
               </table>
 
-              {/* Country-specific badge area */}
-              <div style={{ padding: "4px 8px", minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <RightBadge />
-              </div>
+              {/* Bottom: ZIP CODE barcode (prime) + QR / Track & Trace */}
+              <table>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: "4px 8px", verticalAlign: "middle" }}>
+                      <RightBadge />
+                    </td>
+                    <td style={{ padding: "4px 6px", textAlign: "center", verticalAlign: "bottom", width: "40%" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/tracking qr.png" alt="QR" style={{ width: 52, height: 52, objectFit: "contain", display: "block", margin: "0 auto" }} />
+                      <div style={{ fontSize: "6.5pt", fontWeight: 700, marginTop: 3, letterSpacing: 0.5 }}>Track &amp; Trace</div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </td>
           </tr>
         </tbody>
