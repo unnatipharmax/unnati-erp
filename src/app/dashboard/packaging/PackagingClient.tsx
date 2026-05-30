@@ -1049,35 +1049,16 @@ function CN22LabelDoc({ order, companyName, companyAddress }: { order: Order; co
 
   // ── Country-specific badge in right panel bottom ──
   const RightBadge = () => {
-    if (variant === "epacket") return (
-      <div style={{ border: "2px solid #004080", borderRadius: 4, padding: "4px 8px", textAlign: "center", marginTop: 6 }}>
-        <div style={{ fontSize: "7pt", color: "#004080", fontWeight: 900, letterSpacing: 0.5 }}>APP</div>
-        <div style={{ fontSize: "8.5pt", color: "#004080", fontWeight: 900, fontStyle: "italic" }}>ePacket</div>
-      </div>
-    );
+    // For prime variant, show ZIP CODE barcode area at the bottom
     if (variant === "prime") return (
-      <div style={{ marginTop: 6 }}>
-        <div style={{ border: "2px solid #000", padding: "3px 8px", textAlign: "center", fontSize: "8pt", fontWeight: 800, letterSpacing: 1, marginBottom: 4 }}>
-          USPS PRIORITY MAIL EXPRESS
-        </div>
+      <div style={{ padding: "4px 8px" }}>
         <div style={{ border: "1px solid #000", height: 22, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "7pt", color: "#555" }}>
           Barcode for ZIP CODE
         </div>
         <div style={{ textAlign: "center", fontSize: "6.5pt", marginTop: 2, fontWeight: 700 }}>ZIP CODE</div>
       </div>
     );
-    if (variant === "track") return (
-      <div style={{ textAlign: "center", marginTop: 8 }}>
-        {/* QR code placeholder */}
-        <div style={{ width: 52, height: 52, border: "2px solid #000", margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 2, padding: 4, boxSizing: "border-box" }}>
-          {Array.from({length:9}).map((_,i)=>(
-            <div key={i} style={{ background: i%2===0?"#000":"#fff", borderRadius:1 }} />
-          ))}
-        </div>
-        <div style={{ fontSize: "6.5pt", fontWeight: 700, marginTop: 3, letterSpacing: 0.5 }}>Track &amp; Trace</div>
-      </div>
-    );
-    return null; // standard — no badge
+    return null;
   };
 
   return (
@@ -1228,20 +1209,39 @@ function CN22LabelDoc({ order, companyName, companyAddress }: { order: Order; co
             {/* ═══════════════ RIGHT PANEL ═══════════════ */}
             <td style={{ width: "48%", padding: 0, verticalAlign: "top" }}>
 
-              {/* Top: Barcode spaces + India Post logo */}
+              {/* Top: Country logo | Barcode space | India Post logo */}
               <table style={{ borderBottom: "1px solid #000" }}>
                 <tbody>
                   <tr>
-                    <td style={{ padding: "4px 6px", fontSize: "7pt", textAlign: "center", color: "#555", borderRight: "1px solid #000", width: "40%" }}>
-                      Space for Barcode
+                    {/* Cell 1: country-specific logo (or plain barcode space for standard/DNKN) */}
+                    <td style={{ padding: "4px 6px", textAlign: "center", borderRight: "1px solid #000", width: "40%", verticalAlign: "middle" }}>
+                      {variant === "track" && (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src="/china etc.png" alt="globe" style={{ maxHeight: 44, maxWidth: "100%", objectFit: "contain", display: "block", margin: "0 auto" }} />
+                      )}
+                      {variant === "prime" && (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src="/us-canada.png" alt="prime" style={{ maxHeight: 44, maxWidth: "100%", objectFit: "contain", display: "block", margin: "0 auto" }} />
+                      )}
+                      {variant === "epacket" && (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src="/combodia-japan.png" alt="epacket" style={{ maxHeight: 44, maxWidth: "100%", objectFit: "contain", display: "block", margin: "0 auto" }} />
+                      )}
+                      {variant === "standard" && (
+                        <span style={{ fontSize: "7pt", color: "#555" }}>Space for Barcode</span>
+                      )}
                     </td>
+                    {/* Cell 2: main barcode space */}
                     <td style={{ padding: "4px 6px", fontSize: "7pt", textAlign: "center", color: "#555", width: "35%" }}>
                       Space for Barcode
                     </td>
-                    <td style={{ padding: "3px 4px", textAlign: "center", borderLeft: "1px solid #000", width: "25%" }}>
-                      {/* India Post logo approximation */}
-                      <div style={{ fontSize: "6pt", fontWeight: 900, color: "#c8000a", lineHeight: 1.1 }}>भारतीय<br />डाक</div>
-                      <div style={{ fontSize: "5.5pt", fontWeight: 700, color: "#c8000a" }}>India Post</div>
+                    {/* Cell 3: India Post logo + DNKN for standard */}
+                    <td style={{ padding: "3px 4px", textAlign: "center", borderLeft: "1px solid #000", width: "25%", verticalAlign: "middle" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/indian post logo.png" alt="India Post" style={{ maxHeight: 44, maxWidth: "100%", objectFit: "contain", display: "block", margin: "0 auto" }} />
+                      {variant === "standard" && (
+                        <div style={{ fontSize: "6pt", fontWeight: 700, marginTop: 2 }}>DNKN(9)</div>
+                      )}
                     </td>
                   </tr>
                 </tbody>
@@ -1292,719 +1292,621 @@ function CN22LabelDoc({ order, companyName, companyAddress }: { order: Order; co
 
 // ── DOC 3: Form-II (template) ────────────────────────────────────────────────
 function Form2Doc({ order }: { order: Order }) {
-  const invDate = getInvoiceDate(order);
-  const date = invDate.toLocaleDateString("en-GB");
+  const invDate  = getInvoiceDate(order);
+  const dateStr  = invDate.toLocaleDateString("en-GB").replaceAll("/", ".");
+  const totalQty = order.items.reduce((s, i) => s + i.quantity, 0);
+  const hsn      = order.items[0]?.hsn ?? "3004";
+  const fob      = order.dollarAmount ?? 0;
+  const exRate   = order.exchangeRate ?? 84;
+  const amtInr   = Math.round(fob * exRate * 100) / 100;
+  const mode     = (order.shipmentMode ?? "EMS").toUpperCase();
+  const mQty     = (m: string) => m === mode ? totalQty : 0;
 
-  const exp = {
-    name:      "UNNATI PHARMAX",
-    address:   "Ground Floor House No 307/4, Guru Vandana Apartment, Kakasaheb Cholkar Marg, Lakadganj, Nagpur, NAGPUR, MAHARASHTRA, 440008",
-    gstin:     "27FNXPP3883B1ZA",
-    iec:       "FNXPP3883B",
-    adCode:    "6392058-6400009",
-    stateCode: "27",
-    fpo:       "INBOM5",
-  };
+  const cityLine = [order.city, order.state].filter(Boolean).join(", ");
+  const buyerAddr = [order.fullName, order.address, cityLine + " " + order.postalCode, order.country].filter(Boolean).join("\n");
 
-  const fob    = order.dollarAmount ?? 0;
-  const exRate = order.exchangeRate ?? 84;
-  const amtInr = Math.round(fob * exRate * 100) / 100;
+  const b = "1px solid #000";
+  const td:  React.CSSProperties = { border: b, padding: "2px 3px", verticalAlign: "middle", fontSize: "7px", color: "#000", background: "#fff" };
+  const th:  React.CSSProperties = { ...td, fontWeight: "bold", textAlign: "center", fontSize: "6.5px" };
+  const yw:  React.CSSProperties = { ...td, background: "#FFD700", fontWeight: "bold" };
+  const ctr: React.CSSProperties = { textAlign: "center" as const };
+  const tbl: React.CSSProperties = { width: "100%", borderCollapse: "collapse" as const };
 
   return (
-    <div style={{ padding: "6px 0" }}>
-      <style>{`
-        .f2 { font-size: 7.5pt; color: #000; padding: 0 2px 2px 0; }
-        .f2 table { width: 100%; border-collapse: collapse; margin-bottom: -1px; table-layout: fixed; border-right: 1px solid #000; border-bottom: 1px solid #000; }
-        .f2 td, .f2 th { border: 1px solid #000; padding: 2px 3px; vertical-align: middle; color: #000; word-break: break-word; }
-        .f2 .ctr { text-align: center; }
-        .f2 .bold { font-weight: 700; }
-        .f2 .sm { font-size: 6.5pt; }
-        .f2 th { background: #fff; font-weight: 700; text-align: center; font-size: 7pt; }
-      `}</style>
+    <div style={{ fontFamily: "Arial, sans-serif", fontSize: "7px", color: "#000", background: "#fff" }}>
 
-      <div className="f2" id="f2-print-wrapper">
+      {/* ══ TITLE ══ */}
+      <table style={tbl}><tbody>
+        <tr>
+          <td style={{ ...yw, textAlign: "center", fontSize: "10px", padding: "5px 4px", lineHeight: 1.5 }}>
+            <strong>FORM-II</strong>&nbsp;&nbsp;
+            <span style={{ fontWeight: 400, fontSize: "8px" }}>(see regulation 4)</span><br/>
+            <strong style={{ fontSize: "9px" }}>Postal Bill of Export – II (To be submitted in duplicate)</strong>
+          </td>
+        </tr>
+      </tbody></table>
 
-        {/* ══ TABLE 1: Title + Header (10 cols) ══ */}
-        <table>
-          <colgroup>
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "6%" }} />
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "18%" }} />
-            <col style={{ width: "8%" }} />
-            <col style={{ width: "4%" }} />
-            <col style={{ width: "12%" }} />
-            <col style={{ width: "11%" }} />
-            <col style={{ width: "11%" }} />
-            <col style={{ width: "12%" }} />
-          </colgroup>
-          <tbody>
-            <tr>
-              <td colSpan={10} className="ctr bold" style={{ fontSize: "9.5pt", padding: "5px 4px", lineHeight: 1.5 }}>
-                FORM-II <span style={{ fontWeight: 400, fontSize: "8pt" }}>(see regulation 4)</span><br />
-                Postal Bill of Export - II<br />
-                <span style={{ fontWeight: 400, fontSize: "7pt" }}>(To be submitted in duplicate)</span>
-              </td>
-            </tr>
-            <tr>
-              <th>Bill of Export<br />No and date</th>
-              <th>Foreign Post<br />office code</th>
-              <th>Name of<br />Exporter</th>
-              <th>Address of Exporter</th>
-              <th>IEC</th>
-              <th>State<br />code</th>
-              <th>GSTIN oras<br />Applicable</th>
-              <th>AD code<br />(if Applicable)</th>
-              <th colSpan={2}>Details of custom Broker<br /><span style={{ fontWeight: 400 }}>License No &nbsp;|&nbsp; Name and address</span></th>
-            </tr>
-            <tr>
-              <td className="ctr sm">{order.invoiceNo ?? "—"}<br />{date}</td>
-              <td className="ctr">{exp.fpo}</td>
-              <td className="bold sm">{exp.name}</td>
-              <td className="sm">{exp.address}</td>
-              <td className="sm">{exp.iec}</td>
-              <td className="ctr">{exp.stateCode}</td>
-              <td className="sm">{exp.gstin}</td>
-              <td className="sm">{exp.adCode}</td>
-              <td className="bold ctr">{order.licenseNo ?? ""}</td>
-              <td className="sm ctr">NA</td>
-            </tr>
-          </tbody>
-        </table>
+      {/* ══ EXPORTER INFO ══ */}
+      <table style={{ ...tbl, tableLayout: "fixed" }}>
+        <colgroup>
+          <col style={{ width: "9%" }}/><col style={{ width: "6%" }}/><col style={{ width: "9%" }}/>
+          <col style={{ width: "18%" }}/><col style={{ width: "8%" }}/><col style={{ width: "4%" }}/>
+          <col style={{ width: "12%" }}/><col style={{ width: "11%" }}/><col style={{ width: "11%" }}/><col style={{ width: "12%" }}/>
+        </colgroup>
+        <thead>
+          <tr>
+            <th style={th}>Bill of Export<br/>No. and date.</th>
+            <th style={th}>Foreign Post<br/>office code</th>
+            <th style={th}>Name of Exporter</th>
+            <th style={th}>Address of Exporter</th>
+            <th style={th}>IEC</th>
+            <th style={th}>State<br/>code</th>
+            <th style={th}>GSTIN or as<br/>applicable</th>
+            <th style={th}>AD code<br/>(if applicable)</th>
+            <th style={th}>Details of Customs Broker<br/>License No.</th>
+            <th style={th}>Name and address</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style={{ ...td, ...ctr }}>{order.invoiceNo ?? ""}<br/>{dateStr}</td>
+            <td style={{ ...td, ...ctr }}>INBOM5</td>
+            <td style={{ ...td, fontWeight: "bold" }}>UNNATI PHARMAX</td>
+            <td style={td}>SHOP NO 181 GURUKRUPA APARTMENT, CENTRAL AVE, LAKADGANJ NAGPUR MAHARSHTRA 440008</td>
+            <td style={{ ...td, ...ctr }}>FNXPP3883B</td>
+            <td style={{ ...td, ...ctr }}>27</td>
+            <td style={td}>27FNXPP3883B1ZA</td>
+            <td style={td}>0180387-6400009</td>
+            <td style={{ ...td, ...ctr }}>11/2440</td>
+            <td style={td}>CROSSWATER LOGISTICS</td>
+          </tr>
+        </tbody>
+      </table>
 
-        {/* ══ TABLE 2: Declaration (3 cols) ══ */}
-        <table>
-          <colgroup>
-            <col style={{ width: "3%" }} />
-            <col style={{ width: "88%" }} />
-            <col style={{ width: "9%" }} />
-          </colgroup>
-          <tbody>
-            <tr>
-              <td colSpan={2} className="ctr bold">Declaration</td>
-              <td className="ctr bold">Yes/No as applicable</td>
-            </tr>
-            <tr>
-              <td className="ctr">1</td>
-              <td className="sm">We declare that we inted to claim rewards under Merchandise Exports from India Scheme (MEIS)(for export through Chenni / Mumbai / Delhi FPO onli).</td>
-              <td className="ctr sm">Yes</td>
-            </tr>
-            <tr>
-              <td className="ctr">2</td>
-              <td className="sm">We declare that we intend to zero rate exports under Section 16 of IGST Act.</td>
-              <td className="ctr sm">Yes</td>
-            </tr>
-            <tr>
-              <td className="ctr">3</td>
-              <td className="sm">We declare that the goods are exempted under CGST/SGST/UTGST/IGST Acts.</td>
-              <td className="ctr sm">NO</td>
-            </tr>
-            <tr>
-              <td colSpan={3} className="sm">
-                We hereby declare that the contents of this postal bill of export are true and correct in every respect
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      {/* ══ DECLARATIONS ══ */}
+      <table style={{ ...tbl, tableLayout: "fixed" }}>
+        <colgroup>
+          <col style={{ width: "4%" }}/><col style={{ width: "87%" }}/><col style={{ width: "9%" }}/>
+        </colgroup>
+        <tbody>
+          <tr>
+            <td style={{ ...td, ...ctr, fontWeight: "bold" }} colSpan={2}>Declaration</td>
+            <td style={{ ...td, ...ctr, fontWeight: "bold" }}>Yes/No as applicable</td>
+          </tr>
+          <tr>
+            <td style={{ ...td, ...ctr }}>1</td>
+            <td style={td}>We declare that we intend to claim rewards under Merchandise Exports from India Scheme (MEIS)(for export through Chennai / Mumbai / Delhi FPO only).</td>
+            <td style={{ ...td, ...ctr, fontWeight: "bold" }}>NO</td>
+          </tr>
+          <tr>
+            <td style={{ ...td, ...ctr }}>2</td>
+            <td style={td}>We declare that we intend to zero rate our exports under Section 16 of IGST Act.</td>
+            <td style={{ ...td, ...ctr, fontWeight: "bold" }}>YES</td>
+          </tr>
+          <tr>
+            <td style={{ ...td, ...ctr }}>3</td>
+            <td style={td}>We declare that the goods are exempted under CGST/SGST/UTGST/IGST Acts.</td>
+            <td style={{ ...td, ...ctr, fontWeight: "bold" }}>NO</td>
+          </tr>
+          <tr>
+            <td colSpan={3} style={td}>
+              We hereby declare that the contents of this postal bill of export are true and correct in every respect.
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-        {/* ══ TABLE 3: Signature ══ */}
-        <table>
-          <tbody>
-            <tr>
-              <td style={{ width: "40%", height: 44, verticalAlign: "bottom" }} className="sm">
-                (Signature of the Exporter/ Authorised agent)
-              </td>
-              <td style={{ verticalAlign: "top" }} className="sm">Examination order and report</td>
-            </tr>
-            <tr>
-              <td colSpan={2} style={{ textAlign: "right" }} className="sm">
-                Let Export Order: Signature of officer of Customs along with stamp and date.
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      {/* ══ SIGNATURE ══ */}
+      <table style={tbl}>
+        <tbody>
+          <tr>
+            <td style={{ ...td, width: "38%", height: 34, verticalAlign: "bottom" }}>
+              (Signature of the Exporter/ Authorised agent)<br/>
+              <strong>For UNNATI PHARMAX</strong>
+            </td>
+            <td style={{ ...td, verticalAlign: "top" }}>Examination order and report</td>
+            <td style={{ ...td, textAlign: "right", verticalAlign: "bottom", width: "38%" }}>
+              Let Export Order: Signature of officer of Customs along with stamp and date.
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-        {/* ══ TABLE 4: Details of Parcel (13 cols) ══ */}
-        <table>
-          <colgroup>
-            <col style={{ width: "13%" }} />
-            <col style={{ width: "5%" }} />
-            <col style={{ width: "10%" }} />
-            <col style={{ width: "6%" }} />
-            <col style={{ width: "5%" }} />
-            <col style={{ width: "5%" }} />
-            <col style={{ width: "7%" }} />
-            <col style={{ width: "5%" }} />
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "7%" }} />
-            <col style={{ width: "6%" }} />
-            <col style={{ width: "7%" }} />
-            <col style={{ width: "10%" }} />
-          </colgroup>
-          <tbody>
-            <tr>
-              <td colSpan={13} className="ctr bold" style={{ padding: "4px" }}>Details of parcel</td>
-            </tr>
-            <tr>
-              <th colSpan={2}>Consignee details</th>
-              <th colSpan={4}>Product details</th>
-              <th colSpan={3}>DETAILS OF Parcel</th>
-              <th colSpan={4}>Assessable value under section 14 of the Customs Act</th>
-            </tr>
-            <tr>
-              <th>Name and Address</th>
-              <th>Country of destination</th>
-              <th>Description</th>
-              <th>CTH HSN Code</th>
-              <th>Unit<br /><span style={{ fontWeight: 400 }}>(pieces, liters, kgs, meters)</span></th>
-              <th>Quinty<br />number</th>
-              <th>Invoice no<br />and date</th>
-              <th>Weight</th>
-              <th>Postal tracking<br />nnmber</th>
-              <th>FOB</th>
-              <th>Currency</th>
-              <th>Exchange<br />rate</th>
-              <th>Amount in INR</th>
-            </tr>
-            {order.items.map((it, idx) => (
-              <tr key={it.productId}>
-                {idx === 0 && (
-                  <td rowSpan={order.items.length} className="sm">
-                    Full Name : {order.fullName}<br />
-                    {order.address}<br />
-                    {order.city}{order.state ? `, ${order.state}` : ""} {order.postalCode}<br />
-                    Country : {order.country}
-                  </td>
-                )}
-                {idx === 0 && (
-                  <td rowSpan={order.items.length} className="ctr">{order.country.toUpperCase()}</td>
-                )}
-                <td className="bold sm">{it.productName}</td>
-                <td className="ctr sm">{it.hsn ?? ""}</td>
-                <td className="ctr">{(it.pack ?? "").toUpperCase()}</td>
-                <td className="ctr">{it.quantity.toFixed(2)}</td>
-                {idx === 0 && (
-                  <td rowSpan={order.items.length} className="ctr sm">{order.invoiceNo ?? "—"}<br />{date}</td>
-                )}
-                {idx === 0 && (
-                  <td rowSpan={order.items.length} className="ctr">GROSS</td>
-                )}
-                {idx === 0 && (
-                  <td rowSpan={order.items.length} className="ctr bold">{order.trackingNo ?? ""}</td>
-                )}
-                {idx === 0 && (
-                  <td rowSpan={order.items.length} className="ctr">{fob.toFixed(2)}</td>
-                )}
-                {idx === 0 && (
-                  <td rowSpan={order.items.length} className="ctr">{order.currency}</td>
-                )}
-                {idx === 0 && (
-                  <td rowSpan={order.items.length} className="ctr">{exRate.toFixed(2)}</td>
-                )}
-                {idx === 0 && (
-                  <td rowSpan={order.items.length} className="ctr">{amtInr.toFixed(2)}</td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* ══ DETAILS OF PARCEL ══
+          Cols: Consignee | Buyer | Country | Desc | CTH | Unit | No | InvNo | Date | Gross | Net | EMS | RMS | CM | ITPS | FOB | Curr | ExRate | AmtINR
+      */}
+      <table style={{ ...tbl, tableLayout: "fixed" }}>
+        <colgroup>
+          <col style={{ width: "10%" }}/> {/* Consignee */}
+          <col style={{ width: "12%" }}/> {/* Buyer */}
+          <col style={{ width: "6%" }}/>  {/* Country */}
+          <col style={{ width: "8%" }}/>  {/* Description */}
+          <col style={{ width: "4%" }}/>  {/* CTH */}
+          <col style={{ width: "5%" }}/>  {/* Unit */}
+          <col style={{ width: "3%" }}/>  {/* No */}
+          <col style={{ width: "7%" }}/>  {/* Invoice no */}
+          <col style={{ width: "5%" }}/>  {/* Date */}
+          <col style={{ width: "5%" }}/>  {/* Gross */}
+          <col style={{ width: "4%" }}/>  {/* Net */}
+          <col style={{ width: "3%" }}/>  {/* EMS */}
+          <col style={{ width: "3%" }}/>  {/* RMS */}
+          <col style={{ width: "3%" }}/>  {/* CM */}
+          <col style={{ width: "3%" }}/>  {/* ITPS */}
+          <col style={{ width: "4%" }}/>  {/* FOB */}
+          <col style={{ width: "4%" }}/>  {/* Currency */}
+          <col style={{ width: "5%" }}/>  {/* ExRate */}
+          <col style={{ width: "6%" }}/>  {/* AmtINR */}
+        </colgroup>
+        <thead>
+          {/* Group header row */}
+          <tr>
+            <th style={th}>Consignee details</th>
+            <th style={th}>Buyer details</th>
+            <th style={th} colSpan={3}></th>
+            <th style={{ ...th, ...ctr }} colSpan={2}>Details of Parcel</th>
+            <th style={th} colSpan={3}>Details of Parcel</th>
+            <th style={th} colSpan={2}>Weight</th>
+            <th style={th} colSpan={4}>Postal tracking number</th>
+            <th style={th} colSpan={4}>Assessable value under section 14 of the Customs Act</th>
+          </tr>
+          {/* Column header row */}
+          <tr>
+            <th style={th}>Name and Address</th>
+            <th style={th}>Name and Address</th>
+            <th style={th}>Country of destination</th>
+            <th style={th}>Description</th>
+            <th style={th}>CTH</th>
+            <th style={th}>Unit<br/><span style={{ fontWeight: 400, fontSize: "6px" }}>(pieces, liters, kgs., meters)</span></th>
+            <th style={th}>No</th>
+            <th style={th}>Invoice no.</th>
+            <th style={th}>Date</th>
+            <th style={th}>Gross</th>
+            <th style={th}>net</th>
+            <th style={th}>EMS</th>
+            <th style={th}>RMS</th>
+            <th style={th}>CM</th>
+            <th style={th}>ITPS</th>
+            <th style={th}>FOB</th>
+            <th style={th}>Currency</th>
+            <th style={th}>Exchange rate</th>
+            <th style={th}>Amount in INR</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style={{ ...td, verticalAlign: "top" }}>
+              AS PER PACKING LIST<br/>
+              <span style={{ fontSize: "6px" }}>AS PER PACKING LIST / As per Annexure</span>
+            </td>
+            <td style={{ ...td, verticalAlign: "top", whiteSpace: "pre-line" }}>{buyerAddr}</td>
+            <td style={{ ...td, ...ctr }}>AS PER ANNEXURE ATTACHED</td>
+            <td style={{ ...td, fontWeight: "bold" }}>PHARMACEUTICAL PRODUCT</td>
+            <td style={{ ...td, ...ctr }}>{hsn}</td>
+            <td style={{ ...td, ...ctr }}>pieces</td>
+            <td style={{ ...td, ...ctr, fontWeight: "bold" }}>{totalQty}</td>
+            <td style={{ ...td, ...ctr }}>{order.invoiceNo ?? "—"}</td>
+            <td style={{ ...td, ...ctr }}>{dateStr}</td>
+            <td style={{ ...td, fontSize: "6px" }}>AS PER ANNEXURE ATTACHED</td>
+            <td style={{ ...td, fontSize: "6px" }}>AS PER ANNEXURE ATTACHED</td>
+            <td style={{ ...td, ...ctr }}>{mQty("EMS")}</td>
+            <td style={{ ...td, ...ctr }}>{mQty("RMS")}</td>
+            <td style={{ ...td, ...ctr }}>{mQty("CM")}</td>
+            <td style={{ ...td, ...ctr }}>{mQty("ITPS")}</td>
+            <td style={{ ...td, ...ctr, fontWeight: "bold" }}>{fob.toFixed(2)}</td>
+            <td style={{ ...td, ...ctr }}>{order.currency}</td>
+            <td style={{ ...td, ...ctr }}>{exRate.toFixed(2)}</td>
+            <td style={{ ...td, ...ctr, fontWeight: "bold" }}>{amtInr.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+          </tr>
+        </tbody>
+      </table>
 
-        {/* ══ TABLE 5: Export duty (15 cols) ══ */}
-        <table>
-          <colgroup>
-            <col style={{ width: "7%" }} />
-            <col style={{ width: "8%" }} />
-            <col style={{ width: "6%" }} />
-            <col style={{ width: "5%" }} />
-            <col style={{ width: "5%" }} />
-            <col style={{ width: "5%" }} />
-            <col style={{ width: "5%" }} />
-            <col style={{ width: "5%" }} />
-            <col style={{ width: "5%" }} />
-            <col style={{ width: "5%" }} />
-            <col style={{ width: "5%" }} />
-            <col style={{ width: "5%" }} />
-            <col style={{ width: "5%" }} />
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "5%" }} />
-            <col style={{ width: "5%" }} />
-          </colgroup>
-          <tbody>
-            <tr>
-              <td colSpan={16} className="ctr bold" style={{ padding: "4px" }}>Export duty</td>
-            </tr>
-            <tr>
-              <th rowSpan={2}>H.S<br />code</th>
-              <th colSpan={2}>Invoice details</th>
-              <th rowSpan={2}>value</th>
-              <th colSpan={4}>Customs duties</th>
-              <th colSpan={2}>IGST<br />(if applicable)</th>
-              <th colSpan={2}>Compensation cess<br />(if applicable)</th>
-              <th colSpan={4}>GST details</th>
-            </tr>
-            <tr>
-              <th>Invoice no<br />and date</th>
-              <th>SI No of<br />item in invoice</th>
-              <th colSpan={2}>Export duty<br />rate &nbsp;|&nbsp; amount</th>
-              <th colSpan={2}>Cess<br />rate &nbsp;|&nbsp; amount</th>
-              <th>rate</th>
-              <th>amount</th>
-              <th>rate</th>
-              <th>amount</th>
-              <th colSpan={2}>LUT/bond<br />details<br />(if applicable)</th>
-              <th>total</th>
-              <th>duty</th>
-              <th>cess</th>
-            </tr>
-            {order.items.map((it, idx) => (
-              <tr key={it.productId}>
-                <td className="ctr sm">{it.hsn ?? "as above"}</td>
-                <td className="ctr sm">{order.invoiceNo ?? "—"}<br />{date}</td>
-                <td className="ctr">{idx + 1}</td>
-                <td className="ctr">0</td>
-                <td className="ctr">0</td>
-                <td className="ctr">0</td>
-                <td className="ctr">0</td>
-                <td className="ctr">0</td>
-                <td className="ctr">0</td>
-                <td className="ctr">0</td>
-                <td className="ctr">0</td>
-                <td className="ctr">0</td>
-                <td className="ctr sm">AD2710230<br />37544C</td>
-                <td className="ctr">0</td>
-                <td className="ctr">0</td>
-                <td className="ctr">0</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* ══ TAX INVOICE DETAILS ══ */}
+      <table style={{ ...tbl, tableLayout: "fixed" }}>
+        <colgroup>
+          <col style={{ width: "5%" }}/>  {/* HSN */}
+          <col style={{ width: "9%" }}/>  {/* Inv no+date */}
+          <col style={{ width: "5%" }}/>  {/* Sl No */}
+          <col style={{ width: "6%" }}/>  {/* value */}
+          <col style={{ width: "4%" }}/>  {/* exp duty rate */}
+          <col style={{ width: "4%" }}/>  {/* exp duty amt */}
+          <col style={{ width: "4%" }}/>  {/* cess rate */}
+          <col style={{ width: "4%" }}/>  {/* cess amt */}
+          <col style={{ width: "4%" }}/>  {/* IGST rate */}
+          <col style={{ width: "4%" }}/>  {/* IGST amt */}
+          <col style={{ width: "5%" }}/>  {/* comp cess rate */}
+          <col style={{ width: "5%" }}/>  {/* comp cess amt */}
+          <col style={{ width: "4%" }}/>  {/* GST rate */}
+          <col style={{ width: "4%" }}/>  {/* GST amt */}
+          <col style={{ width: "13%" }}/> {/* LUT/ARN */}
+          <col style={{ width: "5%" }}/>  {/* duty */}
+          <col style={{ width: "5%" }}/>  {/* cess */}
+          <col style={{ width: "5%" }}/>  {/* total */}
+        </colgroup>
+        <thead>
+          <tr>
+            <th style={th} colSpan={18}>Details of Tax invoice or commercial invoice (whichever applicable)</th>
+          </tr>
+          <tr>
+            <th style={th} rowSpan={2}>H.S.N<br/>code</th>
+            <th style={th} colSpan={3}>Invoice details</th>
+            <th style={th} colSpan={6}>Customs duties</th>
+            <th style={th} colSpan={2}>Compensation cess<br/>(if applicable)</th>
+            <th style={th} colSpan={4}>GST details</th>
+            <th style={th} rowSpan={2}>total</th>
+          </tr>
+          <tr>
+            <th style={th} colSpan={2}>invoice no. and date</th>
+            <th style={th}>Sl. No. of<br/>item in<br/>invoice</th>
+            <th style={{ ...th, fontSize: "6px" }}>value</th>
+            <th style={th} colSpan={2}>Export duty<br/>rate &nbsp;|&nbsp; amount</th>
+            <th style={th} colSpan={2}>Cess<br/>rate &nbsp;|&nbsp; amount</th>
+            <th style={th} colSpan={2}>IGST (if applicable)<br/>rate &nbsp;|&nbsp; amount</th>
+            <th style={th}>rate</th>
+            <th style={th}>amount</th>
+            <th style={th}>rate</th>
+            <th style={th}>amount</th>
+            <th style={{ ...th, fontSize: "6px" }}>LUT/ bond details (if applicable) ARN NO.</th>
+            <th style={th}>duty</th>
+            <th style={th}>cess</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style={{ ...td, ...ctr }}>{hsn}</td>
+            <td style={{ ...td, ...ctr }} colSpan={2}>{order.invoiceNo ?? "—"}<br/>{dateStr}</td>
+            <td style={{ ...td, ...ctr }}>{totalQty}</td>
+            <td style={{ ...td, ...ctr }}>{fob.toFixed(2)}</td>
+            <td style={{ ...td, ...ctr }}>0</td>
+            <td style={{ ...td, ...ctr }}>0</td>
+            <td style={{ ...td, ...ctr }}>0</td>
+            <td style={{ ...td, ...ctr }}>0</td>
+            <td style={{ ...td, ...ctr }}>0</td>
+            <td style={{ ...td, ...ctr }}>0</td>
+            <td style={{ ...td, ...ctr }}>0</td>
+            <td style={{ ...td, ...ctr }}>0</td>
+            <td style={{ ...td, ...ctr }}>0</td>
+            <td style={{ ...td, ...ctr }}>0</td>
+            <td style={{ ...td, ...ctr, fontSize: "6px" }}>{order.licenseNo ?? "AD270326012421K"}</td>
+            <td style={{ ...td, ...ctr }}>0</td>
+            <td style={{ ...td, ...ctr }}>0</td>
+            <td style={{ ...td, ...ctr }}>0</td>
+          </tr>
+        </tbody>
+      </table>
 
-      </div>
     </div>
   );
 }
 
 // ── DOC 4: EDF ────────────────────────────────────────────────────────────────
 function EdfDoc({ order }: { order: Order }) {
-  const invDate = getInvoiceDate(order);
-  // DD-Mon-YY format e.g. "24-Jan-26"
-  const dateDMY = invDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" }).replace(/ /g, "-");
-  // DD/MM/YYYY
-  const dateFull = invDate.toLocaleDateString("en-GB").replace(/\//g, "/");
-  // "24 January 2026"
+  const invDate  = getInvoiceDate(order);
+  const dateDot  = invDate.toLocaleDateString("en-GB").replaceAll("/", ".");  // DD.MM.YYYY
+  const dateFull = invDate.toLocaleDateString("en-GB");                        // DD/MM/YYYY
   const dateLong = invDate.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
 
-  const exporter = {
-    name: "UNNATI PHARMAX",
-    address: [
-      "Ground Floor House No 307/4, Guru Vandana Apartment, Kakasaheb",
-      "Cholkar Marg, Lakadganj, Nagpur, NAGPUR, MAHARASHTRA,",
-      "440008",
-    ],
-    iec: "FNXPP3883B",
-    adCode: "6392058-6400009",
-    stateOfOrigin: "MAHARASHTRA",
-  };
+  const cnfFc      = order.dollarAmount ?? 0;
+  const freightFc  = order.shippingPrice;
+  const fobFc      = Math.max(0, cnfFc - freightFc);
+  const exRate     = order.exchangeRate ?? 84;
+  const fobInr     = Math.round(fobFc * exRate * 100) / 100;
+  const freightInr = Math.round(freightFc * exRate * 100) / 100;
+  const netReal    = Math.round(cnfFc * exRate * 100) / 100;
 
-  const bank = {
-    name: "ICICI BANK",
-    address: "NEW ITWARI ROAD, GANDHI PUTLA, ITWARI",
-  };
-
-  const fobFc  = order.dollarAmount ?? 0;
-  const exRate = order.exchangeRate  ?? 84;
-  const fobInr = fobFc * exRate;
-
-  // Amount in words (USD)
-  function numToWordsBase(n: number): string {
-    const ones = ["","ONE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT","NINE",
-      "TEN","ELEVEN","TWELVE","THIRTEEN","FOURTEEN","FIFTEEN","SIXTEEN","SEVENTEEN","EIGHTEEN","NINETEEN"];
+  function numWords(n: number): string {
+    const ones = ["","ONE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT","NINE","TEN","ELEVEN","TWELVE","THIRTEEN","FOURTEEN","FIFTEEN","SIXTEEN","SEVENTEEN","EIGHTEEN","NINETEEN"];
     const tens = ["","","TWENTY","THIRTY","FORTY","FIFTY","SIXTY","SEVENTY","EIGHTY","NINETY"];
     if (n === 0) return "";
-    if (n < 20) return ones[n];
+    if (n < 20)  return ones[n];
     if (n < 100) return tens[Math.floor(n/10)] + (n%10 ? " "+ones[n%10] : "");
-    if (n < 1000) return ones[Math.floor(n/100)] + " HUNDRED" + (n%100 ? " "+numToWordsBase(n%100) : "");
-    if (n < 100000) return numToWordsBase(Math.floor(n/1000)) + " THOUSAND" + (n%1000 ? " "+numToWordsBase(n%1000) : "");
-    if (n < 10000000) return numToWordsBase(Math.floor(n/100000)) + " LAKH" + (n%100000 ? " "+numToWordsBase(n%100000) : "");
-    return numToWordsBase(Math.floor(n/10000000)) + " CRORE" + (n%10000000 ? " "+numToWordsBase(n%10000000) : "");
+    if (n < 1000) return ones[Math.floor(n/100)]+" HUNDRED"+(n%100?" "+numWords(n%100):"");
+    if (n < 100000) return numWords(Math.floor(n/1000))+" THOUSAND"+(n%1000?" "+numWords(n%1000):"");
+    if (n < 10000000) return numWords(Math.floor(n/100000))+" LAKH"+(n%100000?" "+numWords(n%100000):"");
+    return numWords(Math.floor(n/10000000))+" CRORE"+(n%10000000?" "+numWords(n%10000000):"");
   }
+  const fobInt   = Math.floor(fobInr);
+  const fobPaise = Math.round((fobInr - fobInt) * 100);
+  const fobWords = (numWords(fobInt) || "ZERO") + " RUPEES" + (fobPaise ? " AND "+numWords(fobPaise)+" PAISE" : "") + " ONLY";
 
-  const fobInrRounded = Math.round(fobInr * 100) / 100;
-  const fobInrInt = Math.floor(fobInrRounded);
-  const fobInrPaise = Math.round((fobInrRounded - fobInrInt) * 100);
-  const fobInrWords = (numToWordsBase(fobInrInt) || "ZERO") + " RUPEES"
-    + (fobInrPaise ? " AND " + numToWordsBase(fobInrPaise) + " PAISE" : "") + " ONLY";
-
-  // cell style
-  const C: React.CSSProperties = { border: "1px solid #000", padding: "2px 4px", verticalAlign: "top", fontSize: "8pt", lineHeight: 1.3 };
-  const B: React.CSSProperties = { fontWeight: 700 };
-  const T: React.CSSProperties = { width: "100%", borderCollapse: "collapse", marginBottom: -1 };
-
-  const shipBillLine = `${dateFull}  ${order.invoiceNo ?? "—"}`;
+  const b   = "1px solid #000";
+  const td:  React.CSSProperties = { border: b, padding: "1px 3px", verticalAlign: "top", fontSize: "7px", color: "#000", background: "#fff" };
+  const th:  React.CSSProperties = { ...td, fontWeight: "bold", textAlign: "center", fontSize: "6.5px" };
+  const tbl: React.CSSProperties = { width: "100%", borderCollapse: "collapse" as const };
+  const hl:  React.CSSProperties = { ...td, background: "#FFD700", fontWeight: "bold", textAlign: "center", fontSize: "9px" };
 
   return (
-    <div style={{ fontFamily: "Arial, sans-serif", fontSize: "8pt", color: "#000" }}>
+    <div style={{ fontFamily: "Arial, sans-serif", fontSize: "7px", color: "#000", background: "#fff", display: "flex", gap: 0, alignItems: "stretch" }}>
 
-      {/* ══════════ PAGE 1 ══════════ */}
-      <table style={T}>
-        <colgroup>
-          <col style={{ width: "8%" }} />
-          <col style={{ width: "30%" }} />
-          <col style={{ width: "4%" }} />
-          <col style={{ width: "28%" }} />
-          <col style={{ width: "30%" }} />
-        </colgroup>
-        <tbody>
+      {/* ═══ LEFT COLUMN: Sections 1 & 2 ═══ */}
+      <div style={{ flex: "0 0 55%", borderRight: "2px solid #000", paddingRight: 3 }}>
 
-          {/* ── Row 1: Title ── */}
+        {/* Title */}
+        <table style={tbl}><tbody><tr>
+          <td style={{ ...td, textAlign: "center", fontWeight: "bold", fontSize: "9px", padding: "3px" }}>EXPORT DECLARATION FORM</td>
+          <td style={{ ...td, textAlign: "right", fontWeight: "bold", fontSize: "7px" }}>Annex I</td>
+        </tr></tbody></table>
+
+        {/* Section 1 header */}
+        <table style={tbl}><tbody>
+          <tr><td style={{ ...td, fontWeight: "bold" }}>1.&nbsp;&nbsp;General Information:</td></tr>
           <tr>
-            <td colSpan={4} style={{ ...C, ...B, fontSize: "10pt", textAlign: "center" }}>
-              EXPORT DECLARATION FORM
-            </td>
-            <td style={{ ...C, ...B, textAlign: "right" }}>Annex I</td>
-          </tr>
-
-          {/* ── Row 2: 1 | blank | General Information ── */}
-          <tr>
-            <td style={C}>1</td>
-            <td colSpan={3} style={C}></td>
-            <td style={C}>General Information:</td>
-          </tr>
-
-          {/* ── Row 3: Customs Security No | Form No ── */}
-          <tr>
-            <td colSpan={2} style={C}>Customs Security No.:</td>
-            <td colSpan={1} style={C}></td>
-            <td colSpan={2} style={C}>Form No:</td>
-          </tr>
-
-          {/* ── Row 4: empty ── */}
-          <tr><td colSpan={5} style={{ ...C, padding: "1px 4px" }}></td></tr>
-
-          {/* ── Row 5: Nature of Cargo | Shipping Bill | Mode of Transport ── */}
-          <tr>
-            <td colSpan={2} style={C}>
-              <div>Nature of Cargo:</div>
-            </td>
-            <td colSpan={1} style={C}></td>
-            <td style={C}>
-              <div>Shipping Bill No. &amp; Date:</div>
-              <div>{shipBillLine}</div>
-            </td>
-            <td style={C}>
-              Mode of Transport: [ ] Air [ ] Land<br />
-              [ ] Sea [&#10003;] Post/Couriers [ ] others
+            <td style={td}>Customs Security No.: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+              Form No: <strong style={{ fontSize: "8px" }}>{order.invoiceNo ?? ""}</strong>
             </td>
           </tr>
+          <tr>
+            <td style={td}>Nature of Cargo: &nbsp;&nbsp; [ ] Government &nbsp; [&#10003;] Non-Government &nbsp;&nbsp;&nbsp; Shipping Bill No. &amp; Date:</td>
+          </tr>
+          <tr>
+            <td style={td}>[ ] Sea &nbsp;[&#10003;] Post/Couriers &nbsp;[ ] others &nbsp;&nbsp;&nbsp;&nbsp; By POST &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RBI approval no. &amp; date, if any:</td>
+          </tr>
+          <tr>
+            <td style={td}>Category of Exporter: [ ] Custom (DTA units) [ ] SEZ [ ] Status holder exporters [ ] 100% EOU [ ] Warehouse export [ ] others (Specify).......</td>
+          </tr>
+          <tr>
+            <td style={td}>IE Code: <strong>FNXPP3883B</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; AD code: <strong>0180387-6400009</strong></td>
+          </tr>
+        </tbody></table>
 
-          {/* ── Row 6: Govt/Non-Govt | RBI approval ── */}
-          <tr>
-            <td colSpan={4} style={C}>[ ] Government [&#10003;]Non-Government</td>
-            <td style={C}>RBI approval no. &amp; date, if any:</td>
-          </tr>
-
-          {/* ── Row 7: Category of Exporter ── */}
-          <tr>
-            <td colSpan={4} style={C}>
-              Category of Exporter: [ ] Custom (DTA units) [ ] SEZ [ ] Status holder exporters
-              [ ] 100% EOU [ ] Warehouse export [&#10003;] others (Specify)- Merchant Exporter
-            </td>
-            <td style={C}></td>
-          </tr>
-
-          {/* ── Row 8: IE CODE | AD code ── */}
-          <tr>
-            <td colSpan={4} style={C}>IE CODE - {exporter.iec}</td>
-            <td style={C}>AD code: {bank.name === "ICICI BANK" ? exporter.adCode : ""}</td>
-          </tr>
-
-          {/* ── Row 9: Exporters Name header | AD Name header ── */}
-          <tr>
-            <td colSpan={4} style={C}>Exporters Name &amp; Address:</td>
-            <td style={C}>AD Name &amp; Address:</td>
-          </tr>
-
-          {/* ── Row 10: Exporter name | Bank name ── */}
-          <tr>
-            <td colSpan={4} style={C}><span style={B}>{exporter.name}</span></td>
-            <td style={C}><span style={B}>{bank.name}</span></td>
-          </tr>
-
-          {/* ── Row 11: Exporter addr line 1 | Bank addr ── */}
-          <tr>
-            <td colSpan={4} style={C}>{exporter.address[0]}</td>
-            <td style={C}>{bank.address}</td>
-          </tr>
-
-          {/* ── Row 12: Exporter addr line 2 | blank ── */}
-          <tr>
-            <td colSpan={4} style={C}>{exporter.address[1]}</td>
-            <td style={C}></td>
-          </tr>
-
-          {/* ── Row 13: Exporter addr line 3 | blank ── */}
-          <tr>
-            <td colSpan={4} style={C}>{exporter.address[2]}</td>
-            <td style={C}></td>
-          </tr>
-
-          {/* ── Row 14: Consignee header | Mode of Realisation ── */}
-          <tr>
-            <td colSpan={4} style={C}>Consignee&apos;s Name &amp; Address:</td>
-            <td style={C}>
-              Mode of Realisation : [ ] L/C [ ] BG [&#10003;] Others<br />
-              (advance payment, etc. including transfer/remittance to bank account maintained
-            </td>
-          </tr>
-
-          {/* ── Row 15: Consignee full name (large) | BUYER ── */}
-          <tr>
-            <td colSpan={4} style={{ ...C, fontSize: "10pt", fontWeight: 700 }}>
-              Full Name : {order.fullName}
-            </td>
-            <td style={C}>BUYER -</td>
-          </tr>
-
-          {/* ── Row 16: Address | Consignee name large ── */}
-          <tr>
-            <td colSpan={4} style={{ ...C, fontSize: "10pt", fontWeight: 700 }}>
-              {order.address}
-            </td>
-            <td style={{ ...C, fontSize: "10pt", fontWeight: 700, textAlign: "center" }}>
-              {order.fullName.toUpperCase()}
-            </td>
-          </tr>
-
-          {/* ── Row 17: City/State/Postal ── */}
-          <tr>
-            <td colSpan={4} style={{ ...C, fontSize: "10pt", fontWeight: 700 }}>
-              {[order.city, order.state].filter(Boolean).join(", ")} {order.postalCode}
-            </td>
-            <td style={C}></td>
-          </tr>
-
-          {/* ── Row 18: Country | Yes/No | Date ── */}
-          <tr>
-            <td colSpan={2} style={{ ...C, fontSize: "10pt", fontWeight: 700 }}>
-              Country : {order.country}
-            </td>
-            <td colSpan={1} style={C}></td>
-            <td style={C}>[ ] Yes [&#10003;] No</td>
-            <td style={C}>{dateFull}</td>
-          </tr>
-
-          {/* ── Row 19: MEDICINES | State of Origin ── */}
-          <tr>
-            <td colSpan={2} style={{ ...C, textAlign: "center" }}>MEDICINES</td>
-            <td colSpan={1} style={C}></td>
-            <td colSpan={2} style={C}>State of Origin of Goods: {exporter.stateOfOrigin}</td>
-          </tr>
-
-          {/* ── Row 20: Total FOB in words | Custom Assessable ── */}
-          <tr>
-            <td colSpan={2} style={C}>Total FOB value in words (INR):</td>
-            <td colSpan={1} style={C}></td>
-            <td style={C}>Custom Assessable value (INR)*:</td>
-            <td style={{ ...C, textAlign: "right" }}>
-              {fobInrRounded.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-            </td>
-          </tr>
-
-          {/* ── Row 21: FOB INR value + words ── */}
-          <tr>
-            <td colSpan={2} style={C}>
-              {fobInrRounded.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-            </td>
-            <td colSpan={3} style={C}></td>
-          </tr>
-          <tr>
-            <td colSpan={5} style={{ ...C, fontStyle: "italic" }}>{fobInrWords}</td>
-          </tr>
-
-          {/* ── Section 2 header ── */}
-          <tr>
-            <td colSpan={5} style={{ ...C, ...B }}>2. Invoice –Wise details of Export Value</td>
-          </tr>
-          <tr>
-            <td colSpan={5} style={{ ...C, fontSize: "7pt" }}>
-              ( If more than one invoice for a particular shipping bill , the block 2 will repeat as many times of invoices)
-            </td>
-          </tr>
-
-          {/* ── Section 2 meta: Invoice No | Currency | Nature of Contract ── */}
-          <tr>
-            <td colSpan={2} style={C}>Invoice No.</td>
-            <td colSpan={1} style={C}></td>
-            <td style={C}>Invoice Currency:</td>
-            <td style={C}>Nature of Contract:</td>
-          </tr>
-          <tr>
-            <td colSpan={2} style={{ ...C, ...B }}>{order.invoiceNo ?? "—"}</td>
-            <td colSpan={1} style={C}></td>
-            <td style={{ ...C, ...B }}>{order.currency}</td>
-            <td style={C}>[ ] FOB [ ] CIF [ ] C&amp;F [&#10003;] CI [ ] Others</td>
-          </tr>
-          <tr>
-            <td colSpan={2} style={C}>Invoice date.</td>
-            <td colSpan={1} style={C}></td>
-            <td style={C}>Invoice Amount:</td>
-            <td style={{ ...C, textAlign: "right" }}>{fobFc.toFixed(2)}</td>
-          </tr>
-          <tr>
-            <td colSpan={2} style={{ ...C, ...B }}>{dateDMY}</td>
-            <td colSpan={3} style={C}></td>
-          </tr>
-
-        </tbody>
-      </table>
-
-      {/* ── Section 2 value table (5 cols) ── */}
-      <table style={T}>
-        <colgroup>
-          <col style={{ width: "25%" }} />
-          <col style={{ width: "15%" }} />
-          <col style={{ width: "20%" }} />
-          <col style={{ width: "20%" }} />
-          <col style={{ width: "20%" }} />
-        </colgroup>
-        <thead>
-          <tr>
-            {["Particulars","Currency","Amount in FC","Exchange Rate","Amount (INR)"].map(h => (
-              <th key={h} style={{ ...C, ...B, textAlign: "center" }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {[
-            { label: "FOB Value",       fc: fobFc,  inr: fobInr },
-            { label: "Freight",         fc: null,   inr: null   },
-            { label: "Insurance",       fc: null,   inr: null   },
-            { label: "Commission",      fc: null,   inr: null   },
-            { label: "Discount",        fc: null,   inr: null   },
-            { label: "Other Deduction", fc: null,   inr: null   },
-            { label: "Packing Charges", fc: null,   inr: null   },
-            { label: "",                fc: null,   inr: null   },
-          ].map((row, i) => (
-            <tr key={i}>
-              <td style={C}>{row.label}</td>
-              <td style={C}></td>
-              <td style={{ ...C, textAlign: "right" }}>{row.fc != null ? row.fc.toFixed(2) : ""}</td>
-              <td style={{ ...C, textAlign: "right" }}>{row.fc != null ? exRate.toFixed(2) : ""}</td>
-              <td style={{ ...C, textAlign: "right" }}>
-                {row.inr != null ? row.inr.toLocaleString("en-IN", { minimumFractionDigits: 2 }) : ""}
-              </td>
-            </tr>
-          ))}
-          <tr>
-            <td colSpan={4} style={{ ...C, textAlign: "center" }}>Net Realisable value</td>
-            <td style={{ ...C, textAlign: "right", ...B }}>
-              {fobInrRounded.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      {/* ══════════ PAGE 2 ══════════ */}
-      <div id="edf-page2" style={{ pageBreakBefore: "always", breakBefore: "page", paddingTop: 40 }}>
-
-        <div style={{ textAlign: "center", fontWeight: 700, fontSize: "10pt", marginBottom: 10 }}>
-          EXPORT DECLARATION FORM- Cont.
-        </div>
-
-        {/* Section 3 */}
-        <table style={T}>
-          <colgroup><col style={{ width: "60%" }} /><col style={{ width: "40%" }} /></colgroup>
+        {/* Exporter + AD bank side by side */}
+        <table style={{ ...tbl, tableLayout: "fixed" }}><colgroup><col style={{ width: "50%" }}/><col style={{ width: "50%" }}/></colgroup>
           <tbody>
             <tr>
-              <td colSpan={2} style={{ ...C, ...B }}>3. Applicable for Export under FPO/Couriers</td>
+              <td style={{ ...td, fontWeight: "bold" }}>Exporters Name &amp; Address:</td>
+              <td style={{ ...td, fontWeight: "bold" }}>AD Name &amp; Address:</td>
             </tr>
             <tr>
-              <td style={{ ...C, height: 60 }}>Name of the post Office:</td>
-              <td style={C}></td>
+              <td style={{ ...td, fontWeight: "bold" }}>UNNATI PHARMAX</td>
+              <td style={{ ...td, fontWeight: "bold" }}>KOTAK MAHINDRA BANK</td>
             </tr>
             <tr>
-              <td style={{ ...C, height: 40 }}>Number &amp; date of Parcel receipts :-</td>
-              <td style={{ ...C, textAlign: "right" }}>Stamp &amp; Signature of Authorised Dealer</td>
+              <td style={td}>SHOP NO 181 GURUKRUPA APARTMENT</td>
+              <td style={td}>274 - SHENDRE COMPLEX</td>
+            </tr>
+            <tr>
+              <td style={td}>CENTRAL AVE</td>
+              <td style={td}>CHAPRU NAGAR SQUARE, CA ROAD</td>
+            </tr>
+            <tr>
+              <td style={td}>LAKADGANJ NAGPUR</td>
+              <td style={td}>VardhmanNagar, Nagpur-440008</td>
+            </tr>
+            <tr>
+              <td style={td}></td>
+              <td style={td}>Maharashtra</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Consignee + Mode of Realisation side by side */}
+        <table style={{ ...tbl, tableLayout: "fixed" }}><colgroup><col style={{ width: "50%" }}/><col style={{ width: "50%" }}/></colgroup>
+          <tbody>
+            <tr>
+              <td style={{ ...td, fontWeight: "bold" }}>Consignee&apos;s Name &amp; Address:</td>
+              <td style={td}>Mode of Realisation : [ ] L/C [ ] BG [ ] Others<br/>
+                (advance payment, etc. including transfer/remittance to<br/>
+                I/We @ am/are not in the Caution List of the Reserve Bank of India.
+              </td>
+            </tr>
+            <tr>
+              <td style={{ ...td, fontWeight: "bold" }}>AS PER PACKING LIST</td>
+              <td style={td}>bank account maintained overseas )</td>
+            </tr>
+            <tr>
+              <td style={td}></td>
+              <td style={td}>Port of Loading / Source Port in case of SEZ :</td>
+            </tr>
+            <tr>
+              <td style={td}></td>
+              <td style={{ ...td, fontWeight: "bold" }}>MUMBAI</td>
+            </tr>
+            <tr>
+              <td style={td}>AS PER PACKING LIST / As per Annexure</td>
+              <td style={td}>Date: <strong>{dateDot}</strong></td>
+            </tr>
+            <tr>
+              <td style={td}></td>
+              <td style={{ ...td, textAlign: "right", fontWeight: "bold" }}>Autorised Signatory</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Country of Destination + Port of Discharge */}
+        <table style={{ ...tbl, tableLayout: "fixed" }}><colgroup><col style={{ width: "35%" }}/><col style={{ width: "35%" }}/><col style={{ width: "30%" }}/></colgroup>
+          <tbody>
+            <tr>
+              <td style={{ ...td, fontWeight: "bold" }}>Name of the Indian bank and AD code, in case of LC/BG</td>
+              <td style={{ ...td, fontWeight: "bold" }}>Country of Destination:</td>
+              <td style={{ ...td, fontWeight: "bold" }}>Port of Discharge:</td>
+            </tr>
+            <tr>
+              <td style={td}></td>
+              <td style={td}>AS PER PACKING LIST / As per Annexure</td>
+              <td style={td}>AS PER PACKING LIST / As per Annexure</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* ACU + Let Export */}
+        <table style={{ ...tbl, tableLayout: "fixed" }}><colgroup><col style={{ width: "50%" }}/><col style={{ width: "50%" }}/></colgroup>
+          <tbody>
+            <tr>
+              <td style={td}>Whether payment to be<br/>Received through ACU?<br/>[ ] Yes [ ] No</td>
+              <td style={td}>Let Export order (LEO) Date:</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* General Commodity + State of Origin */}
+        <table style={{ ...tbl, tableLayout: "fixed" }}><colgroup><col style={{ width: "50%" }}/><col style={{ width: "50%" }}/></colgroup>
+          <tbody>
+            <tr>
+              <td style={{ ...td, fontWeight: "bold" }}>General Commodity Description:</td>
+              <td style={{ ...td, fontWeight: "bold" }}>State of Origin of Goods:</td>
+            </tr>
+            <tr>
+              <td style={td}>Pharmaceutical products</td>
+              <td style={td}>INDIA</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* FOB in words + Assessable value */}
+        <table style={{ ...tbl, tableLayout: "fixed" }}><colgroup><col style={{ width: "55%" }}/><col style={{ width: "45%" }}/></colgroup>
+          <tbody>
+            <tr>
+              <td style={{ ...td, fontWeight: "bold" }}>Total FOB value in words (INR):</td>
+              <td style={{ ...td, fontWeight: "bold" }}>Custom Assessable value (INR)*:</td>
+            </tr>
+            <tr>
+              <td style={{ ...td, fontStyle: "italic", background: "#FFD700", fontWeight: "bold" }}>{fobWords}</td>
+              <td style={hl}>Rs &nbsp;{fobInr.toLocaleString("en-IN", { minimumFractionDigits: 2 })} /-</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Section 2 */}
+        <table style={tbl}><tbody>
+          <tr><td style={{ ...td, fontWeight: "bold" }}>2. Invoice –Wise details of Export Value</td></tr>
+          <tr><td style={{ ...td, fontSize: "6px" }}>( If more than one invoice for a particular shipping bill , the block 2 will repeat as many times of invoices)</td></tr>
+        </tbody></table>
+
+        {/* Invoice meta */}
+        <table style={{ ...tbl, tableLayout: "fixed" }}><colgroup><col style={{ width: "25%" }}/><col style={{ width: "20%" }}/><col style={{ width: "55%" }}/></colgroup>
+          <tbody>
+            <tr>
+              <td style={td}>Invoice No</td>
+              <td style={td}>Invoice Currency:</td>
+              <td style={td}>Nature of Contract:</td>
+            </tr>
+            <tr>
+              <td style={hl}>{order.invoiceNo ?? "—"}</td>
+              <td style={{ ...td, fontWeight: "bold" }}>{order.currency}</td>
+              <td style={td}>[ ] FOB &nbsp;[ ] CIF &nbsp;[&#10003;] C&amp;F &nbsp;[ ] CI &nbsp;[ ] Others</td>
+            </tr>
+            <tr>
+              <td style={td}>Invoice date.</td>
+              <td style={td}>Invoice Amount:</td>
+              <td style={td}></td>
+            </tr>
+            <tr>
+              <td style={hl}>{dateDot}</td>
+              <td style={hl}>{cnfFc.toFixed(2)}</td>
+              <td style={td}></td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Particulars table */}
+        <table style={tbl}>
+          <thead>
+            <tr>
+              {["Particulars","Currency","Amount in FC","Exchange Rate","Amount (INR)"].map(h => (
+                <th key={h} style={{ ...th, textAlign: "center" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              { label: "FOB Value",       cur: order.currency, fc: fobFc,     exr: exRate, inr: fobInr     },
+              { label: "Freight",         cur: order.currency, fc: freightFc, exr: exRate, inr: freightInr },
+              { label: "Insurance",       cur: null, fc: null, exr: null, inr: null },
+              { label: "Commission",      cur: null, fc: null, exr: null, inr: null },
+              { label: "Discount",        cur: null, fc: null, exr: null, inr: null },
+              { label: "Other Deduction", cur: null, fc: null, exr: null, inr: null },
+              { label: "Packing Charges", cur: null, fc: null, exr: null, inr: null },
+            ].map((row, i) => (
+              <tr key={i}>
+                <td style={td}>{row.label}</td>
+                <td style={{ ...td, textAlign: "center" }}>{row.cur ?? ""}</td>
+                <td style={{ ...td, textAlign: "right" }}>{row.fc != null ? row.fc.toFixed(2) : ""}</td>
+                <td style={{ ...td, textAlign: "right" }}>{row.exr != null ? row.exr.toFixed(2) : ""}</td>
+                <td style={{ ...td, textAlign: "right" }}>{row.inr != null ? row.inr.toLocaleString("en-IN", { minimumFractionDigits: 2 }) : ""}</td>
+              </tr>
+            ))}
+            <tr>
+              <td colSpan={4} style={{ ...td, textAlign: "center", fontWeight: "bold" }}>Net Realisable value</td>
+              <td style={{ ...td, textAlign: "right", fontWeight: "bold" }}>{netReal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>{/* end LEFT */}
+
+      {/* ═══ RIGHT COLUMN: Sections 3, 4, 5 ═══ */}
+      <div style={{ flex: "0 0 45%", paddingLeft: 3 }}>
+
+        {/* Cont. title */}
+        <table style={tbl}><tbody><tr>
+          <td style={{ ...td, textAlign: "center", fontWeight: "bold", fontSize: "9px", padding: "3px" }}>EXPORT DECLARATION FORM - Cont.</td>
+        </tr></tbody></table>
+
+        {/* Section 3 */}
+        <table style={tbl}><tbody>
+          <tr><td style={{ ...td, fontWeight: "bold" }}>3.&nbsp;&nbsp;Applicable for Export under FPO/Couriers</td></tr>
+        </tbody></table>
+        <table style={{ ...tbl, tableLayout: "fixed" }}><colgroup><col style={{ width: "60%" }}/><col style={{ width: "40%" }}/></colgroup>
+          <tbody>
+            <tr>
+              <td style={td}>Name of the post Office:<br/><br/><strong>INBOM5</strong><br/><strong>FBO, MUMBAI</strong></td>
+              <td style={td}>Form No: <strong>{order.invoiceNo ?? ""}</strong></td>
+            </tr>
+            <tr>
+              <td style={{ ...td, height: 32 }}>Number &amp; date of Parcel receipts :</td>
+              <td style={{ ...td, textAlign: "right" }}>Stamp &amp; Signature of Authorised Dealer</td>
             </tr>
           </tbody>
         </table>
 
         {/* Section 4 */}
-        <table style={{ ...T, marginTop: 0 }}>
-          <colgroup><col /></colgroup>
-          <tbody>
-            <tr>
-              <td style={{ ...C, ...B }}>4. Declaration by the Exporters (All types of exports)</td>
-            </tr>
-            <tr>
-              <td style={{ ...C, lineHeight: 1.6, fontSize: "7.5pt" }}>
-                I /We hereby declare that I/we @am/are the seller/consignor of the goods in respect of which this declaration is made
-                and that the particulars given above are true and that the value to be received from the buyer represents the export
-                value contracted and declared above. I/We undertake that I/we will deliver to the authorised dealer bank named above
-                the foreign exchange representing the full value of the goods exported as above on or before ........................
-                (i.e. within the period of realisation stipulated by RBI from time to time ) in the manner specified in the Regulations
-                made under the Foreign Exchange Management Act, 1999.
-              </td>
-            </tr>
-            <tr>
-              <td style={{ ...C, fontSize: "7.5pt", paddingTop: 6, paddingBottom: 20 }}>
-                I/We @ am/are not in the Caution List of the Reserve Bank of India.
-              </td>
-            </tr>
-            <tr>
-              <td style={C}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <tbody>
-                    <tr>
-                      <td style={{ width: "50%", verticalAlign: "bottom", paddingBottom: 4 }}>
-                        {dateLong}
-                      </td>
-                      <td style={{ width: "50%", textAlign: "right", verticalAlign: "bottom", paddingBottom: 4 }}>
-                        (Signature of Exporter)
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <table style={tbl}><tbody>
+          <tr><td style={{ ...td, fontWeight: "bold" }}>4.&nbsp;&nbsp;Declaration by the Exporters (All types of exports)</td></tr>
+          <tr>
+            <td style={{ ...td, lineHeight: 1.5, fontSize: "6.5px" }}>
+              I /We hereby declare that I/we @am/are the seller/consignor of the goods in respect of which this declaration is made and
+              that the particulars given above are true and that the value to be received from the buyer represents the export value
+              contracted and declared above. I/We undertake that I/we will deliver to the authorised dealer bank named above the foreign
+              exchange representing the full value of the goods exported as above on or before........................ (i.e. within the period of
+              realisation stipulated by RBI from time to time ) in the manner specified in the Regulations made under the Foreign Exchange
+              Management Act, 1999.
+            </td>
+          </tr>
+          <tr>
+            <td style={{ ...td, fontSize: "6.5px" }}>
+              I/We &nbsp;&nbsp;&nbsp; @ &nbsp;am/are not in the Caution List of the Reserve Bank of India.
+            </td>
+          </tr>
+          <tr>
+            <td style={{ ...td, height: 28, verticalAlign: "bottom" }}>
+              Date: <strong>{dateDot}</strong>
+            </td>
+          </tr>
+          <tr>
+            <td style={{ ...td, textAlign: "right", fontWeight: "bold", paddingBottom: 4 }}>Autorised Signatory</td>
+          </tr>
+        </tbody></table>
 
         {/* Section 5 */}
-        <table style={{ ...T, marginTop: 0 }}>
-          <colgroup><col /></colgroup>
-          <tbody>
-            <tr>
-              <td style={{ ...C, ...B }}>
-                5. Space for use of the competent authority (i.e. Custom/SEZ) on behalf of Ministry concerned:
-              </td>
-            </tr>
-            <tr>
-              <td style={{ ...C, fontSize: "7.5pt", lineHeight: 1.6 }}>
-                Certified, on the basis of above declaration by the Custom/SEZ unit, that the Goods described above and the export
-                value declared by the exporter in this form is as per the corresponding invoice/gist of invoices submitted and
-                declared by the Unit.
-              </td>
-            </tr>
-            <tr>
-              <td style={{ ...C, height: 40 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <tbody>
-                    <tr>
-                      <td style={{ width: "40%", verticalAlign: "bottom" }}>DATE-{dateFull}</td>
-                      <td style={{ width: "60%", textAlign: "right", verticalAlign: "bottom" }}>
-                        (Signature of Designated/Authorised officials of Custom /SEZ )
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <table style={tbl}><tbody>
+          <tr><td style={{ ...td, fontWeight: "bold" }}>5.&nbsp;&nbsp;Space for use of the competent authority (i.e. Custom/SEZ) on behalf of Ministry concerned:</td></tr>
+          <tr>
+            <td style={{ ...td, fontSize: "6.5px", lineHeight: 1.5 }}>
+              Certified, on the basis of above declaration by the Custom/SEZ unit, that the Goods described above and the export value declared by the exporter in this form
+              is as per the corresponding invoice/gist of invoices submitted and declared by the Unit.
+            </td>
+          </tr>
+          <tr>
+            <td style={{ ...td, height: 28, verticalAlign: "bottom" }}>Date:</td>
+          </tr>
+          <tr>
+            <td style={{ ...td, textAlign: "right", fontSize: "6.5px" }}>(Signature of Designated/Authorised officials of Custom /SEZ)</td>
+          </tr>
+        </tbody></table>
 
-      </div>
+      </div>{/* end RIGHT */}
+
     </div>
   );
+
 }
 
 // ── Multi-order: Export Invoice (USD) ────────────────────────────────────────
@@ -2571,8 +2473,8 @@ function MultiDocumentsOverlay({ orders, onClose }: { orders: Order[]; onClose: 
     { label: "Export Invoice",     landscape: true,  multiPage: true,  comp: <MultiExportInvoiceDoc    orders={effectiveOrders} /> },
     { label: "Export Invoice INR", landscape: true,  multiPage: true,  comp: <MultiExportInvoiceINRDoc orders={effectiveOrders} /> },
     { label: "Packing List",       landscape: true,  multiPage: true,  comp: <MultiPackingListDoc      orders={effectiveOrders} /> },
-    { label: "Form II",           landscape: false, multiPage: false, comp: <Form2Doc          order={first} /> },
-    { label: "EDF",               landscape: false, multiPage: true,  comp: <EdfDoc            order={first} /> },
+    { label: "Form II",           landscape: true,  multiPage: false, comp: <Form2Doc          order={first} /> },
+    { label: "EDF",               landscape: true,  multiPage: false, comp: <EdfDoc            order={first} /> },
     { label: "Covering Letter",   landscape: false, multiPage: true,  comp: <CoveringLetterDoc order={first} chaName={ds.chaName} chaNo={ds.chaNo} /> },
     { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={first} companyName={ds.companyName} companyAddress={ds.companyAddress} /> },
   ];
@@ -2817,8 +2719,8 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
     { label: "Export Invoice",     landscape: true,  multiPage: false, comp: <ExportInvoiceDoc    order={o} /> },
     { label: "Export Invoice INR", landscape: true,  multiPage: false, comp: <ExportInvoiceINRDoc order={o} /> },
     { label: "Packing List",       landscape: true,  multiPage: false, comp: <PackingListDoc      order={o} /> },
-    { label: "Form II",           landscape: false, multiPage: false, comp: <Form2Doc          order={o} /> },
-    { label: "EDF",               landscape: false, multiPage: true,  comp: <EdfDoc            order={o} /> },
+    { label: "Form II",           landscape: true,  multiPage: false, comp: <Form2Doc          order={o} /> },
+    { label: "EDF",               landscape: true,  multiPage: false, comp: <EdfDoc            order={o} /> },
     { label: "Covering Letter",   landscape: false, multiPage: true,  comp: <CoveringLetterDoc order={o} chaName={ds.chaName} chaNo={ds.chaNo} /> },
     { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={o} companyName={ds.companyName} companyAddress={ds.companyAddress} /> },
   ];
