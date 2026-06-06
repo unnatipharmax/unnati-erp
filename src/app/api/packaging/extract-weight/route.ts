@@ -9,14 +9,16 @@ export const runtime = "nodejs";
 const GEMINI_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
-const PROMPT = `You are reading a weighing scale image.
-Your only job is to read the weight value shown on the scale display.
+const PROMPT = `You are reading the number shown on a digital weighing scale's display in the photo.
+
+The display is usually a red, green, or white SEVEN-SEGMENT / LED number (e.g. "6.200", "0.559", "1.245"). It may also show a unit label like "kg", "Kg", or "g" near it. Read the main weight number, ignoring the Max/Min/d= specification text printed on the scale body.
 
 Rules:
-- If the display shows grams (g), convert to kg (divide by 1000).
-- If the display shows kg already, use that value directly.
+- Read the digits exactly as shown on the lit display, including the decimal point. e.g. a display reading "6.200" with a "Kg" indicator means 6.2 kg.
+- If the unit shown is grams (g), convert to kg by dividing by 1000.
+- If the unit shown is kg (or no unit but the value has a decimal like 6.200), treat the number as kilograms.
 - Round to 3 decimal places.
-- If you cannot read the weight clearly, return null.
+- Make your best reasonable reading of the lit digits. Only return null if the display is completely unreadable, blank, or not visible.
 - Return ONLY valid JSON. No explanation, no markdown, no code fences.
 
 Return exactly:

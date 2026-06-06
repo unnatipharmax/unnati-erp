@@ -2652,8 +2652,18 @@ function WeightCaptureBar({
   const [extracting, setExtracting] = useState(false);
   const [err,        setErr]        = useState("");
   const [captured,   setCaptured]   = useState<number | null>(null);
+  const [manual,     setManual]     = useState("");
 
   const displayed = captured ?? currentWeight;
+
+  function applyManual() {
+    const kg = parseFloat(manual);
+    if (!isNaN(kg) && kg > 0) {
+      setCaptured(kg);
+      onExtracted(kg);
+      setErr("");
+    }
+  }
 
   async function handleFile(file: File) {
     const reader = new FileReader();
@@ -2736,6 +2746,32 @@ function WeightCaptureBar({
         style={{ display: "none" }}
         onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
       />
+
+      {/* Manual entry — fallback when AI can't read the display */}
+      <span style={{ fontSize: "0.72rem", color: "#6b7280" }}>or</span>
+      <input
+        type="number"
+        value={manual}
+        onChange={e => setManual(e.target.value)}
+        onKeyDown={e => { if (e.key === "Enter") applyManual(); }}
+        placeholder="kg"
+        min="0" step="0.001"
+        style={{
+          width: 78, padding: "4px 8px", fontSize: "0.78rem",
+          background: "#0f172a", color: "#f1f5f9",
+          border: "1px solid #374151", borderRadius: 5, outline: "none",
+        }}
+      />
+      <button
+        onClick={applyManual}
+        style={{
+          padding: "4px 12px", fontSize: "0.78rem", fontWeight: 600,
+          background: "rgba(255,255,255,0.08)", color: "#d1d5db",
+          border: "none", borderRadius: 5, cursor: "pointer",
+        }}
+      >
+        Set
+      </button>
 
       {displayed != null && (
         <span style={{ fontSize: "0.72rem", color: "#6b7280", marginLeft: "auto" }}>

@@ -22,7 +22,7 @@ function Pagination({ page, total, onChange }: { page: number; total: number; on
       <button
         onClick={() => onChange(page - 1)}
         disabled={page === 1}
-        className="px-2.5 py-1 rounded-md text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="px-2.5 py-1 rounded-md text-xs text-slate-500 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
       >
         ←
       </button>
@@ -35,8 +35,8 @@ function Pagination({ page, total, onChange }: { page: number; total: number; on
             onClick={() => onChange(p as number)}
             className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
               p === page
-                ? "bg-slate-600 text-slate-100"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                ? "bg-slate-200 text-slate-900"
+                : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
             }`}
           >
             {p}
@@ -46,7 +46,7 @@ function Pagination({ page, total, onChange }: { page: number; total: number; on
       <button
         onClick={() => onChange(page + 1)}
         disabled={page === totalPages}
-        className="px-2.5 py-1 rounded-md text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="px-2.5 py-1 rounded-md text-xs text-slate-500 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
       >
         →
       </button>
@@ -77,11 +77,11 @@ const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
   PAYMENT_VERIFIED: { bg: "bg-teal-500/10",   text: "text-teal-600"  },
   PACKING:          { bg: "bg-orange-500/10", text: "text-orange-600"},
   DISPATCHED:       { bg: "bg-teal-500/10",   text: "text-teal-600"  },
-  COMPLETED:        { bg: "bg-slate-500/10",  text: "text-slate-500" },
+  COMPLETED:        { bg: "bg-slate-100",  text: "text-slate-500" },
 };
 
 function StatusPill({ status }: { status: string }) {
-  const s = STATUS_STYLES[status] ?? { bg: "bg-slate-500/10", text: "text-slate-500" };
+  const s = STATUS_STYLES[status] ?? { bg: "bg-slate-100", text: "text-slate-500" };
   return (
     <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${s.bg} ${s.text}`}>
       {status.replace(/_/g, " ")}
@@ -153,18 +153,18 @@ function PaymentRow({
 
   return (
     <>
-      <tr className={editing ? "bg-slate-800/40" : "hover:bg-slate-800/20 transition-colors"}>
+      <tr className={editing ? "bg-slate-100" : "hover:bg-slate-50 transition-colors"}>
         <td className="py-3 pl-4 pr-2">
-          <div className="font-medium text-slate-200 text-sm">{order.fullName}</div>
+          <div className="font-medium text-slate-800 text-sm">{order.fullName}</div>
           {order.email && (
             <div className="text-xs text-slate-500 mt-0.5">{order.email}</div>
           )}
         </td>
-        <td className="py-3 px-2 text-xs text-slate-400 whitespace-nowrap">
+        <td className="py-3 px-2 text-xs text-slate-500 whitespace-nowrap">
           {new Date(order.createdAt).toLocaleDateString("en-IN")}
         </td>
         <td className="py-3 px-2"><StatusPill status={order.status} /></td>
-        <td className="py-3 px-2 text-xs text-slate-400 max-w-[120px] truncate">
+        <td className="py-3 px-2 text-xs text-slate-500 max-w-[120px] truncate">
           {order.brandName ?? <span className="text-slate-600">—</span>}
         </td>
         <td className="py-3 px-2 text-right text-xs font-mono">
@@ -182,10 +182,10 @@ function PaymentRow({
             ? <span className="text-sky-600">${order.dollarAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
             : <span className="text-slate-600">—</span>}
         </td>
-        <td className="py-3 px-2 text-xs text-slate-400 whitespace-nowrap">
+        <td className="py-3 px-2 text-xs text-slate-500 whitespace-nowrap">
           {order.paymentDepositDate ?? <span className="text-slate-600">—</span>}
         </td>
-        <td className="py-3 px-2 text-xs text-slate-400 max-w-[120px] truncate">
+        <td className="py-3 px-2 text-xs text-slate-500 max-w-[120px] truncate">
           {order.grsNumber ?? <span className="text-slate-600">—</span>}
         </td>
         <td className="py-3 pl-2 pr-4">
@@ -197,10 +197,10 @@ function PaymentRow({
               onClick={() => editing ? cancel() : setEditing(true)}
               className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
                 editing
-                  ? "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                  ? "bg-slate-200 text-slate-700 hover:bg-slate-200"
                   : hasPayment
-                  ? "bg-slate-700 text-slate-300 hover:bg-slate-600"
-                  : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                  ? "bg-slate-200 text-slate-700 hover:bg-slate-200"
+                  : "bg-slate-200 text-slate-700 hover:bg-slate-200"
               }`}
             >
               {editing ? "Cancel" : hasPayment ? "Edit" : "Fill"}
@@ -210,7 +210,7 @@ function PaymentRow({
       </tr>
 
       {editing && (
-        <tr className="bg-slate-800/30">
+        <tr className="bg-slate-50">
           <td colSpan={10} className="px-4 pb-4 pt-2">
             <div className="grid grid-cols-5 gap-3">
               {[
@@ -227,7 +227,7 @@ function PaymentRow({
                     onChange={e => set(key, e.target.value)}
                     inputMode={mode}
                     placeholder={placeholder}
-                    className="w-full rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                    className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-400"
                   />
                 </div>
               ))}
@@ -241,7 +241,7 @@ function PaymentRow({
                   readOnly
                   value={form.exchangeRate}
                   placeholder="INR ÷ USD"
-                  className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-2.5 py-1.5 text-xs text-teal-400 font-mono placeholder:text-slate-600 cursor-default focus:outline-none"
+                  className="w-full rounded-md border border-slate-300 bg-slate-100 px-2.5 py-1.5 text-xs text-teal-600 font-mono placeholder:text-slate-600 cursor-default focus:outline-none"
                 />
               </div>
             </div>
@@ -249,13 +249,13 @@ function PaymentRow({
               <button
                 onClick={save}
                 disabled={saving}
-                className="px-3 py-1.5 rounded-md bg-slate-600 hover:bg-slate-500 text-xs font-medium text-slate-100 transition-colors disabled:opacity-50"
+                className="px-3 py-1.5 rounded-md bg-slate-200 hover:bg-slate-300 text-xs font-medium text-slate-900 transition-colors disabled:opacity-50"
               >
                 {saving ? "Saving…" : "Save"}
               </button>
               <button
                 onClick={cancel}
-                className="px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-400 transition-colors"
+                className="px-3 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-xs font-medium text-slate-500 transition-colors"
               >
                 Cancel
               </button>
@@ -296,10 +296,10 @@ function OrdersTable({
       <div className="flex items-center gap-3 mb-3 text-xs text-slate-500">
         <span>{orders.length} order{orders.length !== 1 ? "s" : ""}</span>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-slate-800">
+      <div className="overflow-x-auto rounded-xl border border-slate-200">
         <table className="w-full min-w-[900px] text-left border-collapse">
           <thead>
-            <tr className="border-b border-slate-800 bg-slate-900/60">
+            <tr className="border-b border-slate-200 bg-white">
               {["Customer", "Date", "Status", "Brand", "Order Value", "INR Amount", "Dollar Amount", "Pay Date", "GRS", ""].map((h, i) => (
                 <th
                   key={i}
@@ -371,11 +371,11 @@ function MultiOrderTab({ accounts }: { accounts: Account[] }) {
                   onClick={() => selectAccount(a.id)}
                   className={`w-full text-left rounded-lg px-3 py-2.5 transition-colors ${
                     a.id === selectedId
-                      ? "bg-slate-700/60 border border-slate-600"
-                      : "hover:bg-slate-800/60 border border-transparent"
+                      ? "bg-amber-100 border border-slate-300"
+                      : "hover:bg-slate-100 border border-transparent"
                   }`}
                 >
-                  <div className="text-sm font-medium text-slate-200 truncate">{a.name}</div>
+                  <div className="text-sm font-medium text-slate-800 truncate">{a.name}</div>
                   <div className="flex items-center gap-1.5 mt-1">
                     <span className="text-[10px] font-medium text-teal-600">
                       ₹{a.balance.toLocaleString("en-IN")}
@@ -396,7 +396,7 @@ function MultiOrderTab({ accounts }: { accounts: Account[] }) {
       {/* Content area */}
       <div className="flex-1 min-w-0">
         {!selectedId ? (
-          <div className="flex flex-col items-center justify-center h-64 text-slate-600 rounded-xl border border-slate-800/60">
+          <div className="flex flex-col items-center justify-center h-64 text-slate-600 rounded-xl border border-slate-200">
             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" className="mb-3 opacity-40">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
               <polyline points="14 2 14 8 20 8"/>
@@ -406,7 +406,7 @@ function MultiOrderTab({ accounts }: { accounts: Account[] }) {
         ) : loadingOrders ? (
           <div className="space-y-2">
             {[1,2,3].map(i => (
-              <div key={i} className="h-12 rounded-lg bg-slate-800/40 animate-pulse" />
+              <div key={i} className="h-12 rounded-lg bg-slate-100 animate-pulse" />
             ))}
           </div>
         ) : (
@@ -414,7 +414,7 @@ function MultiOrderTab({ accounts }: { accounts: Account[] }) {
             {/* Account header */}
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-base font-semibold text-slate-200">{accountInfo?.name}</h2>
+                <h2 className="text-base font-semibold text-slate-800">{accountInfo?.name}</h2>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Balance:{" "}
                   <span className="text-teal-600 font-medium">
@@ -425,7 +425,7 @@ function MultiOrderTab({ accounts }: { accounts: Account[] }) {
               <a
                 href={`/api/client-account-links/download/${selectedId}`}
                 download
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-slate-300 bg-slate-100 hover:bg-slate-200 text-xs font-medium text-slate-700 transition-colors"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" strokeLinecap="round" strokeLinejoin="round"/>
@@ -475,7 +475,7 @@ export default function LedgerClient({ accounts }: { accounts: Account[] }) {
   const loadingView = (
     <div className="space-y-2">
       {[1,2,3,4].map(i => (
-        <div key={i} className="h-12 rounded-lg bg-slate-800/40 animate-pulse" />
+        <div key={i} className="h-12 rounded-lg bg-slate-100 animate-pulse" />
       ))}
     </div>
   );
@@ -483,7 +483,7 @@ export default function LedgerClient({ accounts }: { accounts: Account[] }) {
   return (
     <div>
       {/* Tab bar */}
-      <div className="flex items-center gap-1 mb-6 border-b border-slate-800 pb-0">
+      <div className="flex items-center gap-1 mb-6 border-b border-slate-200 pb-0">
         {([
           { key: "multi",    label: "Multi Order Accounts" },
           { key: "single",   label: "Single Orders" },
@@ -494,13 +494,13 @@ export default function LedgerClient({ accounts }: { accounts: Account[] }) {
             onClick={() => handleTabChange(key)}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
               tab === key
-                ? "border-slate-400 text-slate-200"
-                : "border-transparent text-slate-500 hover:text-slate-300"
+                ? "border-slate-400 text-slate-800"
+                : "border-transparent text-slate-500 hover:text-slate-700"
             }`}
           >
             {label}
             {key === "single"   && singleLoaded && salesUpdatedOrders.length   > 0 && (
-              <span className="ml-1.5 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-500">
+              <span className="ml-1.5 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600">
                 {salesUpdatedOrders.length}
               </span>
             )}

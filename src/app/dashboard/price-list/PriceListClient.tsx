@@ -57,12 +57,12 @@ export default function PriceListClient() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Price List</h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <h1 className="text-2xl font-bold text-slate-900">Price List</h1>
+          <p className="text-sm text-slate-500 mt-1">
             Selling price range for each product. Do not share MRP with clients.
           </p>
         </div>
-        <div className="text-xs text-slate-500 bg-slate-800/50 border border-slate-700/60 rounded-xl px-3 py-2 self-center">
+        <div className="text-xs text-slate-500 bg-slate-100 border border-slate-300 rounded-xl px-3 py-2 self-center">
           {filtered.length} of {items.length} products
         </div>
       </div>
@@ -73,13 +73,13 @@ export default function PriceListClient() {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search by name, composition, manufacturer…"
-          className="flex-1 min-w-[220px] rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-500"
+          className="flex-1 min-w-[220px] rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-600 outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
         />
         {groups.length > 2 && (
           <select
             value={groupFilter}
             onChange={e => setGroupFilter(e.target.value)}
-            className="rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
+            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
           >
             {groups.map(g => <option key={g}>{g}</option>)}
           </select>
@@ -92,10 +92,10 @@ export default function PriceListClient() {
       ) : filtered.length === 0 ? (
         <div className="flex items-center justify-center h-48 text-slate-500 text-sm">No products found</div>
       ) : (
-        <div className="rounded-2xl border border-slate-800 overflow-hidden">
+        <div className="rounded-2xl border border-slate-200 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-800/70 text-slate-400 text-xs uppercase tracking-wide">
+              <tr className="bg-slate-100 text-slate-500 text-xs uppercase tracking-wide">
                 <th className="px-4 py-3 text-left font-medium w-8">#</th>
                 <th className="px-4 py-3 text-left font-medium">Product</th>
                 <th className="px-4 py-3 text-left font-medium hidden md:table-cell">Pack</th>
@@ -107,11 +107,11 @@ export default function PriceListClient() {
               {filtered.map((item, idx) => (
                 <tr
                   key={item.id}
-                  className="border-t border-slate-800/60 hover:bg-slate-800/30 transition-colors duration-100"
+                  className="border-t border-slate-200 hover:bg-slate-50 transition-colors duration-100"
                 >
                   <td className="px-4 py-3 text-slate-600 tabular-nums">{idx + 1}</td>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-slate-100 leading-snug">{item.name}</div>
+                    <div className="font-medium text-slate-900 leading-snug">{item.name}</div>
                     {item.composition && (
                       <div className="text-xs text-slate-500 mt-0.5">{item.composition}</div>
                     )}
@@ -119,17 +119,17 @@ export default function PriceListClient() {
                       <div className="text-xs text-slate-600 mt-0.5">{item.manufacturer}</div>
                     )}
                     {item.group && (
-                      <span className="inline-block mt-1 text-xs text-violet-400 bg-violet-500/10 border border-violet-500/20 rounded-md px-1.5 py-0.5">
+                      <span className="inline-block mt-1 text-xs text-violet-600 bg-violet-500/10 border border-violet-500/20 rounded-md px-1.5 py-0.5">
                         {item.group}
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-400 hidden md:table-cell">
+                  <td className="px-4 py-3 text-slate-500 hidden md:table-cell">
                     {item.pack ?? "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
                     {item.minPrice != null ? (
-                      <span className="font-semibold text-emerald-400 tabular-nums">
+                      <span className="font-semibold text-emerald-600 tabular-nums">
                         ₹{fmt(item.minPrice)}
                       </span>
                     ) : (
@@ -138,7 +138,7 @@ export default function PriceListClient() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     {item.maxPrice != null ? (
-                      <span className="font-semibold text-blue-400 tabular-nums">
+                      <span className="font-semibold text-blue-600 tabular-nums">
                         ₹{fmt(item.maxPrice)}
                       </span>
                     ) : (
