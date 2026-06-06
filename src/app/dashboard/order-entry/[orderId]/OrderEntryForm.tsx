@@ -358,7 +358,7 @@ export default function OrderEntryForm({
                       className={selectCls + " mt-1"}
                     >
                       <option value="">Select product…</option>
-                      {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      {products.map(p => <option key={p.id} value={p.id}>{p.name.toUpperCase()}</option>)}
                       <option disabled>──────────────</option>
                       <option value="__add_new__">✦ Add New Product</option>
                     </select>
@@ -377,7 +377,7 @@ export default function OrderEntryForm({
                   {/* Price */}
                   <div className="col-span-5 md:col-span-3">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-medium text-slate-500">Selling Price (₹)</label>
+                      <label className="text-xs font-medium text-slate-500">Selling Price ($)</label>
                       {isAutoFilled && (
                         <span className="text-xs text-amber-400/80 font-medium">↩ last order</span>
                       )}
