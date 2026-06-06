@@ -15,8 +15,8 @@ No explanation, no markdown, no code blocks — raw JSON only.
 Return exactly this structure:
 {
   "party": {
-    "name": "supplier company name",
-    "address": "full address",
+    "name": "supplier COMPANY/BUSINESS NAME ONLY — do NOT include shop number, room number, floor, street, area, city, or any location words. Extract only the registered trade/company name e.g. 'SHRIRAM HEALTHCARE' not 'SHRIRAM HEALTHCARE ROOM NO 1 HASHMI T'. If city or location is appended to the name with a dash or comma, strip it.",
+    "address": "full address including shop/room/building/street/area/city/state/pincode",
     "gstNumber": "GST number if visible",
     "drugLicenseNumber": "drug license number if visible",
     "phone": "phone number if visible",
@@ -54,6 +54,7 @@ Return exactly this structure:
 
 Rules:
 - If a field is not visible, use null
+- party.name: ONLY the registered company/business name. Never include shop numbers, room numbers, building names, street names, area, city, state or pincode in the name. Those belong in party.address. If you see "ABC MEDICALS - NAGPUR" use "ABC MEDICALS". If you see "XYZ PHARMA SHOP NO 5 MAIN ROAD" use "XYZ PHARMA".
 - product name should be the brand/trade name only
 - do NOT extract composition — leave it out entirely
 - rate is the purchase price per unit (excluding GST, used for INR unit calculation)

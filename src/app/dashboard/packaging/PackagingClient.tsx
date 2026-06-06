@@ -301,9 +301,12 @@ function ExportInvoiceDoc({ order }: { order: Order }) {
   const cityLine     = [order.city, order.state].filter(Boolean).join(", ") + " " + order.postalCode;
 
   function itemUsd(item: Item) {
+    // Priority: proportional from INR totals → inrUnit/rate → sellingPrice (which is in USD) → 0
     const rawTotal = totalItemInr > 0 && expFobUsd > 0
       ? (item.amount ?? 0) / totalItemInr * expFobUsd
-      : item.inrUnit != null ? item.inrUnit * item.quantity / exchRate : 0;
+      : item.inrUnit != null
+        ? item.inrUnit * item.quantity / exchRate
+        : item.sellingPrice * item.quantity;  // sellingPrice stored in order currency (USD)
     const total = Math.round(rawTotal * 100) / 100;
     return { total, unit: item.quantity > 0 ? Math.round(total / item.quantity * 100) / 100 : 0 };
   }
@@ -1941,7 +1944,9 @@ function MultiExportInvoiceDoc({ orders }: { orders: Order[] }) {
     return o.items.map(item => {
       const rawTotal = totalItemInr > 0 && fobUsd > 0
         ? (item.amount ?? 0) / totalItemInr * fobUsd
-        : item.inrUnit != null ? item.inrUnit * item.quantity / exchRate : 0;
+        : item.inrUnit != null
+          ? item.inrUnit * item.quantity / exchRate
+          : item.sellingPrice * item.quantity;
       const total = Math.round(rawTotal * 100) / 100;
       const unit  = item.quantity > 0 ? Math.round(total / item.quantity * 100) / 100 : 0;
       return { ...item, usdUnit: unit, usdTotal: total };
@@ -3398,6 +3403,17 @@ function OrderCard({
 
   async function generateInvoice() {
     if (!trackingNo.trim()) { setErr("Please enter a tracking number first."); return; }
+
+    // Hard-block if any item has zero or insufficient stock
+    const outOfStock = order.items.filter(i => i.stockQty == null || i.stockQty < i.quantity);
+    if (outOfStock.length > 0) {
+      setErr(
+        `Cannot generate invoice — ${outOfStock.length} item${outOfStock.length > 1 ? "s" : ""} not in stock: ` +
+        outOfStock.map(i => `${i.productName} (need ${i.quantity}, have ${i.stockQty ?? 0})`).join("; ")
+      );
+      return;
+    }
+
     setGenerating(true);
     setErr("");
     const res = await fetch("/api/packaging/invoice", {

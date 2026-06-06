@@ -55,6 +55,22 @@ type SaveResult = {
   updProducts: number;
 };
 
+type ExistingParty = { id: string; name: string; address: string | null; gstNumber: string | null; drugLicenseNumber: string | null; };
+type ProductSuggestion = { id: string; name: string; manufacturer: string | null; pack: string | null; score: number; };
+
+// Word-overlap similarity (0–1). Normalises punctuation and ignores very short tokens.
+function nameSimilarity(a: string, b: string): number {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  const words = (s: string) => norm(s).split(" ").filter(w => w.length > 1);
+  const wa = words(a), wb = words(b);
+  if (!wa.length || !wb.length) return 0;
+  const common = wa.filter(w => wb.includes(w)).length;
+  return common / Math.max(wa.length, wb.length);
+}
+// Aliases
+const partySimilarity   = nameSimilarity;
+const productSimilarity = nameSimilarity;
+
 // ── Editable field ────────────────────────────────────────────────────────────
 function Field({
   label, value, onChange, type = "text", mono = false, placeholder,
@@ -84,19 +100,21 @@ function Field({
 
 // ── Product row editor ────────────────────────────────────────────────────────
 function ProductRow({
-  product, index, onChange, onRemove,
+  product, index, onChange, onRemove, suggestions, onUseExisting,
 }: {
   product: ExtractedProduct;
   index: number;
   onChange: (idx: number, key: string, val: string) => void;
   onRemove: (idx: number) => void;
+  suggestions?: ProductSuggestion[];
+  onUseExisting?: (idx: number, existing: ProductSuggestion) => void;
 }) {
   const f = (key: string) => (val: string) => onChange(index, key, val);
   return (
     <div style={{
       background: "var(--surface-2)", borderRadius: 12,
       padding: "0.875rem", marginBottom: "0.75rem",
-      border: "1px solid var(--border)",
+      border: !product.id && suggestions?.length ? "1px solid rgba(251,191,36,0.4)" : "1px solid var(--border)",
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.625rem" }}>
         <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--text-primary)" }}>
@@ -111,6 +129,41 @@ function ProductRow({
           Remove
         </button>
       </div>
+
+      {/* Similar product suggestions — only shown when no exact match */}
+      {!product.id && suggestions && suggestions.length > 0 && (
+        <div style={{
+          marginBottom: "0.75rem", padding: "0.5rem 0.7rem",
+          background: "rgba(251,191,36,0.07)", border: "1px solid rgba(251,191,36,0.3)",
+          borderRadius: 7, fontSize: "0.76rem",
+        }}>
+          <div style={{ fontWeight: 700, color: "#fbbf24", marginBottom: 5 }}>
+            ⚠ Similar products found — is &ldquo;{product.name}&rdquo; the same as one of these?
+          </div>
+          {suggestions.map(s => (
+            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <button
+                onClick={() => onUseExisting?.(index, s)}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: "0.72rem", padding: "2px 10px", whiteSpace: "nowrap" }}
+              >
+                Yes, same
+              </button>
+              <span>
+                <strong style={{ color: "var(--text-primary)" }}>{s.name}</strong>
+                {s.manufacturer && <span style={{ color: "var(--text-muted)", marginLeft: 6 }}>{s.manufacturer}</span>}
+                {s.pack && <span style={{ color: "var(--text-muted)", marginLeft: 6 }}>· {s.pack}</span>}
+                <span style={{ marginLeft: 8, fontSize: "0.68rem", color: "#fbbf24" }}>
+                  {Math.round(s.score * 100)}% match
+                </span>
+              </span>
+            </div>
+          ))}
+          <div style={{ color: "var(--text-muted)", fontSize: "0.7rem", marginTop: 4 }}>
+            Or ignore to create as a new product.
+          </div>
+        </div>
+      )}
 
       {/* Row 1: Name + Composition */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", marginBottom: "0.6rem" }}>
@@ -202,6 +255,9 @@ export default function PurchaseBillClient() {
   const [saving,   setSaving]   = useState(false);
   const [saveErr,  setSaveErr]  = useState("");
   const [saved,    setSaved]    = useState<SaveResult | null>(null);
+  const [similarParties,     setSimilarParties]     = useState<Array<ExistingParty & { score: number }>>([]);
+  // productSuggestions: keyed by extracted product name → similar existing products
+  const [productSuggestions, setProductSuggestions] = useState<Record<string, ProductSuggestion[]>>({});
 
   // ── File pick ──────────────────────────────────────────────────────────────
   function handleFile(file: File) {
@@ -227,7 +283,7 @@ export default function PurchaseBillClient() {
   // ── Scan ───────────────────────────────────────────────────────────────────
   async function scan() {
     if (!preview) return;
-    setScanning(true); setScanErr(""); setData(null); setSaved(null);
+    setScanning(true); setScanErr(""); setData(null); setSaved(null); setSimilarParties([]); setProductSuggestions({});
 
     // Strip data URL prefix → pure base64
     const base64 = preview.split(",")[1];
@@ -245,11 +301,15 @@ export default function PurchaseBillClient() {
       return;
     }
 
-    // Match products to existing product master by name
-    const matchRes = await fetch("/api/products");
-    const matchData = await matchRes.json();
-    const existingProducts: any[] = matchData.products ?? [];
+    // Fetch products and parties in parallel for matching
+    const [matchRes, partiesRes] = await Promise.all([
+      fetch("/api/products"),
+      fetch("/api/parties"),
+    ]);
+    const existingProducts: any[] = (await matchRes.json()).products ?? [];
+    const existingParties: ExistingParty[] = (await partiesRes.json()).parties ?? [];
 
+    // Match products by exact name
     const matched: ScanResult = {
       ...json.data,
       products: (json.data.products ?? []).map((p: ExtractedProduct) => {
@@ -260,6 +320,35 @@ export default function PurchaseBillClient() {
         return match ? { ...product, id: match.id } : product;
       }),
     };
+
+    // Find similar parties (score ≥ 0.5)
+    const extractedName: string = json.data.party?.name ?? "";
+    const similar = existingParties
+      .map(ep => ({ ...ep, score: partySimilarity(extractedName, ep.name) }))
+      .filter(ep => ep.score >= 0.5)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+    setSimilarParties(similar);
+
+    // Build product suggestions: for each scanned product without an exact match,
+    // find existing products with fuzzy name similarity ≥ 0.4
+    const suggestions: Record<string, ProductSuggestion[]> = {};
+    for (const p of matched.products) {
+      if (p.id) continue; // already matched exactly — no suggestion needed
+      const hits = existingProducts
+        .map((ep: any) => ({
+          id: ep.id as string,
+          name: ep.name as string,
+          manufacturer: (ep.manufacturer ?? null) as string | null,
+          pack: (ep.pack ?? null) as string | null,
+          score: productSimilarity(p.name ?? "", ep.name),
+        }))
+        .filter(ep => ep.score >= 0.4)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 2);
+      if (hits.length > 0) suggestions[p.name ?? ""] = hits;
+    }
+    setProductSuggestions(suggestions);
 
     setData(matched);
     setScanning(false);
@@ -296,6 +385,23 @@ export default function PurchaseBillClient() {
 
   const removeProduct = useCallback((idx: number) => {
     setData(d => d ? { ...d, products: d.products.filter((_, i) => i !== idx) } : d);
+  }, []);
+
+  // Called when user confirms a scanned product is the same as an existing one
+  const handleUseExistingProduct = useCallback((idx: number, existing: ProductSuggestion) => {
+    setData(d => {
+      if (!d) return d;
+      const products = [...d.products];
+      // Keep all bill-specific data (batch, qty, rate, etc.), just adopt the existing id + canonical name
+      products[idx] = { ...products[idx], id: existing.id, name: existing.name };
+      return { ...d, products };
+    });
+    // Remove suggestion for this product name once user has decided
+    setProductSuggestions(prev => {
+      const next = { ...prev };
+      delete next[Object.keys(prev).find(k => prev[k].some(s => s.id === existing.id)) ?? ""];
+      return next;
+    });
   }, []);
 
   function addBlankProduct() {
@@ -429,6 +535,57 @@ export default function PurchaseBillClient() {
                   ? <span className="badge badge-blue" style={{ fontSize: "0.65rem" }}>Existing — will update</span>
                   : <span className="badge badge-green" style={{ fontSize: "0.65rem" }}>New party</span>}
               </div>
+
+              {/* Similar party suggestions — shown only when no exact match was found */}
+              {!data.party.id && similarParties.length > 0 && (
+                <div style={{
+                  marginBottom: "0.875rem",
+                  padding: "0.6rem 0.75rem",
+                  background: "rgba(251,191,36,0.08)",
+                  border: "1px solid rgba(251,191,36,0.35)",
+                  borderRadius: 8,
+                  fontSize: "0.78rem",
+                }}>
+                  <div style={{ fontWeight: 700, color: "#fbbf24", marginBottom: 6 }}>
+                    ⚠ Similar parties already exist — is this the same one?
+                  </div>
+                  {similarParties.map(ep => (
+                    <div key={ep.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <button
+                        onClick={() => {
+                          setData(d => d ? {
+                            ...d,
+                            party: {
+                              ...d.party,
+                              id: ep.id,
+                              name: ep.name,
+                              address: ep.address ?? d.party.address,
+                              gstNumber: ep.gstNumber ?? d.party.gstNumber,
+                              drugLicenseNumber: ep.drugLicenseNumber ?? d.party.drugLicenseNumber,
+                            },
+                          } : d);
+                          setSimilarParties([]);
+                        }}
+                        className="btn btn-secondary btn-sm"
+                        style={{ fontSize: "0.72rem", padding: "2px 10px", whiteSpace: "nowrap" }}
+                      >
+                        Use this
+                      </button>
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        <strong style={{ color: "var(--text-primary)" }}>{ep.name}</strong>
+                        {ep.address && <span style={{ color: "var(--text-muted)", marginLeft: 6 }}>{ep.address.slice(0, 50)}</span>}
+                        <span style={{ marginLeft: 8, fontSize: "0.68rem", color: "#fbbf24" }}>
+                          {Math.round(ep.score * 100)}% match
+                        </span>
+                      </span>
+                    </div>
+                  ))}
+                  <div style={{ marginTop: 6, color: "var(--text-muted)", fontSize: "0.72rem" }}>
+                    Or continue below to create as a new party.
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", marginBottom: "0.6rem" }}>
                 <Field label="Party Name *"     value={data.party.name}              onChange={v => setParty("name", v)} />
                 <Field label="GST Number"       value={data.party.gstNumber}         onChange={v => setParty("gstNumber", v)} mono />
@@ -466,6 +623,8 @@ export default function PurchaseBillClient() {
                 <ProductRow
                   key={i} product={p} index={i}
                   onChange={setProduct} onRemove={removeProduct}
+                  suggestions={productSuggestions[p.name ?? ""] ?? []}
+                  onUseExisting={handleUseExistingProduct}
                 />
               ))}
 

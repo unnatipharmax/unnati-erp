@@ -1,29 +1,80 @@
 "use client";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { Home, Link, FileText, Users, Package, Settings, BookOpen, Box, ClipboardList, Wallet, Tag } from "lucide-react";
+import {
+  Home, Link2, FileText, Users, Package, Settings,
+  BookOpen, Box, ClipboardList, Wallet, Tag,
+  Bell, RotateCcw, ShoppingCart, BarChart2, Building2, PenLine,
+} from "lucide-react";
 
 type Role = "ADMIN" | "MANAGER" | "SALES" | "ACCOUNTS" | "PACKAGING";
 
-const ALL_MENU = [
-  { name: "HOME",             path: "/dashboard",                icon: Home,      roles: ["ADMIN","MANAGER","SALES","ACCOUNTS","PACKAGING"] },
-  { name: "ORDER INITIATION", path: "/dashboard/client-forms",   icon: Link,      roles: ["ADMIN","MANAGER","SALES","ACCOUNTS"] },
-  { name: "ORDER ENTRY",      path: "/dashboard/order-entry",    icon: FileText,  roles: ["ADMIN","MANAGER","SALES"] },
-  { name: "LEDGER",           path: "/dashboard/ledger",         icon: BookOpen,  roles: ["ADMIN","MANAGER","ACCOUNTS"] },
-  { name: "PACKAGING",        path: "/dashboard/packaging",      icon: Box,       roles: ["ADMIN","MANAGER","PACKAGING"] },
-  { name: "QUOTATION",        path: "/dashboard/quotation",      icon: ClipboardList, roles: ["ADMIN","MANAGER","SALES"] },
-  { name: "EXPENSES",         path: "/dashboard/expenses",       icon: Wallet,        roles: ["ADMIN","MANAGER","ACCOUNTS"] },
-  { name: "CLIENT MASTER",    path: "/dashboard/client-master",        icon: Users,         roles: ["ADMIN","MANAGER"] },
-  { name: "PURCHASE BILLS",  path: "/dashboard/purchase-bills",        icon: FileText,      roles: ["ADMIN","MANAGER","ACCOUNTS","PACKAGING"] },
-  { name: "PURCHASE REPORT", path: "/dashboard/purchase-bills-report", icon: ClipboardList, roles: ["ADMIN","MANAGER","ACCOUNTS"] },
-  { name: "EDIT INVOICES",   path: "/dashboard/invoices",             icon: FileText,      roles: ["ADMIN","MANAGER"] },
-  { name: "EXPORT RETURNS", path: "/dashboard/returns",              icon: Box,           roles: ["ADMIN","MANAGER"] },
-  { name: "DOSAGE REMINDER", path: "/dashboard/dosage-reminders",     icon: FileText,      roles: ["ADMIN","MANAGER"] },
-  { name: "PARTY MASTER",     path: "/dashboard/party",          icon: Users,     roles: ["ADMIN","MANAGER"] },
-  { name: "PRICE LIST",        path: "/dashboard/price-list",     icon: Tag,       roles: ["ADMIN","MANAGER","SALES"] },
-  { name: "PRODUCT MASTER",   path: "/dashboard/product-master", icon: Package,   roles: ["ADMIN","MANAGER","SALES","PACKAGING"] },
-  { name: "REPORTS & BACKUP", path: "/dashboard/reports",        icon: ClipboardList, roles: ["ADMIN","MANAGER","ACCOUNTS"] },
-  { name: "SETUP",            path: "/dashboard/setup",          icon: Settings,  roles: ["ADMIN"] },
+type MenuItem = {
+  name: string;
+  path: string;
+  icon: React.ElementType;
+  roles: Role[];
+};
+
+type Group = {
+  label: string;
+  items: MenuItem[];
+};
+
+const GROUPS: Group[] = [
+  {
+    label: "",  // no header for top-level Home
+    items: [
+      { name: "Dashboard", path: "/dashboard", icon: Home, roles: ["ADMIN","MANAGER","SALES","ACCOUNTS","PACKAGING"] },
+    ],
+  },
+  {
+    label: "Sales",
+    items: [
+      { name: "Quotation",         path: "/dashboard/quotation",    icon: ClipboardList, roles: ["ADMIN","MANAGER","SALES"] },
+      { name: "Create Order Link", path: "/dashboard/client-forms", icon: Link2,         roles: ["ADMIN","MANAGER","SALES","ACCOUNTS"] },
+      { name: "Order Entry",       path: "/dashboard/order-entry",  icon: PenLine,       roles: ["ADMIN","MANAGER","SALES"] },
+      { name: "Price List",        path: "/dashboard/price-list",   icon: Tag,           roles: ["ADMIN","MANAGER","SALES"] },
+    ],
+  },
+  {
+    label: "Packaging",
+    items: [
+      { name: "Packaging",         path: "/dashboard/packaging",          icon: Box,        roles: ["ADMIN","MANAGER","PACKAGING"] },
+      { name: "Edit Invoices",     path: "/dashboard/invoices",           icon: FileText,   roles: ["ADMIN","MANAGER"] },
+      { name: "Export Returns",    path: "/dashboard/returns",            icon: RotateCcw,  roles: ["ADMIN","MANAGER"] },
+      { name: "Dosage Reminders",  path: "/dashboard/dosage-reminders",   icon: Bell,       roles: ["ADMIN","MANAGER"] },
+    ],
+  },
+  {
+    label: "Accounts",
+    items: [
+      { name: "Ledger",   path: "/dashboard/ledger",   icon: BookOpen, roles: ["ADMIN","MANAGER","ACCOUNTS"] },
+      { name: "Expenses", path: "/dashboard/expenses", icon: Wallet,   roles: ["ADMIN","MANAGER","ACCOUNTS"] },
+    ],
+  },
+  {
+    label: "Inventory",
+    items: [
+      { name: "Purchase Bills",  path: "/dashboard/purchase-bills",        icon: ShoppingCart, roles: ["ADMIN","MANAGER","ACCOUNTS","PACKAGING"] },
+      { name: "Purchase Report", path: "/dashboard/purchase-bills-report", icon: BarChart2,    roles: ["ADMIN","MANAGER","ACCOUNTS"] },
+    ],
+  },
+  {
+    label: "Masters",
+    items: [
+      { name: "Products",  path: "/dashboard/product-master", icon: Package,    roles: ["ADMIN","MANAGER","SALES","PACKAGING"] },
+      { name: "Clients",   path: "/dashboard/client-master",  icon: Users,      roles: ["ADMIN","MANAGER"] },
+      { name: "Suppliers", path: "/dashboard/party",          icon: Building2,  roles: ["ADMIN","MANAGER"] },
+    ],
+  },
+  {
+    label: "Admin",
+    items: [
+      { name: "Reports & Backup", path: "/dashboard/reports", icon: ClipboardList, roles: ["ADMIN","MANAGER","ACCOUNTS"] },
+      { name: "Setup",            path: "/dashboard/setup",   icon: Settings,      roles: ["ADMIN"] },
+    ],
+  },
 ];
 
 const ROLE_BADGE: Record<Role, { bg: string; color: string }> = {
@@ -35,10 +86,9 @@ const ROLE_BADGE: Record<Role, { bg: string; color: string }> = {
 };
 
 export default function Sidebar({ userName, userRole }: { userName: string; userRole: Role }) {
-  const pathname = usePathname();
-  const router   = useRouter();
+  const pathname    = usePathname();
+  const router      = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
-  const menu  = ALL_MENU.filter(item => item.roles.includes(userRole));
   const badge = ROLE_BADGE[userRole];
 
   async function logout() {
@@ -47,31 +97,76 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
     router.push("/login");
   }
 
+  // Filter groups: only show groups that have at least one accessible item
+  const visibleGroups = GROUPS
+    .map(g => ({ ...g, items: g.items.filter(i => i.roles.includes(userRole)) }))
+    .filter(g => g.items.length > 0);
+
   return (
-    <aside style={{ width: 240, minHeight: "100vh", flexShrink: 0, background: "var(--surface-1)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: "1.25rem", borderBottom: "1px solid var(--border)" }}>
-        <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>UNNATI PHARMAX</div>
-        <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 2 }}>ERP System</div>
+    <aside style={{
+      width: 220, minHeight: "100vh", flexShrink: 0,
+      background: "var(--surface-1)", borderRight: "1px solid var(--border)",
+      display: "flex", flexDirection: "column",
+    }}>
+      {/* Logo */}
+      <div style={{ padding: "1.25rem 1rem", borderBottom: "1px solid var(--border)" }}>
+        <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
+          UNNATI PHARMAX
+        </div>
+        <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: 2 }}>ERP System</div>
       </div>
-      <nav style={{ flex: 1, padding: "0.75rem", display: "flex", flexDirection: "column", gap: 2 }}>
-        {menu.map(item => {
-          const Icon   = item.icon;
-          const active = pathname === item.path || pathname.startsWith(item.path + "/");
-          return (
-            <a key={item.path} href={item.path} className={`nav-link${active ? " active" : ""}`}>
-              <Icon size={15} strokeWidth={2} />{item.name}
-            </a>
-          );
-        })}
+
+      {/* Nav */}
+      <nav style={{ flex: 1, padding: "0.5rem 0.6rem", overflowY: "auto", display: "flex", flexDirection: "column", gap: 0 }}>
+        {visibleGroups.map((group, gi) => (
+          <div key={gi} style={{ marginBottom: group.label ? 4 : 2 }}>
+            {/* Section header */}
+            {group.label && (
+              <div style={{
+                fontSize: "0.63rem", fontWeight: 700, letterSpacing: "0.08em",
+                textTransform: "uppercase", color: "var(--text-muted)",
+                padding: "0.6rem 0.5rem 0.25rem",
+                marginTop: gi === 0 ? 0 : 6,
+              }}>
+                {group.label}
+              </div>
+            )}
+            {/* Items */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              {group.items.map(item => {
+                const Icon   = item.icon;
+                const active = pathname === item.path || pathname.startsWith(item.path + "/");
+                return (
+                  <a
+                    key={item.path}
+                    href={item.path}
+                    className={`nav-link${active ? " active" : ""}`}
+                    style={{ fontSize: "0.8rem" }}
+                  >
+                    <Icon size={14} strokeWidth={2} />
+                    {item.name}
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
+
+      {/* User + Logout */}
       <div style={{ padding: "0.75rem", borderTop: "1px solid var(--border)" }}>
-        <div style={{ padding: "0.75rem", borderRadius: 12, background: "var(--surface-2)", marginBottom: "0.5rem" }}>
-          <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>{userName}</div>
-          <div style={{ display: "inline-flex", alignItems: "center", padding: "0.15rem 0.5rem", borderRadius: 99, background: badge.bg, color: badge.color, fontSize: "0.7rem", fontWeight: 700, marginTop: 4, letterSpacing: "0.04em" }}>
+        <div style={{ padding: "0.65rem 0.75rem", borderRadius: 10, background: "var(--surface-2)", marginBottom: "0.5rem" }}>
+          <div style={{ fontSize: "0.825rem", fontWeight: 600, color: "var(--text-primary)" }}>{userName}</div>
+          <div style={{
+            display: "inline-flex", alignItems: "center",
+            padding: "0.15rem 0.5rem", borderRadius: 99,
+            background: badge.bg, color: badge.color,
+            fontSize: "0.65rem", fontWeight: 700, marginTop: 4, letterSpacing: "0.04em",
+          }}>
             {userRole}
           </div>
         </div>
-        <button onClick={logout} disabled={loggingOut} className="btn btn-secondary" style={{ width: "100%", fontSize: "0.8125rem" }}>
+        <button onClick={logout} disabled={loggingOut} className="btn btn-secondary" style={{ width: "100%", fontSize: "0.8rem" }}>
           {loggingOut ? "Signing out…" : "Sign Out"}
         </button>
       </div>
