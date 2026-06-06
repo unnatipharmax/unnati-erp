@@ -78,10 +78,10 @@ const GROUPS: Group[] = [
 ];
 
 const ROLE_BADGE: Record<Role, { bg: string; color: string }> = {
-  ADMIN:     { bg: "rgba(59,130,246,0.15)",  color: "#93c5fd" },
-  MANAGER:   { bg: "rgba(245,158,11,0.15)",  color: "#fcd34d" },
-  SALES:     { bg: "rgba(16,185,129,0.15)",  color: "#6ee7b7" },
-  ACCOUNTS:  { bg: "rgba(156,163,175,0.15)", color: "#9ca3af" },
+  ADMIN:     { bg: "rgba(229,152,26,0.16)", color: "#f3b942" },
+  MANAGER:   { bg: "rgba(16,185,129,0.15)", color: "#6ee7b7" },
+  SALES:     { bg: "rgba(56,189,248,0.15)", color: "#7dd3fc" },
+  ACCOUNTS:  { bg: "rgba(156,163,175,0.15)", color: "#c2c8d4" },
   PACKAGING: { bg: "rgba(168,85,247,0.15)",  color: "#c4b5fd" },
 };
 
@@ -109,11 +109,15 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
       display: "flex", flexDirection: "column",
     }}>
       {/* Logo */}
-      <div style={{ padding: "1.25rem 1rem", borderBottom: "1px solid var(--border)" }}>
-        <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
-          UNNATI PHARMAX
+      <div style={{ padding: "1.1rem 1rem", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="Unnati Pharmax" style={{ width: 34, height: 34, objectFit: "contain", flexShrink: 0 }} />
+        <div>
+          <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em", lineHeight: 1.1 }}>
+            UNNATI PHARMAX
+          </div>
+          <div style={{ fontSize: "0.66rem", color: "var(--text-muted)", marginTop: 2 }}>ERP System</div>
         </div>
-        <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: 2 }}>ERP System</div>
       </div>
 
       {/* Nav */}

@@ -1,24 +1,39 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0f1a;
-  --foreground: #e8eaf0;
+  /* ── Brand (Unnati Pharmax gold) ──────────────────────────────────── */
+  --brand:        #e5981a;   /* logo gold — primary accent */
+  --brand-hover:  #c9820f;
+  --brand-soft:   rgba(229,152,26,0.14);
+  --brand-glow:   rgba(229,152,26,0.22);
+  --on-brand:     #1c1503;   /* dark text on gold fills */
 
-  --surface-1:  #111827;   /* cards, modals */
-  --surface-2:  #0d1520;   /* inputs, deeper bg */
-  --surface-3:  #1a2435;   /* hover states */
+  /* ── Neutral surfaces (warm charcoal) ─────────────────────────────── */
+  --background: #0c0d11;
+  --foreground: #e9eaed;
 
-  --border:     #1e2d42;
-  --border-hover: #2a3f5a;
-  --border-focus: #3b82f6;
+  --surface-1:  #16181f;   /* cards, modals */
+  --surface-2:  #101218;   /* inputs, deeper bg */
+  --surface-3:  #1f222b;   /* hover states */
 
-  --text-primary:   #f0f4ff;
-  --text-secondary: #8b9bbf;
-  --text-muted:     #4a5878;
+  --border:       #272b35;
+  --border-hover: #383d49;
+  --border-focus: var(--brand);
 
-  --blue:       #3b82f6;
-  --blue-hover: #2563eb;
-  --blue-glow:  rgba(59,130,246,0.18);
+  --text-primary:   #f4f5f7;
+  --text-secondary: #9ba2af;
+  --text-muted:     #5c6373;
+
+  /* ── Aliases so accent maps to the brand everywhere ───────────────── */
+  --primary:       var(--brand);
+  --primary-hover: var(--brand-hover);
+  --accent:        var(--brand);
+  --bg-card:       var(--surface-1);
+
+  /* legacy "blue" tokens now resolve to brand gold */
+  --blue:       var(--brand);
+  --blue-hover: var(--brand-hover);
+  --blue-glow:  var(--brand-glow);
 
   --green:      #10b981;
   --red:        #ef4444;
@@ -29,10 +44,10 @@
   --radius-lg:  16px;
   --radius-xl:  20px;
 
-  --shadow-sm:  0 1px 3px rgba(0,0,0,0.4);
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.45);
   --shadow-md:  0 4px 16px rgba(0,0,0,0.5);
   --shadow-lg:  0 8px 32px rgba(0,0,0,0.6);
-  --shadow-blue: 0 4px 20px rgba(59,130,246,0.25);
+  --shadow-blue: 0 4px 20px rgba(229,152,26,0.28);
 
   --transition: 150ms ease;
   --transition-spring: cubic-bezier(0.34,1.4,0.64,1);
@@ -46,10 +61,13 @@ html { scroll-behavior: smooth; }
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 14px;
   line-height: 1.6;
+  letter-spacing: -0.006em;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv11", "ss01";
   min-height: 100vh;
 }
 
@@ -57,7 +75,7 @@ body {
 ::-webkit-scrollbar              { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track        { background: var(--surface-2); }
 ::-webkit-scrollbar-thumb        { background: var(--border-hover); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover  { background: #3a4f6a; }
+::-webkit-scrollbar-thumb:hover  { background: #4a4f5c; }
 
 /* ── Typography ───────────────────────────────────────────────────────────── */
 h1 { font-size: 1.75rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
@@ -68,12 +86,12 @@ h4 { font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); }
 p  { color: var(--text-secondary); }
 
 a  {
-  color: var(--blue);
+  color: var(--brand);
   text-decoration: none;
   transition: color var(--transition);
   cursor: pointer;
 }
-a:hover { color: #93c5fd; text-decoration: underline; }
+a:hover { color: #f3b942; text-decoration: underline; }
 
 /* ── Cards ────────────────────────────────────────────────────────────────── */
 .card {
@@ -148,11 +166,11 @@ label:focus-within > .field-label {
 .btn:disabled               { opacity: 0.5; cursor: not-allowed; }
 
 .btn-primary {
-  background: var(--blue);
-  color: #fff;
+  background: var(--brand);
+  color: var(--on-brand);
   box-shadow: var(--shadow-blue);
 }
-.btn-primary:hover:not(:disabled) { background: var(--blue-hover); }
+.btn-primary:hover:not(:disabled) { background: var(--brand-hover); }
 
 .btn-secondary {
   background: var(--surface-3);
@@ -203,7 +221,7 @@ label:focus-within > .field-label {
   font-weight: 600;
   border: 1px solid transparent;
 }
-.badge-blue   { background: rgba(59,130,246,0.12); color: #93c5fd; border-color: rgba(59,130,246,0.25); }
+.badge-blue   { background: var(--brand-soft); color: #f3b942; border-color: rgba(229,152,26,0.3); }
 .badge-green  { background: rgba(16,185,129,0.12); color: #6ee7b7; border-color: rgba(16,185,129,0.25); }
 .badge-red    { background: rgba(239,68,68,0.12);  color: #fca5a5; border-color: rgba(239,68,68,0.25); }
 .badge-amber  { background: rgba(245,158,11,0.12); color: #fcd34d; border-color: rgba(245,158,11,0.25); }
@@ -307,7 +325,7 @@ tbody td     {
   text-decoration: none;
 }
 .nav-link:hover     { background: var(--surface-3); color: var(--text-primary); text-decoration: none; }
-.nav-link.active    { background: rgba(59,130,246,0.15); color: var(--blue); }
+.nav-link.active    { background: var(--brand-soft); color: var(--brand); font-weight: 600; }
 
 /* ── Divider ──────────────────────────────────────────────────────────────── */
 .divider {
@@ -404,18 +422,18 @@ tbody td     {
 /* ── Copy link button ─────────────────────────────────────────────────────── */
 .btn-copy {
   padding: 0.375rem 0.75rem;
-  background: rgba(59,130,246,0.1);
-  border: 1px solid rgba(59,130,246,0.2);
+  background: var(--brand-soft);
+  border: 1px solid rgba(229,152,26,0.25);
   border-radius: var(--radius-sm);
-  color: #93c5fd;
+  color: #f3b942;
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition);
 }
 .btn-copy:hover {
-  background: rgba(59,130,246,0.2);
-  color: #bfdbfe;
+  background: rgba(229,152,26,0.2);
+  color: #ffc857;
 }
 
 /* ── Focus ring for accessibility ────────────────────────────────────────── */

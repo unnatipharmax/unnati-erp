@@ -2901,7 +2901,7 @@ function DocumentsOverlay({ order, labelOverrides, onClose }: { order: Order; la
           </button>
           <a
             href={downloadHref}
-            style={{ padding: "6px 18px", background: "#2563eb", color: "#fff", borderRadius: 6, cursor: "pointer", fontWeight: 600, textDecoration: "none" }}
+            style={{ padding: "6px 18px", background: "#e5981a", color: "#1c1503", borderRadius: 6, cursor: "pointer", fontWeight: 600, textDecoration: "none" }}
           >
             ⬇ Download All
           </a>

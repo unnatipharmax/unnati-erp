@@ -42,7 +42,7 @@ function KpiCard({ label, value, sub, color }: { label: string; value: string; s
 }
 
 // ── Section wrapper ────────────────────────────────────────────────────────────
-function Section({ title, icon, children, accent = "#6366f1" }: { title: string; icon: string; children: React.ReactNode; accent?: string }) {
+function Section({ title, icon, children, accent = "#f3b942" }: { title: string; icon: string; children: React.ReactNode; accent?: string }) {
   return (
     <div className="card" style={{ padding: 0, overflow: "hidden" }}>
       <div style={{ padding: "0.75rem 1rem", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: "0.5rem", background: "var(--surface-2)" }}>
@@ -95,7 +95,7 @@ function MonthlyChart({ data }: { data: ReportData["monthlyRevenue"] }) {
         return (
           <div key={d.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, position: "relative" }}>
             <div title={`${fmtMonth(d.month)}: ${fmtShort(d.totalRevenue)} (${d.orderCount} orders)`} style={{
-              width: "100%", height: h, background: "linear-gradient(to top, #6366f1, #818cf8)",
+              width: "100%", height: h, background: "linear-gradient(to top, #c9820f, #f3b942)",
               borderRadius: "3px 3px 0 0", cursor: "pointer", transition: "opacity 0.2s",
             }}
               onMouseEnter={e => (e.currentTarget.style.opacity = "0.7")}
@@ -190,7 +190,7 @@ export default function DashboardClient() {
           [1,2,3,4,5,6].map(i => <div key={i} className="skeleton" style={{ height: 86, borderRadius: 12 }} />)
         ) : kpis ? (
           <>
-            <KpiCard label="Total Orders"      value={kpis.totalOrders.toString()}       color="#818cf8" />
+            <KpiCard label="Total Orders"      value={kpis.totalOrders.toString()}       color="#f3b942" />
             <KpiCard label="Dispatched"        value={kpis.dispatchedCount.toString()}   color="#6ee7b7" sub="completed orders" />
             <KpiCard label="Total Revenue"     value={fmtShort(kpis.totalRevenue)}       color="#fcd34d" sub="dispatched orders" />
             <KpiCard label="Active Products"   value={kpis.totalProducts.toString()}     color="#93c5fd" />
@@ -321,7 +321,7 @@ export default function DashboardClient() {
                       <tr key={r.id} style={{ borderBottom: "1px solid var(--border)", background: idx % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
                         <td style={{ padding: "0.45rem 0.75rem", color: "var(--text-muted)", fontFamily: "monospace", fontSize: "0.75rem" }}>{idx+1}</td>
                         <td style={{ padding: "0.45rem 0.75rem", fontWeight: 600 }}>{r.partyName}</td>
-                        <td style={{ padding: "0.45rem 0.75rem", fontFamily: "monospace", color: "#818cf8" }}>{r.invoiceNo ?? "—"}</td>
+                        <td style={{ padding: "0.45rem 0.75rem", fontFamily: "monospace", color: "#f3b942" }}>{r.invoiceNo ?? "—"}</td>
                         <td style={{ padding: "0.45rem 0.75rem", color: "var(--text-secondary)" }}>{r.date}</td>
                         <td style={{ padding: "0.45rem 0.75rem", textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#fb923c" }}>{fmt(r.amount)}</td>
                       </tr>

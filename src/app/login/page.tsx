@@ -30,14 +30,13 @@ export default function LoginPage() {
         {/* Logo / Title */}
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
           <div style={{
-            width: 56, height: 56, borderRadius: 16,
-            background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)",
+            width: 72, height: 72, borderRadius: 18,
+            background: "var(--brand-soft)", border: "1px solid rgba(229,152,26,0.3)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto 1rem",
+            margin: "0 auto 1rem", padding: 12,
           }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="1.5">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-            </svg>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Unnati Pharmax" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
           </div>
           <h1 style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>Unnati Pharmax</h1>
           <p style={{ fontSize: "0.875rem" }}>Sign in to your account</p>
