@@ -174,10 +174,10 @@ export default function PartyLedgerOverlay({ partyId, partyName, onClose }: { pa
           {data && (
             <div style={{ display: "flex", gap: "1.4rem", marginBottom: "0.75rem", flexWrap: "wrap" }}>
               {[
-                { label: "Purchases", value: fmt(data.summary.totalCredit), color: "#93c5fd" },
-                { label: "Payments + CN", value: fmt(data.summary.totalDebit), color: "#fca5a5" },
-                { label: "Credit Notes", value: fmt(data.summary.totalCreditNotes), color: "#fb923c" },
-                { label: "Balance", value: `${fmt(Math.abs(data.summary.closingBalance))} ${data.summary.balanceType}`, color: "#fcd34d" },
+                { label: "Purchases", value: fmt(data.summary.totalCredit), color: "#2563c9" },
+                { label: "Payments + CN", value: fmt(data.summary.totalDebit), color: "#b91c1c" },
+                { label: "Credit Notes", value: fmt(data.summary.totalCreditNotes), color: "#ea580c" },
+                { label: "Balance", value: `${fmt(Math.abs(data.summary.closingBalance))} ${data.summary.balanceType}`, color: "#b45309" },
                 { label: "Bills", value: `${data.summary.billCount}`, color: "var(--text-secondary)" },
                 { label: "Payments", value: `${data.summary.paymentCount}`, color: "var(--text-secondary)" },
                 { label: "CN Count", value: `${data.summary.creditNoteCount}`, color: "var(--text-secondary)" },
@@ -191,7 +191,7 @@ export default function PartyLedgerOverlay({ partyId, partyName, onClose }: { pa
           )}
           <div style={{ display: "flex", gap: 0, borderTop: "1px solid var(--border)" }}>
             {(["ledger", "payment", "creditNote"] as const).map((value) => (
-              <button key={value} onClick={() => setTab(value)} style={{ padding: "0.6rem 1.25rem", fontSize: "0.82rem", fontWeight: 600, background: "none", border: "none", cursor: "pointer", borderBottom: tab === value ? "2px solid #6366f1" : "2px solid transparent", color: tab === value ? "#818cf8" : "var(--text-muted)" }}>
+              <button key={value} onClick={() => setTab(value)} style={{ padding: "0.6rem 1.25rem", fontSize: "0.82rem", fontWeight: 600, background: "none", border: "none", cursor: "pointer", borderBottom: tab === value ? "2px solid #6366f1" : "2px solid transparent", color: tab === value ? "#6d28d9" : "var(--text-muted)" }}>
                 {value === "ledger" ? "Ledger" : value === "payment" ? "Payment Entry" : "Credit Note"}
               </button>
             ))}
@@ -217,7 +217,7 @@ export default function PartyLedgerOverlay({ partyId, partyName, onClose }: { pa
                     <span>{fmtDate(entry.date)}</span>
                     <span style={{ fontFamily: "monospace" }}>{entry.vchNo ?? "-"}</span>
                     <div>
-                      <div style={{ color: entry.kind === "bill" ? "var(--text-primary)" : entry.kind === "creditNote" ? "#fb923c" : "#6ee7b7" }}>{entry.particulars}</div>
+                      <div style={{ color: entry.kind === "bill" ? "var(--text-primary)" : entry.kind === "creditNote" ? "#ea580c" : "#047857" }}>{entry.particulars}</div>
                       {entry.allocations && entry.allocations.length > 0 && (
                         <div style={{ marginTop: 4, fontSize: "0.74rem", color: "var(--text-muted)" }}>
                           {entry.allocations.map((allocation) => `${allocation.invoiceNo ?? "On Account"}: ${fmt(allocation.amount)}`).join(" · ")}

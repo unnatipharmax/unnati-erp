@@ -141,7 +141,7 @@ function ShippingCalculator({
   return (
     <div style={{ marginTop: 16, padding: "14px 16px", background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 10 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-        <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#818cf8", textTransform: "uppercase", letterSpacing: "0.05em" }}>Shipping Calculator</span>
+        <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#6d28d9", textTransform: "uppercase", letterSpacing: "0.05em" }}>Shipping Calculator</span>
         <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>India Post rates (ITPS / EMS / Air Parcel)</span>
       </div>
       <div style={{ position: "relative", marginBottom: 12 }}>
@@ -157,7 +157,7 @@ function ShippingCalculator({
           <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50, maxHeight: 200, overflowY: "auto", background: "var(--surface-1)", border: "1px solid var(--border)", borderRadius: 7, boxShadow: "0 8px 24px rgba(0,0,0,0.3)", marginTop: 2 }}>
             {filtered.map(c => (
               <div key={c} onMouseDown={() => { setCountry(c); setSearch(""); setOpen(false); }}
-                style={{ padding: "7px 12px", fontSize: "0.82rem", cursor: "pointer", background: c === country ? "rgba(99,102,241,0.15)" : "transparent", color: c === country ? "#818cf8" : "var(--text-primary)" }}>
+                style={{ padding: "7px 12px", fontSize: "0.82rem", cursor: "pointer", background: c === country ? "rgba(99,102,241,0.15)" : "transparent", color: c === country ? "#6d28d9" : "var(--text-primary)" }}>
                 {c}
               </div>
             ))}
@@ -185,10 +185,10 @@ function ShippingCalculator({
                   const isOver  = exceedsMax(itps, row.gm);
                   return (
                     <tr key={row.label} style={{ background: row.isActual ? "rgba(99,102,241,0.08)" : "transparent" }}>
-                      <td style={{ ...tdS, fontWeight: row.isActual ? 700 : 400, color: row.isActual ? "#818cf8" : "var(--text-primary)" }}>
-                        {row.label}{row.isActual && <span style={{ fontSize: "0.65rem", marginLeft: 5, color: "#818cf8" }}>← actual</span>}
+                      <td style={{ ...tdS, fontWeight: row.isActual ? 700 : 400, color: row.isActual ? "#6d28d9" : "var(--text-primary)" }}>
+                        {row.label}{row.isActual && <span style={{ fontSize: "0.65rem", marginLeft: 5, color: "#6d28d9" }}>← actual</span>}
                       </td>
-                      <td style={tdS}>{isOver ? <span style={{ fontSize: "0.72rem", color: "#f87171" }}>Exceeds max</span> : fmtInr(itpsAmt)}</td>
+                      <td style={tdS}>{isOver ? <span style={{ fontSize: "0.72rem", color: "#dc2626" }}>Exceeds max</span> : fmtInr(itpsAmt)}</td>
                       <td style={tdS}>{fmtInr(emsAmt)}</td>
                       <td style={tdS}>{fmtInr(cmAmt)}</td>
                     </tr>
@@ -225,7 +225,7 @@ function ShippingCalculator({
             </div>
           )}
           {!itps && !ems && !cm && (
-            <div style={{ fontSize: "0.78rem", color: "#f87171", marginTop: 4 }}>No rates found for "{country}".</div>
+            <div style={{ fontSize: "0.78rem", color: "#dc2626", marginTop: 4 }}>No rates found for "{country}".</div>
           )}
         </>
       )}
@@ -710,7 +710,7 @@ export default function QuotationClient() {
 
       <div style={{ marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <h2 style={{ margin: 0 }}>Quotation Generator</h2>
-        <button onClick={printQuotation} style={{ padding: "8px 22px", background: "#1a3c6e", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: "0.9rem", cursor: "pointer" }}>
+        <button onClick={printQuotation} className="btn btn-primary" style={{ padding: "8px 22px", fontSize: "0.9rem" }}>
           🖨 Print / Download PDF
         </button>
       </div>
@@ -929,7 +929,7 @@ export default function QuotationClient() {
                       onChange={e => updateExtra(charge.id, "amount", parseFloat(e.target.value) || 0)}
                     />
                   </div>
-                  <button onClick={() => removeExtra(charge.id)} style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: "1.1rem" }}>×</button>
+                  <button onClick={() => removeExtra(charge.id)} style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "1.1rem" }}>×</button>
                 </div>
               ))}
             </div>

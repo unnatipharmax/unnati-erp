@@ -68,11 +68,11 @@ function fmtDate(s: string | null) {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  INITIATED:        "#fcd34d",
-  SALES_UPDATED:    "#93c5fd",
-  PAYMENT_VERIFIED: "#6ee7b7",
-  PACKING:          "#fb923c",
-  DISPATCHED:       "#a78bfa",
+  INITIATED:        "#b45309",
+  SALES_UPDATED:    "#2563c9",
+  PAYMENT_VERIFIED: "#047857",
+  PACKING:          "#ea580c",
+  DISPATCHED:       "#7c3aed",
 };
 
 // ── Ledger Tab ─────────────────────────────────────────────────────────────────
@@ -144,13 +144,13 @@ function LedgerTab({ data }: { data: LedgerData }) {
             <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>{fmtDate(entry.date)}</span>
 
             <div>
-              <div style={{ fontSize: "0.82rem", color: isCredit ? "#6ee7b7" : isOrder ? "var(--text-secondary)" : "#fca5a5", fontWeight: 500 }}>
+              <div style={{ fontSize: "0.82rem", color: isCredit ? "#047857" : isOrder ? "var(--text-secondary)" : "#b91c1c", fontWeight: 500 }}>
                 {entry.particulars}
               </div>
               {isOrder && entry.city && (
                 <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
                   {entry.city}, {entry.country}
-                  {entry.invoiceNo && <span style={{ marginLeft: 8, fontFamily: "monospace", color: "#93c5fd" }}>{entry.invoiceNo}</span>}
+                  {entry.invoiceNo && <span style={{ marginLeft: 8, fontFamily: "monospace", color: "#2563c9" }}>{entry.invoiceNo}</span>}
                 </div>
               )}
               {entry.note && !isOrder && (
@@ -170,7 +170,7 @@ function LedgerTab({ data }: { data: LedgerData }) {
                 <span style={{
                   fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase",
                   letterSpacing: "0.04em",
-                  color: isCredit ? "#6ee7b7" : "#fca5a5",
+                  color: isCredit ? "#047857" : "#b91c1c",
                 }}>
                   {isCredit ? "CREDIT" : "DEBIT"}
                 </span>
@@ -180,7 +180,7 @@ function LedgerTab({ data }: { data: LedgerData }) {
             <span style={{
               textAlign: "right", fontFamily: "monospace", fontSize: "0.82rem",
               fontWeight: entry.credit ? 600 : 400,
-              color: entry.credit ? "#6ee7b7" : "var(--text-muted)",
+              color: entry.credit ? "#047857" : "var(--text-muted)",
             }}>
               {entry.credit != null ? fmt(entry.credit) : "—"}
             </span>
@@ -188,14 +188,14 @@ function LedgerTab({ data }: { data: LedgerData }) {
             <span style={{
               textAlign: "right", fontFamily: "monospace", fontSize: "0.82rem",
               fontWeight: entry.debit ? 600 : 400,
-              color: entry.debit ? "#fca5a5" : "var(--text-muted)",
+              color: entry.debit ? "#b91c1c" : "var(--text-muted)",
             }}>
               {entry.debit != null ? fmt(entry.debit) : "—"}
             </span>
 
             <span style={{
               textAlign: "right", fontFamily: "monospace", fontSize: "0.82rem", fontWeight: 700,
-              color: entry.balance >= 0 ? "#fcd34d" : "#6ee7b7",
+              color: entry.balance >= 0 ? "#b45309" : "#047857",
             }}>
               {fmt(Math.abs(entry.balance))}
               <span style={{ fontSize: "0.65rem", opacity: 0.7, marginLeft: 3 }}>
@@ -217,15 +217,15 @@ function LedgerTab({ data }: { data: LedgerData }) {
         <span></span>
         <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-secondary)" }}>Closing Balance</span>
         <span></span>
-        <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#6ee7b7" }}>
+        <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#047857" }}>
           {fmt(data.summary.totalCredit)}
         </span>
-        <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#fca5a5" }}>
+        <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#b91c1c" }}>
           {fmt(data.summary.totalDebit)}
         </span>
         <span style={{
           textAlign: "right", fontFamily: "monospace", fontWeight: 700, fontSize: "0.95rem",
-          color: data.summary.closingBalance >= 0 ? "#fcd34d" : "#6ee7b7",
+          color: data.summary.closingBalance >= 0 ? "#b45309" : "#047857",
         }}>
           {fmt(Math.abs(data.summary.closingBalance))}
           <span style={{ fontSize: "0.72rem", marginLeft: 3 }}>
@@ -278,7 +278,7 @@ function LedgerOverlay({
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
                 <h2 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700 }}>{clientName}</h2>
-                <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em", background: "rgba(255,255,255,0.06)", padding: "2px 8px", borderRadius: 4 }}>
+                <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em", background: "rgba(0,0,0,0.05)", padding: "2px 8px", borderRadius: 4 }}>
                   Client Ledger
                 </span>
               </div>
@@ -306,9 +306,9 @@ function LedgerOverlay({
           {data && (
             <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap" }}>
               {[
-                { label: "Balance",       value: fmt(Math.abs(data.summary.closingBalance)), color: "#fcd34d" },
-                { label: "Total Credits", value: fmt(data.summary.totalCredit),              color: "#6ee7b7" },
-                { label: "Total Debits",  value: fmt(data.summary.totalDebit),               color: "#fca5a5" },
+                { label: "Balance",       value: fmt(Math.abs(data.summary.closingBalance)), color: "#b45309" },
+                { label: "Total Credits", value: fmt(data.summary.totalCredit),              color: "#047857" },
+                { label: "Total Debits",  value: fmt(data.summary.totalDebit),               color: "#b91c1c" },
                 { label: "Orders",        value: `${data.summary.orderCount}`,               color: "var(--text-secondary)" },
               ].map(({ label, value, color }) => (
                 <div key={label} style={{ display: "flex", flexDirection: "column", gap: "0.1rem" }}>
@@ -454,7 +454,7 @@ export default function ClientMasterClient() {
                         : <span className="badge badge-gray" style={{ fontSize: "0.65rem" }}>No orders</span>}
                       <span style={{
                         fontSize: "0.7rem", fontWeight: 700, fontFamily: "monospace",
-                        color: balance >= 0 ? "#fcd34d" : "#6ee7b7",
+                        color: balance >= 0 ? "#b45309" : "#047857",
                         background: balance >= 0 ? "rgba(252,211,77,0.1)" : "rgba(110,231,183,0.1)",
                         padding: "2px 7px", borderRadius: 4,
                       }}>
@@ -496,7 +496,7 @@ export default function ClientMasterClient() {
                     <button
                       onClick={() => del(c.id)}
                       className="btn btn-sm"
-                      style={{ color: "#f87171", background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)" }}
+                      style={{ color: "#dc2626", background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)" }}
                     >
                       Delete
                     </button>
@@ -539,7 +539,7 @@ export default function ClientMasterClient() {
             <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
               <div>
                 <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>
-                  Client Name <span style={{ color: "#f87171" }}>*</span>
+                  Client Name <span style={{ color: "#dc2626" }}>*</span>
                 </label>
                 <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. ABC Pharmaceuticals" />
               </div>

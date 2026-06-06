@@ -378,7 +378,7 @@ export default function CreditNoteEntryTab({
                 </div>
                 <div style={{ textAlign: "right", fontSize: "0.8rem", color: "var(--text-secondary)" }}>
                   Return value used for adjustment:
-                  <div style={{ marginTop: 4, fontFamily: "monospace", fontWeight: 700, color: "#fb923c" }}>{fmt(lineAmount)}</div>
+                  <div style={{ marginTop: 4, fontFamily: "monospace", fontWeight: 700, color: "#ea580c" }}>{fmt(lineAmount)}</div>
                 </div>
               </div>
             </div>
@@ -402,7 +402,7 @@ export default function CreditNoteEntryTab({
           textAlign: "right",
         }}>
           <div style={{ fontSize: "0.72rem", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Credit Note Total</div>
-          <div style={{ fontFamily: "monospace", fontWeight: 800, fontSize: "1rem", color: "#fb923c" }}>{fmt(totalAmount)}</div>
+          <div style={{ fontFamily: "monospace", fontWeight: 800, fontSize: "1rem", color: "#ea580c" }}>{fmt(totalAmount)}</div>
         </div>
       </div>
     </div>

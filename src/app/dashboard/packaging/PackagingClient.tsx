@@ -2709,12 +2709,12 @@ function WeightCaptureBar({
       ) : captured != null ? (
         <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#10b981" }}>✓ {captured} kg</span>
       ) : currentWeight != null ? (
-        <span style={{ fontSize: "0.78rem", color: "#6ee7b7" }}>Stored: {currentWeight} kg</span>
+        <span style={{ fontSize: "0.78rem", color: "#047857" }}>Stored: {currentWeight} kg</span>
       ) : (
-        <span style={{ fontSize: "0.75rem", color: "#f87171" }}>No weight recorded</span>
+        <span style={{ fontSize: "0.75rem", color: "#dc2626" }}>No weight recorded</span>
       )}
 
-      {err && <span style={{ fontSize: "0.73rem", color: "#f87171" }}>{err}</span>}
+      {err && <span style={{ fontSize: "0.73rem", color: "#dc2626" }}>{err}</span>}
 
       {/* Upload button */}
       <button
@@ -3342,7 +3342,7 @@ function BatchActionBar({
       >
         {generating ? "Generating…" : "Generate Combined Documents"}
       </button>
-      {err && <span style={{ color: "#f87171", fontSize: "0.82rem", width: "100%" }}>{err}</span>}
+      {err && <span style={{ color: "#dc2626", fontSize: "0.82rem", width: "100%" }}>{err}</span>}
     </div>
   );
 }
@@ -3427,7 +3427,7 @@ function OrderCard({
             {new Date(order.createdAt).toLocaleDateString("en-IN")}
           </div>
           {order.prescriptionFileName && (
-            <div style={{ fontSize: "0.78rem", color: "#60a5fa", marginTop: 4 }}>
+            <div style={{ fontSize: "0.78rem", color: "#2563c9", marginTop: 4 }}>
               Prescription attached: {order.prescriptionFileName}
             </div>
           )}
@@ -3660,7 +3660,7 @@ function OrderCard({
                         ₹{item.latestRate.toFixed(2)}
                       </span>
                     ) : (
-                      <span style={{ color: "#f87171", fontSize: "0.75rem" }}>No purchase record</span>
+                      <span style={{ color: "#dc2626", fontSize: "0.75rem" }}>No purchase record</span>
                     )}
                   </td>
 
@@ -3671,7 +3671,7 @@ function OrderCard({
                         ₹{item.inrUnit.toFixed(2)}
                       </span>
                     ) : (
-                      <span style={{ color: "#f87171", fontSize: "0.75rem" }}>—</span>
+                      <span style={{ color: "#dc2626", fontSize: "0.75rem" }}>—</span>
                     )}
                   </td>
 
@@ -3857,9 +3857,9 @@ export default function PackagingClient() {
         <div>
           <h1>Packaging</h1>
           <p style={{ marginTop: "0.25rem" }}>
-            <span style={{ color: "#6ee7b7" }}>{singleReady.length + multiReady.length} ready</span>
+            <span style={{ color: "#047857" }}>{singleReady.length + multiReady.length} ready</span>
             {(singlePacking.length + multiPacking.length) > 0 && (
-              <span style={{ color: "#fcd34d" }}> · {singlePacking.length + multiPacking.length} in packing</span>
+              <span style={{ color: "#b45309" }}> · {singlePacking.length + multiPacking.length} in packing</span>
             )}
           </p>
         </div>

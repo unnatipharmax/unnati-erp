@@ -55,7 +55,7 @@ function Section({ title, icon, children, accent = "#f3b942" }: { title: string;
 }
 
 // ── Rank list row ──────────────────────────────────────────────────────────────
-function RankRow({ rank, label, sub, value, valueColor = "#93c5fd", bar, maxBar }: {
+function RankRow({ rank, label, sub, value, valueColor = "#2563c9", bar, maxBar }: {
   rank: number; label: string; sub?: string; value: string; valueColor?: string; bar: number; maxBar: number;
 }) {
   const pct = maxBar > 0 ? Math.round((bar / maxBar) * 100) : 0;
@@ -126,7 +126,7 @@ function ExpiryTable({ rows, color }: { rows: ProductRow[]; color: string }) {
         </thead>
         <tbody>
           {rows.map((p, idx) => (
-            <tr key={p.id} style={{ borderBottom: "1px solid var(--border)", background: idx % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+            <tr key={p.id} style={{ borderBottom: "1px solid var(--border)", background: idx % 2 === 0 ? "transparent" : "rgba(0,0,0,0.02)" }}>
               <td style={{ padding: "0.5rem 0.75rem", fontWeight: 600 }}>{p.name}</td>
               <td style={{ padding: "0.5rem 0.75rem", color: "var(--text-secondary)" }}>{p.manufacturer ?? "—"}</td>
               <td style={{ padding: "0.5rem 0.75rem", fontFamily: "monospace", fontSize: "0.75rem" }}>{p.batchNo ?? "—"}</td>
@@ -191,11 +191,11 @@ export default function DashboardClient() {
         ) : kpis ? (
           <>
             <KpiCard label="Total Orders"      value={kpis.totalOrders.toString()}       color="#f3b942" />
-            <KpiCard label="Dispatched"        value={kpis.dispatchedCount.toString()}   color="#6ee7b7" sub="completed orders" />
-            <KpiCard label="Total Revenue"     value={fmtShort(kpis.totalRevenue)}       color="#fcd34d" sub="dispatched orders" />
-            <KpiCard label="Active Products"   value={kpis.totalProducts.toString()}     color="#93c5fd" />
-            <KpiCard label="Active Parties"    value={kpis.totalParties.toString()}      color="#fb923c" />
-            <KpiCard label="Pending Bills"     value={fmt(kpis.totalPendingAmount)}      color="#f87171" sub={`${kpis.pendingBillCount} parties`} />
+            <KpiCard label="Dispatched"        value={kpis.dispatchedCount.toString()}   color="#047857" sub="completed orders" />
+            <KpiCard label="Total Revenue"     value={fmtShort(kpis.totalRevenue)}       color="#b45309" sub="dispatched orders" />
+            <KpiCard label="Active Products"   value={kpis.totalProducts.toString()}     color="#2563c9" />
+            <KpiCard label="Active Parties"    value={kpis.totalParties.toString()}      color="#ea580c" />
+            <KpiCard label="Pending Bills"     value={fmt(kpis.totalPendingAmount)}      color="#dc2626" sub={`${kpis.pendingBillCount} parties`} />
           </>
         ) : null}
       </div>
@@ -210,42 +210,42 @@ export default function DashboardClient() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem" }}>
 
         {/* Top Selling Products (by qty) */}
-        <Section title="Top Selling Products" icon="🏆" accent="#fcd34d">
+        <Section title="Top Selling Products" icon="🏆" accent="#b45309">
           {loadingR ? [1,2,3,4,5].map(i => <div key={i} className="skeleton" style={{ height: 36, borderRadius: 6, marginBottom: 8 }} />) :
             reports?.topProducts.length === 0 ? <div style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>No data yet.</div> :
             reports?.topProducts.map((p, i) => (
               <RankRow key={p.productId} rank={i+1} label={p.productName}
                 sub={p.manufacturer ?? undefined}
                 value={`${p.totalQty.toLocaleString()} units`}
-                valueColor="#fcd34d"
+                valueColor="#b45309"
                 bar={p.totalQty} maxBar={reports.topProducts[0]?.totalQty ?? 1}
               />
             ))}
         </Section>
 
         {/* Best Sellers by Revenue */}
-        <Section title="Best Sellers by Revenue" icon="💰" accent="#6ee7b7">
+        <Section title="Best Sellers by Revenue" icon="💰" accent="#047857">
           {loadingR ? [1,2,3,4,5].map(i => <div key={i} className="skeleton" style={{ height: 36, borderRadius: 6, marginBottom: 8 }} />) :
             reports?.bestSellers.length === 0 ? <div style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>No data yet.</div> :
             reports?.bestSellers.map((p, i) => (
               <RankRow key={p.productId} rank={i+1} label={p.productName}
                 sub={p.manufacturer ?? undefined}
                 value={fmtUsd(p.totalRevenue)}
-                valueColor="#6ee7b7"
+                valueColor="#047857"
                 bar={p.totalRevenue} maxBar={reports.bestSellers[0]?.totalRevenue ?? 1}
               />
             ))}
         </Section>
 
         {/* Country-wise Sales */}
-        <Section title="Country-wise Sales" icon="🌍" accent="#93c5fd">
+        <Section title="Country-wise Sales" icon="🌍" accent="#2563c9">
           {loadingR ? [1,2,3,4,5].map(i => <div key={i} className="skeleton" style={{ height: 36, borderRadius: 6, marginBottom: 8 }} />) :
             reports?.countrySales.length === 0 ? <div style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>No data yet.</div> :
             reports?.countrySales.map((c, i) => (
               <RankRow key={c.country} rank={i+1} label={c.country}
                 sub={`${c.orderCount} order${c.orderCount !== 1 ? "s" : ""}`}
                 value={fmtShort(c.totalRevenue)}
-                valueColor="#93c5fd"
+                valueColor="#2563c9"
                 bar={c.orderCount} maxBar={reports.countrySales[0]?.orderCount ?? 1}
               />
             ))}
@@ -256,22 +256,22 @@ export default function DashboardClient() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem" }}>
 
         {/* Pending Payments */}
-        <Section title="Pending Payments (Party-wise)" icon="⏳" accent="#f87171">
+        <Section title="Pending Payments (Party-wise)" icon="⏳" accent="#dc2626">
           {loadingR ? [1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 36, borderRadius: 6, marginBottom: 8 }} />) :
             reports?.pendingPayments.length === 0
-              ? <div style={{ color: "#6ee7b7", fontSize: "0.82rem" }}>✅ No pending payments.</div>
+              ? <div style={{ color: "#047857", fontSize: "0.82rem" }}>✅ No pending payments.</div>
               : reports?.pendingPayments.map((p, i) => (
                 <RankRow key={p.partyId} rank={i+1} label={p.partyName}
                   sub={`${p.billCount} bill${p.billCount !== 1 ? "s" : ""}`}
                   value={fmt(p.outstanding)}
-                  valueColor="#f87171"
+                  valueColor="#dc2626"
                   bar={p.outstanding} maxBar={reports.pendingPayments[0]?.outstanding ?? 1}
                 />
               ))}
         </Section>
 
         {/* Top Purchase Parties */}
-        <Section title="Top Purchase Parties" icon="🏭" accent="#fb923c">
+        <Section title="Top Purchase Parties" icon="🏭" accent="#ea580c">
           {loadingR ? [1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 36, borderRadius: 6, marginBottom: 8 }} />) :
             reports?.topPurchaseParties.length === 0
               ? <div style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>No data yet.</div>
@@ -279,14 +279,14 @@ export default function DashboardClient() {
                 <RankRow key={p.partyId} rank={i+1} label={p.partyName}
                   sub={`${p.billCount} bill${p.billCount !== 1 ? "s" : ""}`}
                   value={fmt(p.totalPurchase)}
-                  valueColor="#fb923c"
+                  valueColor="#ea580c"
                   bar={p.totalPurchase} maxBar={reports.topPurchaseParties[0]?.totalPurchase ?? 1}
                 />
               ))}
         </Section>
 
         {/* Top Team Workers */}
-        <Section title="Top Team (Sales Generated)" icon="👥" accent="#a78bfa">
+        <Section title="Top Team (Sales Generated)" icon="👥" accent="#7c3aed">
           {loadingR ? [1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 36, borderRadius: 6, marginBottom: 8 }} />) :
             reports?.topWorkers.length === 0
               ? <div style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>No sales orders with assigned users yet.</div>
@@ -294,7 +294,7 @@ export default function DashboardClient() {
                 <RankRow key={w.userId} rank={i+1} label={w.userName}
                   sub={w.role}
                   value={`${w.orderCount} order${w.orderCount !== 1 ? "s" : ""}`}
-                  valueColor="#a78bfa"
+                  valueColor="#7c3aed"
                   bar={w.orderCount} maxBar={reports.topWorkers[0]?.orderCount ?? 1}
                 />
               ))}
@@ -302,7 +302,7 @@ export default function DashboardClient() {
       </div>
 
       {/* ── Returned Shipments (Credit Notes) ── */}
-      <Section title="Returned Shipments / Credit Notes" icon="↩️" accent="#fb923c">
+      <Section title="Returned Shipments / Credit Notes" icon="↩️" accent="#ea580c">
         {loadingR ? <div className="skeleton" style={{ height: 80, borderRadius: 8 }} /> :
           !reports?.returnedShipments.length
             ? <div style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>No credit notes / returns found.</div>
@@ -318,12 +318,12 @@ export default function DashboardClient() {
                   </thead>
                   <tbody>
                     {reports.returnedShipments.map((r, idx) => (
-                      <tr key={r.id} style={{ borderBottom: "1px solid var(--border)", background: idx % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+                      <tr key={r.id} style={{ borderBottom: "1px solid var(--border)", background: idx % 2 === 0 ? "transparent" : "rgba(0,0,0,0.02)" }}>
                         <td style={{ padding: "0.45rem 0.75rem", color: "var(--text-muted)", fontFamily: "monospace", fontSize: "0.75rem" }}>{idx+1}</td>
                         <td style={{ padding: "0.45rem 0.75rem", fontWeight: 600 }}>{r.partyName}</td>
                         <td style={{ padding: "0.45rem 0.75rem", fontFamily: "monospace", color: "#f3b942" }}>{r.invoiceNo ?? "—"}</td>
                         <td style={{ padding: "0.45rem 0.75rem", color: "var(--text-secondary)" }}>{r.date}</td>
-                        <td style={{ padding: "0.45rem 0.75rem", textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#fb923c" }}>{fmt(r.amount)}</td>
+                        <td style={{ padding: "0.45rem 0.75rem", textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#ea580c" }}>{fmt(r.amount)}</td>
                       </tr>
                     ))}
                   </tbody>

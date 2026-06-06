@@ -160,7 +160,7 @@ export default function ReportsClient({ isAdmin }: { isAdmin: boolean }) {
               padding: "10px 14px",
               borderRadius: 7,
               background: backupMsg.startsWith("✓") ? "#f0fdf4" : "#fef2f2",
-              border: `1px solid ${backupMsg.startsWith("✓") ? "#86efac" : "#fca5a5"}`,
+              border: `1px solid ${backupMsg.startsWith("✓") ? "#86efac" : "#b91c1c"}`,
               color: backupMsg.startsWith("✓") ? "#166534" : "#991b1b",
               marginBottom: "1rem",
               fontSize: "0.88rem",

@@ -103,7 +103,7 @@ function ProductRow({
             : <span className="badge badge-green" style={{ marginLeft: 6, fontSize: "0.62rem" }}>New</span>
           }
         </span>
-        <button onClick={() => onRemove(index)} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)", color: "#f87171", borderRadius: 6, padding: "2px 8px", cursor: "pointer", fontSize: "0.72rem" }}>
+        <button onClick={() => onRemove(index)} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)", color: "#dc2626", borderRadius: 6, padding: "2px 8px", cursor: "pointer", fontSize: "0.72rem" }}>
           Remove
         </button>
       </div>
@@ -132,7 +132,7 @@ function ProductRow({
         <div style={{ marginTop: "0.4rem", fontSize: "0.72rem", color: "var(--text-secondary)", display: "flex", gap: "1rem" }}>
           <span>Line Total: <strong style={{ color: "var(--text-primary)" }}>₹{(product.rate * product.quantity).toFixed(2)}</strong></span>
           {product.gstPercent && (
-            <span>With GST: <strong style={{ color: "#6ee7b7" }}>₹{(product.rate * product.quantity * (1 + product.gstPercent / 100)).toFixed(2)}</strong></span>
+            <span>With GST: <strong style={{ color: "#047857" }}>₹{(product.rate * product.quantity * (1 + product.gstPercent / 100)).toFixed(2)}</strong></span>
           )}
         </div>
       )}
@@ -300,18 +300,18 @@ export default function PurchaseBillsClient() {
             </div>
             <div>
               <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Net Payable</div>
-              <div style={{ fontWeight: 700, color: "#6ee7b7" }}>₹{saved.netPayableAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
+              <div style={{ fontWeight: 700, color: "#047857" }}>₹{saved.netPayableAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
             </div>
           </div>
 
           {saved.creditNoteAdjustedAmount > 0 && (
-            <div className="alert" style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", color: "#818cf8", marginBottom: "0.75rem", fontSize: "0.8rem" }}>
+            <div className="alert" style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", color: "#6d28d9", marginBottom: "0.75rem", fontSize: "0.8rem" }}>
               ✓ Credit note applied: ₹{saved.creditNoteAdjustedAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })} adjusted automatically
             </div>
           )}
 
           <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginBottom: "1rem" }}>
-            {saved.newProducts > 0 && <span style={{ color: "#6ee7b7" }}>{saved.newProducts} new item{saved.newProducts !== 1 ? "s" : ""} added to product master</span>}
+            {saved.newProducts > 0 && <span style={{ color: "#047857" }}>{saved.newProducts} new item{saved.newProducts !== 1 ? "s" : ""} added to product master</span>}
             {saved.newProducts > 0 && saved.updProducts > 0 && " · "}
             {saved.updProducts > 0 && <span>{saved.updProducts} existing item{saved.updProducts !== 1 ? "s" : ""} updated</span>}
           </div>
@@ -414,8 +414,8 @@ export default function PurchaseBillsClient() {
                         padding: "4px 14px", borderRadius: 20, fontSize: "0.78rem", fontWeight: 600,
                         cursor: "pointer", border: "1px solid",
                         background: data.bill.documentType === type ? (type === "BILL" ? "rgba(99,102,241,0.15)" : "rgba(245,158,11,0.15)") : "var(--surface-2)",
-                        color: data.bill.documentType === type ? (type === "BILL" ? "#818cf8" : "#fcd34d") : "var(--text-muted)",
-                        borderColor: data.bill.documentType === type ? (type === "BILL" ? "#818cf8" : "#fcd34d") : "var(--border)",
+                        color: data.bill.documentType === type ? (type === "BILL" ? "#6d28d9" : "#b45309") : "var(--text-muted)",
+                        borderColor: data.bill.documentType === type ? (type === "BILL" ? "#6d28d9" : "#b45309") : "var(--border)",
                       }}
                     >
                       {type === "BILL" ? "Purchase Bill" : "Credit Note"}

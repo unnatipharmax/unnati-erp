@@ -79,10 +79,10 @@ const GROUPS: Group[] = [
 
 const ROLE_BADGE: Record<Role, { bg: string; color: string }> = {
   ADMIN:     { bg: "rgba(229,152,26,0.16)", color: "#f3b942" },
-  MANAGER:   { bg: "rgba(16,185,129,0.15)", color: "#6ee7b7" },
+  MANAGER:   { bg: "rgba(16,185,129,0.15)", color: "#047857" },
   SALES:     { bg: "rgba(56,189,248,0.15)", color: "#7dd3fc" },
   ACCOUNTS:  { bg: "rgba(156,163,175,0.15)", color: "#c2c8d4" },
-  PACKAGING: { bg: "rgba(168,85,247,0.15)",  color: "#c4b5fd" },
+  PACKAGING: { bg: "rgba(168,85,247,0.15)",  color: "#7c3aed" },
 };
 
 export default function Sidebar({ userName, userRole }: { userName: string; userRole: Role }) {

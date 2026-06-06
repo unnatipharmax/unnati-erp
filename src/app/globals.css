@@ -2,52 +2,53 @@
 
 :root {
   /* ── Brand (Unnati Pharmax gold) ──────────────────────────────────── */
-  --brand:        #e5981a;   /* logo gold — primary accent */
-  --brand-hover:  #c9820f;
+  --brand:        #e5981a;   /* logo gold — primary accent / fills */
+  --brand-hover:  #cf870f;
+  --brand-ink:    #a16207;   /* readable gold for text/links on light bg */
   --brand-soft:   rgba(229,152,26,0.14);
-  --brand-glow:   rgba(229,152,26,0.22);
+  --brand-glow:   rgba(229,152,26,0.20);
   --on-brand:     #1c1503;   /* dark text on gold fills */
 
-  /* ── Neutral surfaces (warm charcoal) ─────────────────────────────── */
-  --background: #0c0d11;
-  --foreground: #e9eaed;
+  /* ── Neutral surfaces (clean light) ───────────────────────────────── */
+  --background: #f5f6f8;
+  --foreground: #1a1d23;
 
-  --surface-1:  #16181f;   /* cards, modals */
-  --surface-2:  #101218;   /* inputs, deeper bg */
-  --surface-3:  #1f222b;   /* hover states */
+  --surface-1:  #ffffff;   /* cards, modals */
+  --surface-2:  #f1f3f6;   /* inputs, deeper bg */
+  --surface-3:  #e8eaef;   /* hover states */
 
-  --border:       #272b35;
-  --border-hover: #383d49;
+  --border:       #e4e7ec;
+  --border-hover: #cfd4dd;
   --border-focus: var(--brand);
 
-  --text-primary:   #f4f5f7;
-  --text-secondary: #9ba2af;
-  --text-muted:     #5c6373;
+  --text-primary:   #1a1d23;
+  --text-secondary: #5a616e;
+  --text-muted:     #98a0ad;
 
   /* ── Aliases so accent maps to the brand everywhere ───────────────── */
   --primary:       var(--brand);
   --primary-hover: var(--brand-hover);
-  --accent:        var(--brand);
+  --accent:        var(--brand-ink);
   --bg-card:       var(--surface-1);
 
   /* legacy "blue" tokens now resolve to brand gold */
-  --blue:       var(--brand);
+  --blue:       var(--brand-ink);
   --blue-hover: var(--brand-hover);
   --blue-glow:  var(--brand-glow);
 
-  --green:      #10b981;
-  --red:        #ef4444;
-  --amber:      #f59e0b;
+  --green:      #047857;
+  --red:        #dc2626;
+  --amber:      #b45309;
 
   --radius-sm:  8px;
   --radius-md:  12px;
   --radius-lg:  16px;
   --radius-xl:  20px;
 
-  --shadow-sm:  0 1px 3px rgba(0,0,0,0.45);
-  --shadow-md:  0 4px 16px rgba(0,0,0,0.5);
-  --shadow-lg:  0 8px 32px rgba(0,0,0,0.6);
-  --shadow-blue: 0 4px 20px rgba(229,152,26,0.28);
+  --shadow-sm:  0 1px 2px rgba(16,24,40,0.06), 0 1px 3px rgba(16,24,40,0.05);
+  --shadow-md:  0 4px 14px rgba(16,24,40,0.08);
+  --shadow-lg:  0 14px 36px rgba(16,24,40,0.14);
+  --shadow-blue: 0 4px 14px rgba(229,152,26,0.32);
 
   --transition: 150ms ease;
   --transition-spring: cubic-bezier(0.34,1.4,0.64,1);
@@ -75,7 +76,7 @@ body {
 ::-webkit-scrollbar              { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track        { background: var(--surface-2); }
 ::-webkit-scrollbar-thumb        { background: var(--border-hover); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover  { background: #4a4f5c; }
+::-webkit-scrollbar-thumb:hover  { background: #b3b9c4; }
 
 /* ── Typography ───────────────────────────────────────────────────────────── */
 h1 { font-size: 1.75rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
@@ -86,12 +87,12 @@ h4 { font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); }
 p  { color: var(--text-secondary); }
 
 a  {
-  color: var(--brand);
+  color: var(--brand-ink);
   text-decoration: none;
   transition: color var(--transition);
   cursor: pointer;
 }
-a:hover { color: #f3b942; text-decoration: underline; }
+a:hover { color: var(--brand-hover); text-decoration: underline; }
 
 /* ── Cards ────────────────────────────────────────────────────────────────── */
 .card {
@@ -173,12 +174,12 @@ label:focus-within > .field-label {
 .btn-primary:hover:not(:disabled) { background: var(--brand-hover); }
 
 .btn-secondary {
-  background: var(--surface-3);
+  background: var(--surface-1);
   color: var(--text-secondary);
   border-color: var(--border);
 }
 .btn-secondary:hover:not(:disabled) {
-  background: #1e2d42;
+  background: var(--surface-3);
   color: var(--text-primary);
   border-color: var(--border-hover);
 }
@@ -221,10 +222,10 @@ label:focus-within > .field-label {
   font-weight: 600;
   border: 1px solid transparent;
 }
-.badge-blue   { background: var(--brand-soft); color: #f3b942; border-color: rgba(229,152,26,0.3); }
-.badge-green  { background: rgba(16,185,129,0.12); color: #6ee7b7; border-color: rgba(16,185,129,0.25); }
-.badge-red    { background: rgba(239,68,68,0.12);  color: #fca5a5; border-color: rgba(239,68,68,0.25); }
-.badge-amber  { background: rgba(245,158,11,0.12); color: #fcd34d; border-color: rgba(245,158,11,0.25); }
+.badge-blue   { background: var(--brand-soft);     color: #a16207; border-color: rgba(229,152,26,0.3); }
+.badge-green  { background: rgba(16,185,129,0.12); color: #047857; border-color: rgba(16,185,129,0.28); }
+.badge-red    { background: rgba(239,68,68,0.10);  color: #b91c1c; border-color: rgba(239,68,68,0.25); }
+.badge-amber  { background: rgba(245,158,11,0.14); color: #b45309; border-color: rgba(245,158,11,0.3); }
 .badge-gray   { background: var(--surface-3);      color: var(--text-secondary); border-color: var(--border); }
 
 /* ── Alerts / Banners ─────────────────────────────────────────────────────── */
@@ -238,10 +239,10 @@ label:focus-within > .field-label {
   border: 1px solid transparent;
   animation: fadeSlideIn 0.15s ease;
 }
-.alert-error   { background: rgba(239,68,68,0.08);  border-color: rgba(239,68,68,0.25);  color: #fca5a5; }
-.alert-success { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.25); color: #6ee7b7; }
-.alert-info    { background: rgba(59,130,246,0.08); border-color: rgba(59,130,246,0.25); color: #93c5fd; }
-.alert-warning { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.25); color: #fcd34d; }
+.alert-error   { background: rgba(239,68,68,0.08);  border-color: rgba(239,68,68,0.25);  color: #b91c1c; }
+.alert-success { background: rgba(16,185,129,0.10); border-color: rgba(16,185,129,0.3);  color: #047857; }
+.alert-info    { background: var(--brand-soft);     border-color: rgba(229,152,26,0.3);  color: #a16207; }
+.alert-warning { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.3);  color: #b45309; }
 
 /* ── Tables ───────────────────────────────────────────────────────────────── */
 .table-wrapper {
@@ -250,7 +251,7 @@ label:focus-within > .field-label {
   overflow: hidden;
 }
 table        { width: 100%; border-collapse: collapse; }
-thead        { background: var(--surface-1); }
+thead        { background: var(--surface-2); }
 thead th     {
   padding: 0.75rem 1rem;
   text-align: left;
@@ -325,7 +326,7 @@ tbody td     {
   text-decoration: none;
 }
 .nav-link:hover     { background: var(--surface-3); color: var(--text-primary); text-decoration: none; }
-.nav-link.active    { background: var(--brand-soft); color: var(--brand); font-weight: 600; }
+.nav-link.active    { background: var(--brand-soft); color: var(--brand-ink); font-weight: 600; }
 
 /* ── Divider ──────────────────────────────────────────────────────────────── */
 .divider {
@@ -403,9 +404,9 @@ tbody td     {
   gap: 0.5rem;
   padding: 0.5rem 1rem;
   background: rgba(16,185,129,0.12);
-  border: 1px solid rgba(16,185,129,0.25);
+  border: 1px solid rgba(16,185,129,0.3);
   border-radius: var(--radius-md);
-  color: #6ee7b7;
+  color: #047857;
   font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
@@ -414,8 +415,8 @@ tbody td     {
 }
 .btn-download:hover {
   background: rgba(16,185,129,0.2);
-  border-color: rgba(16,185,129,0.4);
-  color: #a7f3d0;
+  border-color: rgba(16,185,129,0.45);
+  color: #065f46;
   text-decoration: none;
 }
 
@@ -425,7 +426,7 @@ tbody td     {
   background: var(--brand-soft);
   border: 1px solid rgba(229,152,26,0.25);
   border-radius: var(--radius-sm);
-  color: #f3b942;
+  color: #a16207;
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
@@ -433,7 +434,7 @@ tbody td     {
 }
 .btn-copy:hover {
   background: rgba(229,152,26,0.2);
-  color: #ffc857;
+  color: #8a5a08;
 }
 
 /* ── Focus ring for accessibility ────────────────────────────────────────── */

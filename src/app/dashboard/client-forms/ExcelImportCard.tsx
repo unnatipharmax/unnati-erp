@@ -87,7 +87,7 @@ export default function ExcelImportCard() {
 
           {result.errors.length > 0 && (
             <div style={{ background: "rgba(248,113,113,0.07)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 8, padding: "0.75rem" }}>
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#f87171", marginBottom: "0.5rem", textTransform: "uppercase" }}>
+              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#dc2626", marginBottom: "0.5rem", textTransform: "uppercase" }}>
                 Row Errors
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
@@ -136,7 +136,7 @@ export default function ExcelImportCard() {
               <span>Account:</span>
               <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>{selected.name}</span>
               <span>·</span>
-              <span>Balance: <strong style={{ color: Number(selected.balance) > 0 ? "#4ade80" : "#f87171" }}>
+              <span>Balance: <strong style={{ color: Number(selected.balance) > 0 ? "#4ade80" : "#dc2626" }}>
                 ₹{Number(selected.balance).toLocaleString("en-IN")}
               </strong></span>
             </div>

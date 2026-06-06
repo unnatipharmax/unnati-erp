@@ -149,7 +149,7 @@ function PaymentEntryTab({ partyId, onAdded }: { partyId: string; onAdded: () =>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem", marginBottom: "1.5rem" }}>
         <div style={{ gridColumn: "1 / -1" }}>
           <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>
-            Payment Amount (₹) <span style={{ color: "#f87171" }}>*</span>
+            Payment Amount (₹) <span style={{ color: "#dc2626" }}>*</span>
           </label>
           <input
             type="number" min="0" step="0.01"
@@ -187,9 +187,9 @@ function PaymentEntryTab({ partyId, onAdded }: { partyId: string; onAdded: () =>
           background: "var(--surface-2)", borderRadius: 8, border: "1px solid var(--border)",
           fontSize: "0.82rem", flexWrap: "wrap",
         }}>
-          <span>Total Payment: <strong style={{ fontFamily: "monospace", color: "#93c5fd" }}>{fmt(totalPayment)}</strong></span>
-          <span>Allocated: <strong style={{ fontFamily: "monospace", color: "#6ee7b7" }}>{fmt(totalAllocated)}</strong></span>
-          <span style={{ color: remaining < -0.01 ? "#f87171" : remaining < 0.01 ? "#6ee7b7" : "#fcd34d" }}>
+          <span>Total Payment: <strong style={{ fontFamily: "monospace", color: "#2563c9" }}>{fmt(totalPayment)}</strong></span>
+          <span>Allocated: <strong style={{ fontFamily: "monospace", color: "#047857" }}>{fmt(totalAllocated)}</strong></span>
+          <span style={{ color: remaining < -0.01 ? "#dc2626" : remaining < 0.01 ? "#047857" : "#b45309" }}>
             {remaining < -0.01
               ? `Over-allocated: ${fmt(Math.abs(remaining))}`
               : remaining < 0.01
@@ -271,12 +271,12 @@ function PaymentEntryTab({ partyId, onAdded }: { partyId: string; onAdded: () =>
                   </div>
 
                   {/* Paid */}
-                  <div style={{ textAlign: "right", fontFamily: "monospace", fontSize: "0.8rem", color: "#6ee7b7" }}>
+                  <div style={{ textAlign: "right", fontFamily: "monospace", fontSize: "0.8rem", color: "#047857" }}>
                     {bill.paidAmount > 0 ? fmt(bill.paidAmount) : "—"}
                   </div>
 
                   {/* Outstanding */}
-                  <div style={{ textAlign: "right", fontFamily: "monospace", fontSize: "0.8rem", fontWeight: 600, color: "#fcd34d" }}>
+                  <div style={{ textAlign: "right", fontFamily: "monospace", fontSize: "0.8rem", fontWeight: 600, color: "#b45309" }}>
                     {fmt(bill.outstanding)}
                   </div>
 
@@ -290,7 +290,7 @@ function PaymentEntryTab({ partyId, onAdded }: { partyId: string; onAdded: () =>
                         style={{
                           width: 100, textAlign: "right", fontFamily: "monospace",
                           fontWeight: 600, fontSize: "0.82rem",
-                          border: overAlloc ? "1px solid #f87171" : "1px solid var(--border)",
+                          border: overAlloc ? "1px solid #dc2626" : "1px solid var(--border)",
                           background: overAlloc ? "rgba(248,113,113,0.08)" : "var(--surface-1)",
                           borderRadius: 6, padding: "0.25rem 0.5rem",
                         }}
@@ -433,7 +433,7 @@ function LedgerTab({ data, reload }: { data: LedgerData; reload: () => void }) {
               </span>
 
               {/* Particulars */}
-              <span style={{ fontSize: "0.8rem", color: isBill ? "var(--text-secondary)" : "#6ee7b7", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <span style={{ fontSize: "0.8rem", color: isBill ? "var(--text-secondary)" : "#047857", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {entry.particulars || "—"}
               </span>
 
@@ -441,7 +441,7 @@ function LedgerTab({ data, reload }: { data: LedgerData; reload: () => void }) {
               <span style={{
                 fontSize: "0.68rem", fontWeight: 600, textTransform: "uppercase",
                 letterSpacing: "0.04em",
-                color: isBill ? "#93c5fd" : "#6ee7b7",
+                color: isBill ? "#2563c9" : "#047857",
               }}>
                 {entry.vchType}
               </span>
@@ -450,7 +450,7 @@ function LedgerTab({ data, reload }: { data: LedgerData; reload: () => void }) {
               <span style={{
                 textAlign: "right", fontFamily: "monospace",
                 fontSize: "0.82rem", fontWeight: entry.debit ? 600 : 400,
-                color: entry.debit ? "#fca5a5" : "var(--text-muted)",
+                color: entry.debit ? "#b91c1c" : "var(--text-muted)",
               }}>
                 {entry.debit != null ? fmt(entry.debit) : "—"}
               </span>
@@ -459,7 +459,7 @@ function LedgerTab({ data, reload }: { data: LedgerData; reload: () => void }) {
               <span style={{
                 textAlign: "right", fontFamily: "monospace",
                 fontSize: "0.82rem", fontWeight: entry.credit ? 600 : 400,
-                color: entry.credit ? "#93c5fd" : "var(--text-muted)",
+                color: entry.credit ? "#2563c9" : "var(--text-muted)",
               }}>
                 {entry.credit != null ? fmt(entry.credit) : "—"}
               </span>
@@ -468,7 +468,7 @@ function LedgerTab({ data, reload }: { data: LedgerData; reload: () => void }) {
               <span style={{
                 textAlign: "right", fontFamily: "monospace",
                 fontSize: "0.82rem", fontWeight: 700,
-                color: entry.balanceType === "Cr" ? "#fcd34d" : "#6ee7b7",
+                color: entry.balanceType === "Cr" ? "#b45309" : "#047857",
               }}>
                 {fmt(Math.abs(entry.balance))}{" "}
                 <span style={{ fontSize: "0.65rem", opacity: 0.7 }}>{entry.balanceType}</span>
@@ -486,7 +486,7 @@ function LedgerTab({ data, reload }: { data: LedgerData; reload: () => void }) {
                   <span>Invoice: <strong style={{ fontFamily: "monospace" }}>{entry.invoiceNo ?? "N/A"}</strong></span>
                   <span>Date: <strong>{fmtDate(entry.invoiceDate ?? entry.date)}</strong></span>
                   <span>{entry.itemCount} line item{entry.itemCount !== 1 ? "s" : ""}</span>
-                  <span style={{ color: "#93c5fd", fontWeight: 600 }}>Total: {fmt(entry.credit ?? 0)}</span>
+                  <span style={{ color: "#2563c9", fontWeight: 600 }}>Total: {fmt(entry.credit ?? 0)}</span>
                 </div>
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", fontSize: "0.78rem", borderCollapse: "collapse", minWidth: 800 }}>
@@ -537,7 +537,7 @@ function LedgerTab({ data, reload }: { data: LedgerData; reload: () => void }) {
                             <td style={{ padding: "0.45rem 0.6rem", textAlign: "right", fontFamily: "monospace", color: "var(--text-secondary)", fontSize: "0.72rem" }}>
                               {item.igstAmount != null ? `₹${item.igstAmount.toFixed(2)}` : item.igstPercent != null ? `${item.igstPercent}%` : "—"}
                             </td>
-                            <td style={{ padding: "0.45rem 0.6rem", textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#93c5fd" }}>
+                            <td style={{ padding: "0.45rem 0.6rem", textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#2563c9" }}>
                               ₹{lineTotal.toFixed(2)}
                             </td>
                           </tr>
@@ -563,17 +563,17 @@ function LedgerTab({ data, reload }: { data: LedgerData; reload: () => void }) {
                           ? <><span style={{ fontFamily: "monospace", fontWeight: 600 }}>{a.invoiceNo}</span></>
                           : <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>On Account</span>}
                       </span>
-                      <span style={{ fontFamily: "monospace", fontWeight: 600, color: "#6ee7b7" }}>{fmt(a.amount)}</span>
+                      <span style={{ fontFamily: "monospace", fontWeight: 600, color: "#047857" }}>{fmt(a.amount)}</span>
                     </div>
                   ))}
                   <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px dashed var(--border)", paddingTop: "0.3rem", marginTop: "0.1rem", fontSize: "0.8rem", fontWeight: 700 }}>
                     <span style={{ color: "var(--text-secondary)" }}>Total Allocated</span>
-                    <span style={{ fontFamily: "monospace", color: "#6ee7b7" }}>{fmt(entry.allocations.reduce((s, a) => s + a.amount, 0))}</span>
+                    <span style={{ fontFamily: "monospace", color: "#047857" }}>{fmt(entry.allocations.reduce((s, a) => s + a.amount, 0))}</span>
                   </div>
                   {entry.debit != null && entry.allocations.reduce((s, a) => s + a.amount, 0) < entry.debit - 0.01 && (
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem" }}>
                       <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>On Account (unallocated)</span>
-                      <span style={{ fontFamily: "monospace", color: "#fcd34d" }}>{fmt(entry.debit - entry.allocations.reduce((s, a) => s + a.amount, 0))}</span>
+                      <span style={{ fontFamily: "monospace", color: "#b45309" }}>{fmt(entry.debit - entry.allocations.reduce((s, a) => s + a.amount, 0))}</span>
                     </div>
                   )}
                 </div>
@@ -598,15 +598,15 @@ function LedgerTab({ data, reload }: { data: LedgerData; reload: () => void }) {
           Closing Balance
         </span>
         <span></span>
-        <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#fca5a5" }}>
+        <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#b91c1c" }}>
           {fmt(data.summary.totalDebit)}
         </span>
-        <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#93c5fd" }}>
+        <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#2563c9" }}>
           {fmt(data.summary.totalCredit)}
         </span>
         <span style={{
           textAlign: "right", fontFamily: "monospace", fontWeight: 700, fontSize: "0.95rem",
-          color: data.summary.balanceType === "Cr" ? "#fcd34d" : "#6ee7b7",
+          color: data.summary.balanceType === "Cr" ? "#b45309" : "#047857",
         }}>
           {fmt(Math.abs(data.summary.closingBalance))}{" "}
           <span style={{ fontSize: "0.72rem" }}>{data.summary.balanceType}</span>
@@ -661,7 +661,7 @@ function LedgerOverlay({
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
                 <h2 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700 }}>{partyName}</h2>
-                <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em", background: "rgba(255,255,255,0.06)", padding: "2px 8px", borderRadius: 4 }}>
+                <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em", background: "rgba(0,0,0,0.05)", padding: "2px 8px", borderRadius: 4 }}>
                   Party Ledger
                 </span>
               </div>
@@ -689,10 +689,10 @@ function LedgerOverlay({
           {data && (
             <div style={{ display: "flex", gap: "1.5rem", marginBottom: "0.75rem", flexWrap: "wrap" }}>
               {[
-                { label: "Total Purchases (Cr)", value: fmt(data.summary.totalCredit), color: "#93c5fd" },
-                { label: "Total Payments (Dr)", value: fmt(data.summary.totalDebit), color: "#fca5a5" },
-                { label: "Credit Notes", value: fmt(data.summary.totalCreditNotes), color: "#fb923c" },
-                { label: "Balance", value: `${fmt(Math.abs(data.summary.closingBalance))} ${data.summary.balanceType}`, color: "#fcd34d" },
+                { label: "Total Purchases (Cr)", value: fmt(data.summary.totalCredit), color: "#2563c9" },
+                { label: "Total Payments (Dr)", value: fmt(data.summary.totalDebit), color: "#b91c1c" },
+                { label: "Credit Notes", value: fmt(data.summary.totalCreditNotes), color: "#ea580c" },
+                { label: "Balance", value: `${fmt(Math.abs(data.summary.closingBalance))} ${data.summary.balanceType}`, color: "#b45309" },
                 { label: "Bills", value: `${data.summary.billCount}`, color: "var(--text-secondary)" },
                 { label: "Payments", value: `${data.summary.paymentCount}`, color: "var(--text-secondary)" },
                 { label: "CN Count", value: `${data.summary.creditNoteCount}`, color: "var(--text-secondary)" },
@@ -715,7 +715,7 @@ function LedgerOverlay({
                   padding: "0.6rem 1.25rem", fontSize: "0.82rem", fontWeight: 600,
                   background: "none", border: "none", cursor: "pointer",
                   borderBottom: tab === t ? "2px solid #6366f1" : "2px solid transparent",
-                  color: tab === t ? "#818cf8" : "var(--text-muted)",
+                  color: tab === t ? "#6d28d9" : "var(--text-muted)",
                   transition: "color 0.15s",
                 }}
               >
@@ -866,7 +866,7 @@ export default function PartyMasterClient() {
                     {p._count?.PurchaseBills
                       ? <span className="badge badge-blue" style={{ fontSize: "0.65rem" }}>{p._count.PurchaseBills} bills</span>
                       : <span className="badge badge-gray" style={{ fontSize: "0.65rem" }}>No bills</span>}
-                    {!p.isActive && <span className="badge" style={{ background: "rgba(248,113,113,0.15)", color: "#f87171", fontSize: "0.65rem" }}>Inactive</span>}
+                    {!p.isActive && <span className="badge" style={{ background: "rgba(248,113,113,0.15)", color: "#dc2626", fontSize: "0.65rem" }}>Inactive</span>}
                   </div>
                   <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", fontSize: "0.78rem", color: "var(--text-secondary)" }}>
                     {p.gstNumber && (
@@ -901,7 +901,7 @@ export default function PartyMasterClient() {
                   <button
                     onClick={() => del(p.id)}
                     className="btn btn-sm"
-                    style={{ color: "#f87171", background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)" }}
+                    style={{ color: "#dc2626", background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)" }}
                   >
                     Delete
                   </button>

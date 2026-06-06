@@ -97,7 +97,7 @@ function ProductRow({
             : <span className="badge badge-green" style={{ marginLeft: 6, fontSize: "0.62rem" }}>New</span>
           }
         </span>
-        <button onClick={() => onRemove(index)} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)", color: "#f87171", borderRadius: 6, padding: "2px 8px", cursor: "pointer", fontSize: "0.72rem" }}>
+        <button onClick={() => onRemove(index)} style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)", color: "#dc2626", borderRadius: 6, padding: "2px 8px", cursor: "pointer", fontSize: "0.72rem" }}>
           Remove
         </button>
       </div>
@@ -124,7 +124,7 @@ function ProductRow({
       </div>
       {product.rate > 0 && (
         <div style={{ marginTop: "0.4rem", fontSize: "0.72rem", color: "var(--text-secondary)" }}>
-          INR Unit (rate + 15%) = <strong style={{ color: "#6ee7b7" }}>₹{(product.rate * 1.15).toFixed(2)}</strong>
+          INR Unit (rate + 15%) = <strong style={{ color: "#047857" }}>₹{(product.rate * 1.15).toFixed(2)}</strong>
         </div>
       )}
     </div>
@@ -250,7 +250,7 @@ export default function PurchaseBillPanel({ onSaved }: { onSaved: () => void }) 
             <strong>✓ Saved!</strong> Party: <strong>{saved.partyName}</strong>
             {saved.invoiceNo && <> · Invoice: <strong>{saved.invoiceNo}</strong></>}
             {" · "}
-            <span style={{ color: "#6ee7b7" }}>{saved.newProducts} new</span>
+            <span style={{ color: "#047857" }}>{saved.newProducts} new</span>
             {saved.updProducts > 0 && <span> · {saved.updProducts} updated</span>}
             {" products in product master."}
           </div>

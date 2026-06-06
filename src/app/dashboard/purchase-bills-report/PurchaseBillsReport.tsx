@@ -164,7 +164,7 @@ export default function PurchaseBillsReport() {
             style={{
               fontSize: "0.82rem", fontWeight: 600, padding: "0.4rem 1rem",
               background: view === v ? "rgba(99,102,241,0.2)" : "var(--surface-2)",
-              color:      view === v ? "#818cf8" : "var(--text-secondary)",
+              color:      view === v ? "#6d28d9" : "var(--text-secondary)",
               border:     view === v ? "1px solid #6366f1" : "1px solid var(--border)",
             }}
           >
@@ -185,7 +185,7 @@ export default function PurchaseBillsReport() {
               style={{
                 fontSize: "0.75rem",
                 background: activePreset === p.key ? "rgba(99,102,241,0.2)" : "var(--surface-2)",
-                color:      activePreset === p.key ? "#818cf8" : "var(--text-secondary)",
+                color:      activePreset === p.key ? "#6d28d9" : "var(--text-secondary)",
                 border:     activePreset === p.key ? "1px solid #6366f1" : "1px solid var(--border)",
               }}
             >
@@ -223,15 +223,15 @@ export default function PurchaseBillsReport() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "0.75rem", marginBottom: "1.25rem" }}>
           {(view === "credit_notes" ? [
             { label: "Total CNs",          value: `${summary.billCount}`,           color: "var(--text-primary)", mono: false },
-            { label: "Total CN Amount",    value: fmt(summary.totalBillAmount),      color: "#fb923c" },
-            { label: "Applied to Bills",   value: fmt((summary as any).totalApplied ?? 0), color: "#6ee7b7" },
-            { label: "Remaining Balance",  value: fmt((summary as any).totalRemaining ?? 0), color: "#f87171" },
+            { label: "Total CN Amount",    value: fmt(summary.totalBillAmount),      color: "#ea580c" },
+            { label: "Applied to Bills",   value: fmt((summary as any).totalApplied ?? 0), color: "#047857" },
+            { label: "Remaining Balance",  value: fmt((summary as any).totalRemaining ?? 0), color: "#dc2626" },
           ] : [
             { label: "Total Bills",        value: `${summary.billCount}`,            color: "var(--text-primary)", mono: false },
-            { label: "Total Bill Amount",  value: fmt(summary.totalBillAmount),       color: "#93c5fd" },
-            { label: "Total Paid",         value: fmt(summary.totalPaid),             color: "#6ee7b7" },
-            { label: "Credit Note Adj.",   value: fmt(summary.totalCreditAdjusted),   color: "#fb923c" },
-            { label: "Total Outstanding",  value: fmt(summary.totalOutstanding),      color: "#f87171" },
+            { label: "Total Bill Amount",  value: fmt(summary.totalBillAmount),       color: "#2563c9" },
+            { label: "Total Paid",         value: fmt(summary.totalPaid),             color: "#047857" },
+            { label: "Credit Note Adj.",   value: fmt(summary.totalCreditAdjusted),   color: "#ea580c" },
+            { label: "Total Outstanding",  value: fmt(summary.totalOutstanding),      color: "#dc2626" },
           ]).map(({ label, value, color, mono }) => (
             <div key={label} className="card" style={{ padding: "0.875rem 1rem" }}>
               <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>{label}</div>
@@ -333,33 +333,33 @@ export default function PurchaseBillsReport() {
                   </span>
 
                   {/* CN / Bill Amount */}
-                  <span style={{ textAlign: "right", fontFamily: "monospace", fontSize: "0.82rem", fontWeight: 600, color: isCN ? "#fb923c" : "#93c5fd" }}>
+                  <span style={{ textAlign: "right", fontFamily: "monospace", fontSize: "0.82rem", fontWeight: 600, color: isCN ? "#ea580c" : "#2563c9" }}>
                     {fmt(row.billAmount)}
                   </span>
 
                   {isCN ? (
                     <>
                       {/* Applied */}
-                      <span style={{ textAlign: "right", fontFamily: "monospace", fontSize: "0.82rem", color: applied > 0 ? "#6ee7b7" : "var(--text-muted)" }}>
+                      <span style={{ textAlign: "right", fontFamily: "monospace", fontSize: "0.82rem", color: applied > 0 ? "#047857" : "var(--text-muted)" }}>
                         {applied > 0 ? fmt(applied) : "—"}
                       </span>
                       {/* Remaining */}
-                      <span style={{ textAlign: "right", fontFamily: "monospace", fontSize: "0.82rem", fontWeight: 700, color: isCleared ? "#6ee7b7" : "#f87171" }}>
+                      <span style={{ textAlign: "right", fontFamily: "monospace", fontSize: "0.82rem", fontWeight: 700, color: isCleared ? "#047857" : "#dc2626" }}>
                         {isCleared ? "—" : fmt(remaining)}
                       </span>
                     </>
                   ) : (
                     <>
                       {/* Paid */}
-                      <span style={{ textAlign: "right", fontFamily: "monospace", fontSize: "0.82rem", color: row.paidAmount > 0 ? "#6ee7b7" : "var(--text-muted)" }}>
+                      <span style={{ textAlign: "right", fontFamily: "monospace", fontSize: "0.82rem", color: row.paidAmount > 0 ? "#047857" : "var(--text-muted)" }}>
                         {row.paidAmount > 0 ? fmt(row.paidAmount) : "—"}
                       </span>
                       {/* CN Adjusted */}
-                      <span style={{ textAlign: "right", fontFamily: "monospace", fontSize: "0.82rem", color: row.creditAdjusted > 0 ? "#fb923c" : "var(--text-muted)" }}>
+                      <span style={{ textAlign: "right", fontFamily: "monospace", fontSize: "0.82rem", color: row.creditAdjusted > 0 ? "#ea580c" : "var(--text-muted)" }}>
                         {row.creditAdjusted > 0 ? fmt(row.creditAdjusted) : "—"}
                       </span>
                       {/* Outstanding */}
-                      <span style={{ textAlign: "right", fontFamily: "monospace", fontSize: "0.82rem", fontWeight: 700, color: isCleared ? "#6ee7b7" : "#f87171" }}>
+                      <span style={{ textAlign: "right", fontFamily: "monospace", fontSize: "0.82rem", fontWeight: 700, color: isCleared ? "#047857" : "#dc2626" }}>
                         {isCleared ? "—" : fmt(row.outstanding)}
                       </span>
                     </>
@@ -375,7 +375,7 @@ export default function PurchaseBillsReport() {
                         : isPartial
                           ? "rgba(251,146,60,0.12)"
                           : "rgba(248,113,113,0.12)",
-                      color: isCleared ? "#6ee7b7" : isPartial ? "#fb923c" : "#f87171",
+                      color: isCleared ? "#047857" : isPartial ? "#ea580c" : "#dc2626",
                     }}>
                       {isCleared ? (isCN ? "Fully Used" : "Cleared") : isPartial ? (isCN ? "Partial" : "Partial") : (isCN ? "Unused" : "Unpaid")}
                     </span>
@@ -398,27 +398,27 @@ export default function PurchaseBillsReport() {
                 {filtered.length} {view === "credit_notes" ? "credit note" : "bill"}{filtered.length !== 1 ? "s" : ""}
               </span>
               <span></span>
-              <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: view === "credit_notes" ? "#fb923c" : "#93c5fd", fontSize: "0.88rem" }}>
+              <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: view === "credit_notes" ? "#ea580c" : "#2563c9", fontSize: "0.88rem" }}>
                 {fmt(filtered.reduce((s, r) => s + r.billAmount, 0))}
               </span>
               {view === "credit_notes" ? (
                 <>
-                  <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#6ee7b7", fontSize: "0.88rem" }}>
+                  <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#047857", fontSize: "0.88rem" }}>
                     {fmt(filtered.reduce((s, r) => s + ((r as any).applied ?? 0), 0))}
                   </span>
-                  <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#f87171", fontSize: "0.88rem" }}>
+                  <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#dc2626", fontSize: "0.88rem" }}>
                     {fmt(filtered.reduce((s, r) => s + ((r as any).remaining ?? 0), 0))}
                   </span>
                 </>
               ) : (
                 <>
-                  <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#6ee7b7", fontSize: "0.88rem" }}>
+                  <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#047857", fontSize: "0.88rem" }}>
                     {fmt(filtered.reduce((s, r) => s + r.paidAmount, 0))}
                   </span>
-                  <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#fb923c", fontSize: "0.88rem" }}>
+                  <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#ea580c", fontSize: "0.88rem" }}>
                     {fmt(filtered.reduce((s, r) => s + r.creditAdjusted, 0))}
                   </span>
-                  <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#f87171", fontSize: "0.88rem" }}>
+                  <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#dc2626", fontSize: "0.88rem" }}>
                     {fmt(filtered.reduce((s, r) => s + r.outstanding, 0))}
                   </span>
                 </>

@@ -81,7 +81,7 @@ function ProductLedgerOverlay({
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
                 <h2 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}>{productName}</h2>
-                <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", background: "rgba(255,255,255,0.06)", padding: "2px 8px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", background: "rgba(0,0,0,0.05)", padding: "2px 8px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   Stock Ledger
                 </span>
               </div>
@@ -119,10 +119,10 @@ function ProductLedgerOverlay({
           <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", borderBottom: "1px solid var(--border)", background: "var(--surface-2)" }}>
             {[
               { label: "Opening Balance", qty: data.summary.openingQty, val: data.summary.openingVal, color: "var(--text-secondary)" },
-              { label: "Purchase", qty: data.summary.totalReceiveQty, val: data.summary.totalReceiveVal, color: "#93c5fd" },
-              { label: "Purchase Return", qty: data.summary.totalReturnQty, val: data.summary.totalReturnVal, color: "#fb923c" },
-              { label: "Sales", qty: data.summary.totalSaleQty, val: data.summary.totalSaleVal, color: "#fca5a5" },
-              { label: "Closing Balance", qty: data.summary.closingQty, val: data.summary.closingVal, color: "#fcd34d" },
+              { label: "Purchase", qty: data.summary.totalReceiveQty, val: data.summary.totalReceiveVal, color: "#2563c9" },
+              { label: "Purchase Return", qty: data.summary.totalReturnQty, val: data.summary.totalReturnVal, color: "#ea580c" },
+              { label: "Sales", qty: data.summary.totalSaleQty, val: data.summary.totalSaleVal, color: "#b91c1c" },
+              { label: "Closing Balance", qty: data.summary.closingQty, val: data.summary.closingVal, color: "#b45309" },
             ].map(({ label, qty, val, color }) => (
               <div key={label} style={{ padding: "0.7rem 1.25rem", borderRight: "1px solid var(--border)" }}>
                 <div style={{ fontSize: "0.67rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.2rem" }}>{label}</div>
@@ -170,9 +170,9 @@ function ProductLedgerOverlay({
                 <span>Particulars</span>
                 <span style={{ textAlign: "right" }}>Rate</span>
                 <span style={{ textAlign: "right" }}>Amount</span>
-                <span style={{ textAlign: "right", color: "#93c5fd" }}>Receive</span>
-                <span style={{ textAlign: "right", color: "#fca5a5" }}>Issue</span>
-                <span style={{ textAlign: "right", color: "#fcd34d" }}>Balance</span>
+                <span style={{ textAlign: "right", color: "#2563c9" }}>Receive</span>
+                <span style={{ textAlign: "right", color: "#b91c1c" }}>Issue</span>
+                <span style={{ textAlign: "right", color: "#b45309" }}>Balance</span>
               </div>
 
               {/* Opening row */}
@@ -187,7 +187,7 @@ function ProductLedgerOverlay({
                   <span style={{ color: "var(--text-muted)" }}>—</span>
                   <span style={{ fontStyle: "italic", color: "var(--text-muted)" }}>Opening Balance</span>
                   <span></span><span></span><span></span><span></span>
-                  <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#fcd34d" }}>
+                  <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#b45309" }}>
                     {data.summary.openingQty.toLocaleString("en-IN")}
                   </span>
                 </div>
@@ -222,7 +222,7 @@ function ProductLedgerOverlay({
                   {/* Particulars */}
                   <span style={{
                     fontSize: "0.8rem",
-                    color: entry.type === "purchase" ? "#93c5fd" : entry.type === "purchase_return" ? "#fb923c" : "#fca5a5",
+                    color: entry.type === "purchase" ? "#2563c9" : entry.type === "purchase_return" ? "#ea580c" : "#b91c1c",
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   }}>
                     {entry.particulars}
@@ -239,19 +239,19 @@ function ProductLedgerOverlay({
                   </span>
 
                   {/* Receive */}
-                  <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: entry.receive ? 700 : 400, color: entry.receive ? "#93c5fd" : "var(--text-muted)" }}>
+                  <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: entry.receive ? 700 : 400, color: entry.receive ? "#2563c9" : "var(--text-muted)" }}>
                     {entry.receive != null ? entry.receive.toLocaleString("en-IN") : "—"}
                   </span>
 
                   {/* Issue */}
-                  <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: entry.issue ? 700 : 400, color: entry.issue ? "#fca5a5" : "var(--text-muted)" }}>
+                  <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: entry.issue ? 700 : 400, color: entry.issue ? "#b91c1c" : "var(--text-muted)" }}>
                     {entry.issue != null ? entry.issue.toLocaleString("en-IN") : "—"}
                   </span>
 
                   {/* Balance */}
                   <span style={{
                     textAlign: "right", fontFamily: "monospace", fontWeight: 700,
-                    color: entry.balance > 0 ? "#fcd34d" : entry.balance < 0 ? "#f87171" : "var(--text-muted)",
+                    color: entry.balance > 0 ? "#b45309" : entry.balance < 0 ? "#dc2626" : "var(--text-muted)",
                   }}>
                     {entry.balance.toLocaleString("en-IN")}
                   </span>
@@ -272,13 +272,13 @@ function ProductLedgerOverlay({
                 <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, fontSize: "0.82rem", color: "var(--text-secondary)" }}>
                   ₹{fmtNum(Math.abs(data.summary.totalReceiveVal + data.summary.openingVal - data.summary.totalIssueVal))}
                 </span>
-                <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#93c5fd" }}>
+                <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#2563c9" }}>
                   {data.summary.totalReceiveQty.toLocaleString("en-IN")}
                 </span>
-                <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#fb923c" }}>
+                <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#ea580c" }}>
                   {data.summary.totalIssueQty.toLocaleString("en-IN")}
                 </span>
-                <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, fontSize: "1rem", color: "#fcd34d" }}>
+                <span style={{ textAlign: "right", fontFamily: "monospace", fontWeight: 700, fontSize: "1rem", color: "#b45309" }}>
                   {data.summary.closingQty.toLocaleString("en-IN")}
                 </span>
               </div>
@@ -395,7 +395,7 @@ function GroupSelect({
           </button>
         </div>
       )}
-      {err && <div style={{ fontSize: "0.75rem", color: "#f87171", marginTop: "0.25rem" }}>{err}</div>}
+      {err && <div style={{ fontSize: "0.75rem", color: "#dc2626", marginTop: "0.25rem" }}>{err}</div>}
     </div>
   );
 }
@@ -593,7 +593,7 @@ export default function ProductMasterClient({ role }: { role?: string }) {
                     <div style={{ display: "flex", gap: "0.375rem" }}>
                       <button onClick={() => setLedgerProduct({ id: p.id, name: p.name })} className="btn btn-secondary btn-sm" style={{ fontSize: "0.72rem" }}>📊 Ledger</button>
                       <button onClick={() => openEdit(p)} className="btn btn-secondary btn-sm">Edit</button>
-                      <button onClick={() => del(p.id)} className="btn btn-sm" style={{ color: "#f87171", background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)" }}>Delete</button>
+                      <button onClick={() => del(p.id)} className="btn btn-sm" style={{ color: "#dc2626", background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)" }}>Delete</button>
                     </div>
                   </td>
                 </tr>

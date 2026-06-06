@@ -20,10 +20,10 @@ type Reminder = {
 };
 
 const STATUS_STYLE: Record<Reminder["status"], { label: string; color: string; bg: string }> = {
-  sent:     { label: "Sent",      color: "#6ee7b7", bg: "rgba(110,231,183,0.12)" },
-  overdue:  { label: "Overdue",   color: "#f87171", bg: "rgba(248,113,113,0.12)" },
-  due_soon: { label: "Due Soon",  color: "#fcd34d", bg: "rgba(252,211,77,0.12)"  },
-  upcoming: { label: "Upcoming",  color: "#93c5fd", bg: "rgba(147,197,253,0.12)" },
+  sent:     { label: "Sent",      color: "#047857", bg: "rgba(110,231,183,0.12)" },
+  overdue:  { label: "Overdue",   color: "#dc2626", bg: "rgba(248,113,113,0.12)" },
+  due_soon: { label: "Due Soon",  color: "#b45309", bg: "rgba(252,211,77,0.12)"  },
+  upcoming: { label: "Upcoming",  color: "#2563c9", bg: "rgba(147,197,253,0.12)" },
 };
 
 function fmtDate(s: string | null) {
@@ -88,7 +88,7 @@ export default function DosageRemindersClient() {
 
       {/* Summary chips + filter */}
       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1rem" }}>
-        {([["all", "All", reminders.length, "var(--text-secondary)"], ["overdue", "Overdue", counts.overdue, "#f87171"], ["due_soon", "Due Soon", counts.due_soon, "#fcd34d"], ["upcoming", "Upcoming", counts.upcoming, "#93c5fd"], ["sent", "Sent", counts.sent, "#6ee7b7"]] as const).map(([key, label, count, color]) => (
+        {([["all", "All", reminders.length, "var(--text-secondary)"], ["overdue", "Overdue", counts.overdue, "#dc2626"], ["due_soon", "Due Soon", counts.due_soon, "#b45309"], ["upcoming", "Upcoming", counts.upcoming, "#2563c9"], ["sent", "Sent", counts.sent, "#047857"]] as const).map(([key, label, count, color]) => (
           <button
             key={key}
             onClick={() => setFilter(key)}
@@ -128,7 +128,7 @@ export default function DosageRemindersClient() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.25rem" }}>
                       {r.invoiceNo && (
-                        <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.9rem", color: "#818cf8" }}>{r.invoiceNo}</span>
+                        <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.9rem", color: "#6d28d9" }}>{r.invoiceNo}</span>
                       )}
                       <span style={{ fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", padding: "2px 7px", borderRadius: 4, background: ss.bg, color: ss.color }}>
                         {ss.label}
@@ -136,7 +136,7 @@ export default function DosageRemindersClient() {
                         {!r.dosageReminderSent && r.daysUntil <= 0 && ` (${Math.abs(r.daysUntil)}d ago)`}
                       </span>
                       {r.hasPrescription && (
-                        <span style={{ fontSize: "0.65rem", color: "#818cf8", background: "rgba(99,102,241,0.1)", padding: "2px 6px", borderRadius: 4 }}>📋 Rx</span>
+                        <span style={{ fontSize: "0.65rem", color: "#6d28d9", background: "rgba(99,102,241,0.1)", padding: "2px 6px", borderRadius: 4 }}>📋 Rx</span>
                       )}
                     </div>
 
@@ -151,7 +151,7 @@ export default function DosageRemindersClient() {
                     <div style={{ display: "flex", gap: "1.25rem", flexWrap: "wrap", fontSize: "0.75rem", marginTop: "0.375rem", color: "var(--text-muted)" }}>
                       {r.totalDosages && <span><strong style={{ color: "var(--text-primary)" }}>{r.totalDosages}</strong> dosages</span>}
                       {r.dosagePerDay && <span><strong style={{ color: "var(--text-primary)" }}>{r.dosagePerDay}</strong>/day</span>}
-                      {r.daysSupply    && <span><strong style={{ color: "#818cf8" }}>{r.daysSupply}</strong> day supply</span>}
+                      {r.daysSupply    && <span><strong style={{ color: "#6d28d9" }}>{r.daysSupply}</strong> day supply</span>}
                       {r.dosageStartDate && <span>Started: <strong>{fmtDate(r.dosageStartDate)}</strong></span>}
                       <span>Reminder: <strong style={{ color: ss.color }}>{fmtDate(r.dosageReminderDate)}</strong></span>
                     </div>

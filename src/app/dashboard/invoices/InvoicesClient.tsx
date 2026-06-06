@@ -59,9 +59,9 @@ function isoDateVal(s: string | null) {
 }
 
 const STATUS_COLOR: Record<string, { bg: string; color: string }> = {
-  PACKING:          { bg: "rgba(251,146,60,0.15)",  color: "#fb923c" },
-  DISPATCHED:       { bg: "rgba(110,231,183,0.15)", color: "#6ee7b7" },
-  PAYMENT_VERIFIED: { bg: "rgba(99,102,241,0.15)",  color: "#818cf8" },
+  PACKING:          { bg: "rgba(251,146,60,0.15)",  color: "#ea580c" },
+  DISPATCHED:       { bg: "rgba(110,231,183,0.15)", color: "#047857" },
+  PAYMENT_VERIFIED: { bg: "rgba(99,102,241,0.15)",  color: "#6d28d9" },
 };
 
 const SHIPMENT_MODES = ["EMS", "ITPS", "RMS", "DHL", "UPS", "CM"];
@@ -203,12 +203,12 @@ function InvoiceInlineEditor({ invoice, onClose, onSaved }: {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.65rem 1.25rem", background: "var(--surface-2)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span style={{ fontWeight: 700, fontSize: "0.95rem" }}>Edit Invoice</span>
-          <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#818cf8", fontSize: "0.9rem" }}>{invoice.invoiceNo}</span>
+          <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#6d28d9", fontSize: "0.9rem" }}>{invoice.invoiceNo}</span>
           <span style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>{invoice.fullName}</span>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {err     && <span style={{ fontSize: "0.8rem", color: "#f87171", maxWidth: 300 }}>{err}</span>}
-          {success && <span style={{ fontSize: "0.8rem", color: "#6ee7b7" }}>{success}</span>}
+          {err     && <span style={{ fontSize: "0.8rem", color: "#dc2626", maxWidth: 300 }}>{err}</span>}
+          {success && <span style={{ fontSize: "0.8rem", color: "#047857" }}>{success}</span>}
           <button onClick={save} disabled={saving} className="btn btn-primary" style={{ fontSize: "0.8rem", padding: "0.4rem 1rem" }}>
             {saving ? "Saving…" : "Save Changes"}
           </button>
@@ -640,7 +640,7 @@ export default function InvoicesClient() {
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.75rem", flexWrap: "wrap" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.25rem" }}>
-                      <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.95rem", color: "#818cf8" }}>
+                      <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.95rem", color: "#6d28d9" }}>
                         {inv.invoiceNo}
                       </span>
                       <span style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", padding: "2px 7px", borderRadius: 4, background: sc.bg, color: sc.color }}>
@@ -655,7 +655,7 @@ export default function InvoicesClient() {
                       <span>📍 {inv.city}, {inv.country}</span>
                       {inv.trackingNo && <span style={{ fontFamily: "monospace" }}>🚚 {inv.trackingNo}</span>}
                       {inv.orderEntry?.shipmentMode && <span>{inv.orderEntry.shipmentMode}</span>}
-                      <span style={{ fontFamily: "monospace", color: "#6ee7b7" }}>
+                      <span style={{ fontFamily: "monospace", color: "#047857" }}>
                         {inv.currency} {inv.amountPaid.toFixed(2)}
                       </span>
                       {inv.orderEntry && (

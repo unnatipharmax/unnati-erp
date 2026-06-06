@@ -53,7 +53,7 @@ function AddUserModal({ onClose, onAdded }: { onClose: () => void; onAdded: (u: 
         <div className="modal-header">
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2.5">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563c9" strokeWidth="2.5">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
                 <path d="M19 8v6M22 11h-6" strokeLinecap="round"/>
               </svg>
@@ -102,7 +102,7 @@ function AddUserModal({ onClose, onAdded }: { onClose: () => void; onAdded: (u: 
                     cursor: "pointer", textAlign: "left", transition: "all 0.15s",
                   }}
                 >
-                  <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: form.role === r ? "#93c5fd" : "var(--text-primary)" }}>{r}</div>
+                  <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: form.role === r ? "#2563c9" : "var(--text-primary)" }}>{r}</div>
                   <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 2 }}>{ROLE_DESC[r]}</div>
                 </button>
               ))}

@@ -77,7 +77,7 @@ function AddExpenseForm({
   return (
     <form onSubmit={submit} style={{ background: "var(--surface-1)", borderRadius: 12, padding: 20, marginBottom: 24 }}>
       <div style={{ fontWeight: 700, marginBottom: 14, fontSize: "0.9rem" }}>Add Expense</div>
-      {err && <div style={{ color: "#f87171", marginBottom: 10, fontSize: "0.83rem" }}>{err}</div>}
+      {err && <div style={{ color: "#dc2626", marginBottom: 10, fontSize: "0.83rem" }}>{err}</div>}
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
         <div>

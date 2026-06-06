@@ -192,7 +192,7 @@ function RecordReturnModal({
               {done.type === "REORDER" ? "Reorder Invoice Created!" : "Stock Return Recorded!"}
             </h3>
             {done.newInvoiceNo && (
-              <div style={{ fontFamily: "monospace", fontSize: "1.1rem", color: "#818cf8", fontWeight: 700, marginBottom: "0.5rem" }}>
+              <div style={{ fontFamily: "monospace", fontSize: "1.1rem", color: "#6d28d9", fontWeight: 700, marginBottom: "0.5rem" }}>
                 {done.newInvoiceNo}
               </div>
             )}
@@ -236,7 +236,7 @@ function RecordReturnModal({
                     onMouseLeave={e => (e.currentTarget.style.background = "var(--surface-2)")}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#818cf8" }}>{inv.invoiceNo}</span>
+                      <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#6d28d9" }}>{inv.invoiceNo}</span>
                       <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>{inv.country} · {inv.currency}</span>
                     </div>
                     <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)", marginTop: 2 }}>{inv.fullName} · {inv.email}</div>
@@ -262,7 +262,7 @@ function RecordReturnModal({
             <div style={{ background: "var(--surface-2)", borderRadius: 8, padding: "10px 14px", marginBottom: "1rem", border: "1px solid var(--border)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
-                  <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#818cf8", fontSize: "0.95rem" }}>{selected.invoiceNo}</span>
+                  <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#6d28d9", fontSize: "0.95rem" }}>{selected.invoiceNo}</span>
                   <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)", marginTop: 2 }}>{selected.fullName} · {selected.country}</div>
                 </div>
                 <button onClick={() => { setStep(1); setSelected(null); }} style={{ fontSize: "0.72rem", color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer" }}>change</button>
@@ -303,11 +303,11 @@ function RecordReturnModal({
                     <input type="number" min={1} style={{ ...iS, textAlign: "right" }}
                       value={item.quantity} onChange={e => updateItemQty(idx, parseInt(e.target.value) || 1)} />
                   </div>
-                  <button onClick={() => removeItem(idx)} style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: "1.1rem", marginTop: 14 }}>×</button>
+                  <button onClick={() => removeItem(idx)} style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "1.1rem", marginTop: 14 }}>×</button>
                 </div>
               ))}
               {items.length === 0 && (
-                <div style={{ fontSize: "0.8rem", color: "#f87171" }}>No items — please go back and select a valid invoice.</div>
+                <div style={{ fontSize: "0.8rem", color: "#dc2626" }}>No items — please go back and select a valid invoice.</div>
               )}
             </div>
 
@@ -330,7 +330,7 @@ function RecordReturnModal({
           <div>
             {/* Summary */}
             <div style={{ background: "var(--surface-2)", borderRadius: 8, padding: "10px 14px", marginBottom: "1.25rem", border: "1px solid var(--border)", fontSize: "0.82rem" }}>
-              <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#818cf8" }}>{selected.invoiceNo}</span>
+              <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#6d28d9" }}>{selected.invoiceNo}</span>
               <span style={{ color: "var(--text-muted)", marginLeft: 8 }}>{selected.fullName} · {items.length} item(s) returned</span>
             </div>
 
@@ -344,17 +344,17 @@ function RecordReturnModal({
               {/* REORDER card */}
               <div
                 onClick={() => setReturnType("REORDER")}
-                style={{ borderRadius: 10, border: `2px solid ${returnType === "REORDER" ? "#818cf8" : "var(--border)"}`, padding: "1rem 1.1rem", cursor: "pointer", background: returnType === "REORDER" ? "rgba(99,102,241,0.08)" : "var(--surface-2)", transition: "all 0.15s" }}
+                style={{ borderRadius: 10, border: `2px solid ${returnType === "REORDER" ? "#6d28d9" : "var(--border)"}`, padding: "1rem 1.1rem", cursor: "pointer", background: returnType === "REORDER" ? "rgba(99,102,241,0.08)" : "var(--surface-2)", transition: "all 0.15s" }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
                   <div style={{ fontSize: "1.5rem" }}>📦</div>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: "0.9rem", color: returnType === "REORDER" ? "#818cf8" : "var(--text-primary)" }}>
+                    <div style={{ fontWeight: 700, fontSize: "0.9rem", color: returnType === "REORDER" ? "#6d28d9" : "var(--text-primary)" }}>
                       Client Wants Reorder
                     </div>
                     <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>New invoice created · client pays only new shipping cost</div>
                   </div>
-                  <div style={{ marginLeft: "auto", width: 18, height: 18, borderRadius: "50%", border: `2px solid ${returnType === "REORDER" ? "#818cf8" : "var(--border)"}`, background: returnType === "REORDER" ? "#818cf8" : "transparent" }} />
+                  <div style={{ marginLeft: "auto", width: 18, height: 18, borderRadius: "50%", border: `2px solid ${returnType === "REORDER" ? "#6d28d9" : "var(--border)"}`, background: returnType === "REORDER" ? "#6d28d9" : "transparent" }} />
                 </div>
 
                 {returnType === "REORDER" && (
@@ -373,7 +373,7 @@ function RecordReturnModal({
                         </select>
                       </div>
                     </div>
-                    <div style={{ marginTop: 8, fontSize: "0.75rem", color: "#818cf8", background: "rgba(99,102,241,0.08)", padding: "6px 10px", borderRadius: 6 }}>
+                    <div style={{ marginTop: 8, fontSize: "0.75rem", color: "#6d28d9", background: "rgba(99,102,241,0.08)", padding: "6px 10px", borderRadius: 6 }}>
                       ✓ A new invoice will be generated automatically. Same products, client pays only the new shipping cost.
                       {selected.accountId && " Ledger will be updated with the shipping charge."}
                     </div>
@@ -384,20 +384,20 @@ function RecordReturnModal({
               {/* STOCK_RETURN card */}
               <div
                 onClick={() => setReturnType("STOCK_RETURN")}
-                style={{ borderRadius: 10, border: `2px solid ${returnType === "STOCK_RETURN" ? "#6ee7b7" : "var(--border)"}`, padding: "1rem 1.1rem", cursor: "pointer", background: returnType === "STOCK_RETURN" ? "rgba(110,231,183,0.06)" : "var(--surface-2)", transition: "all 0.15s" }}
+                style={{ borderRadius: 10, border: `2px solid ${returnType === "STOCK_RETURN" ? "#047857" : "var(--border)"}`, padding: "1rem 1.1rem", cursor: "pointer", background: returnType === "STOCK_RETURN" ? "rgba(110,231,183,0.06)" : "var(--surface-2)", transition: "all 0.15s" }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ fontSize: "1.5rem" }}>🏭</div>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: "0.9rem", color: returnType === "STOCK_RETURN" ? "#6ee7b7" : "var(--text-primary)" }}>
+                    <div style={{ fontWeight: 700, fontSize: "0.9rem", color: returnType === "STOCK_RETURN" ? "#047857" : "var(--text-primary)" }}>
                       Client Does Not Want Reorder
                     </div>
                     <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Goods return to warehouse stock · no money refunded to client</div>
                   </div>
-                  <div style={{ marginLeft: "auto", width: 18, height: 18, borderRadius: "50%", border: `2px solid ${returnType === "STOCK_RETURN" ? "#6ee7b7" : "var(--border)"}`, background: returnType === "STOCK_RETURN" ? "#6ee7b7" : "transparent" }} />
+                  <div style={{ marginLeft: "auto", width: 18, height: 18, borderRadius: "50%", border: `2px solid ${returnType === "STOCK_RETURN" ? "#047857" : "var(--border)"}`, background: returnType === "STOCK_RETURN" ? "#047857" : "transparent" }} />
                 </div>
                 {returnType === "STOCK_RETURN" && (
-                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(110,231,183,0.2)", fontSize: "0.75rem", color: "#6ee7b7", background: "rgba(110,231,183,0.06)", padding: "6px 10px", borderRadius: 6 }}>
+                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(110,231,183,0.2)", fontSize: "0.75rem", color: "#047857", background: "rgba(110,231,183,0.06)", padding: "6px 10px", borderRadius: 6 }}>
                     ✓ Returned items will be logged as returned inventory available for future supply. No new invoice will be created.
                   </div>
                 )}
@@ -429,17 +429,17 @@ function ReturnCard({ r }: { r: ReturnRecord }) {
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.75rem", flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
-            <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#818cf8", fontSize: "0.9rem" }}>
+            <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#6d28d9", fontSize: "0.9rem" }}>
               {r.originalOrder.invoiceNo}
             </span>
             <span style={{ fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", padding: "2px 8px", borderRadius: 4,
               background: isReorder ? "rgba(99,102,241,0.12)" : "rgba(110,231,183,0.12)",
-              color:      isReorder ? "#818cf8" : "#6ee7b7",
+              color:      isReorder ? "#6d28d9" : "#047857",
             }}>
               {isReorder ? "📦 Reorder" : "🏭 Stock Return"}
             </span>
             {r.newInvoiceNo && (
-              <span style={{ fontFamily: "monospace", fontSize: "0.75rem", color: "#6ee7b7", background: "rgba(110,231,183,0.08)", padding: "2px 6px", borderRadius: 4 }}>
+              <span style={{ fontFamily: "monospace", fontSize: "0.75rem", color: "#047857", background: "rgba(110,231,183,0.08)", padding: "2px 6px", borderRadius: 4 }}>
                 → {r.newInvoiceNo}
               </span>
             )}
@@ -454,7 +454,7 @@ function ReturnCard({ r }: { r: ReturnRecord }) {
             <span>📍 {r.originalOrder.country}</span>
             {r.trackingReturned && <span style={{ fontFamily: "monospace" }}>📬 {r.trackingReturned}</span>}
             {isReorder && r.newShippingCost && (
-              <span style={{ color: "#818cf8" }}>
+              <span style={{ color: "#6d28d9" }}>
                 Shipping: {r.originalOrder.currency} {r.newShippingCost} · {r.newShippingMode}
               </span>
             )}
@@ -520,7 +520,7 @@ function StockSummary({ returns }: { returns: ReturnRecord[] }) {
 
   return (
     <div className="card" style={{ padding: "1rem", marginBottom: "1.25rem", border: "1px solid rgba(110,231,183,0.25)", background: "rgba(110,231,183,0.04)" }}>
-      <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#6ee7b7", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 10 }}>
+      <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#047857", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 10 }}>
         🏭 Returned Stock Available for Future Supply
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 8 }}>
@@ -528,7 +528,7 @@ function StockSummary({ returns }: { returns: ReturnRecord[] }) {
           <div key={pid} style={{ background: "var(--surface-2)", borderRadius: 7, padding: "8px 12px", border: "1px solid var(--border)" }}>
             <div style={{ fontSize: "0.82rem", fontWeight: 600, marginBottom: 2 }}>{v.productName}</div>
             <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-              <span style={{ color: "#6ee7b7", fontWeight: 700, fontSize: "1rem" }}>{v.totalQty}</span> units
+              <span style={{ color: "#047857", fontWeight: 700, fontSize: "1rem" }}>{v.totalQty}</span> units
               <span style={{ marginLeft: 6 }}>from {v.returns} return(s)</span>
             </div>
           </div>
@@ -589,8 +589,8 @@ export default function ReturnsClient() {
       <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1rem" }}>
         {([
           ["all",          "All Returns",   returns.length, "var(--text-secondary)"],
-          ["REORDER",      "📦 Reordered",  counts.reorder, "#818cf8"],
-          ["STOCK_RETURN", "🏭 Stock Return", counts.stock, "#6ee7b7"],
+          ["REORDER",      "📦 Reordered",  counts.reorder, "#6d28d9"],
+          ["STOCK_RETURN", "🏭 Stock Return", counts.stock, "#047857"],
         ] as const).map(([key, label, count, color]) => (
           <button key={key} onClick={() => setFilter(key)}
             style={{ padding: "4px 14px", borderRadius: 20, fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", border: "1px solid",

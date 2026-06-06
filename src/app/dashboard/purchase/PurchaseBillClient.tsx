@@ -124,7 +124,7 @@ function ProductRow({
         </span>
         <button
           onClick={() => onRemove(index)}
-          style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)", color: "#f87171", borderRadius: 6, padding: "2px 10px", cursor: "pointer", fontSize: "0.75rem" }}
+          style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)", color: "#dc2626", borderRadius: 6, padding: "2px 10px", cursor: "pointer", fontSize: "0.75rem" }}
         >
           Remove
         </button>
@@ -222,8 +222,8 @@ function ProductRow({
         {(product.cgstPercent || product.igstPercent) && (
           <div style={{ marginTop: "0.4rem", fontSize: "0.72rem", color: "var(--text-secondary)" }}>
             {product.cgstPercent && product.sgstPercent
-              ? <span>CGST {product.cgstPercent}% + SGST {product.sgstPercent}% = <strong style={{color:"#6ee7b7"}}>{product.gstPercent}% total</strong></span>
-              : <span>IGST <strong style={{color:"#6ee7b7"}}>{product.igstPercent}%</strong> (interstate)</span>
+              ? <span>CGST {product.cgstPercent}% + SGST {product.sgstPercent}% = <strong style={{color:"#047857"}}>{product.gstPercent}% total</strong></span>
+              : <span>IGST <strong style={{color:"#047857"}}>{product.igstPercent}%</strong> (interstate)</span>
             }
             {product.cgstAmount && product.sgstAmount && (
               <span style={{marginLeft:8}}>· ₹{product.cgstAmount} + ₹{product.sgstAmount} = <strong>₹{((product.cgstAmount||0)+(product.sgstAmount||0)).toFixed(2)}</strong></span>
@@ -235,7 +235,7 @@ function ProductRow({
       {/* INR Unit preview */}
       {product.rate > 0 && (
         <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "var(--text-secondary)" }}>
-          INR Unit on invoice (rate + 15%) = <strong style={{ color: "#6ee7b7" }}>
+          INR Unit on invoice (rate + 15%) = <strong style={{ color: "#047857" }}>
             ₹{(product.rate * 1.15).toFixed(2)}
           </strong>
         </div>
@@ -451,7 +451,7 @@ export default function PurchaseBillClient() {
             Party: <strong>{saved.partyName}</strong>
             {saved.invoiceNo && <> · Invoice: <strong>{saved.invoiceNo}</strong></>}
             {" · "}
-            <span style={{ color: "#6ee7b7" }}>{saved.newProducts} new products</span>
+            <span style={{ color: "#047857" }}>{saved.newProducts} new products</span>
             {saved.updProducts > 0 && <span> · {saved.updProducts} updated</span>}
           </div>
           <button

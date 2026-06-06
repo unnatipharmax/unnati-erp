@@ -239,7 +239,7 @@ export default function SupplierSuggestions({
       <div style={{
         marginTop: "0.875rem",
         paddingTop: "0.875rem",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
+        borderTop: "1px solid rgba(0,0,0,0.05)",
         display: "flex",
         alignItems: "center",
         gap: "0.75rem",
