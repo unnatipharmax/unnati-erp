@@ -1280,7 +1280,7 @@ function CN22LabelDoc({ order, companyName, companyAddress, customDesc, customVa
               {/* TO section — tall to match original label design */}
               <table style={{ borderBottom: "1px solid #000" }}>
                 <tbody>
-                  <tr style={{ height: 90 }}>
+                  <tr style={{ height: 170 }}>
                     <td style={{ padding: "3px 5px", width: "18%", borderRight: "1px solid #000", textAlign: "center", verticalAlign: "middle" }}>
                       <div style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", fontWeight: 900, fontSize: "8pt", letterSpacing: 1 }}>TO (11)</div>
                     </td>
