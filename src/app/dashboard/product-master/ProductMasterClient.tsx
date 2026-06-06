@@ -401,7 +401,8 @@ function GroupSelect({
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
-export default function ProductMasterClient() {
+export default function ProductMasterClient({ role }: { role?: string }) {
+  const isSales = role === "SALES";
   const [products, setProducts] = useState<Product[]>([]);
   const [groups,   setGroups]   = useState<Group[]>([]);
   const [loading,  setLoading]  = useState(true);
@@ -514,15 +515,15 @@ export default function ProductMasterClient() {
                 <th>Manufacturer</th>
                 <th>HSN</th>
                 <th>Pack</th>
-                <th>Qty / Type</th>
-                <th>Batch No</th>
-                <th>Mfg / Exp</th>
-                <th style={{ textAlign: "right" }}>MRP</th>
-                <th style={{ textAlign: "right" }}>GST %</th>
+                {!isSales && <th>Qty / Type</th>}
+                {!isSales && <th>Batch No</th>}
+                {!isSales && <th>Mfg / Exp</th>}
+                {!isSales && <th style={{ textAlign: "right" }}>MRP</th>}
+                {!isSales && <th style={{ textAlign: "right" }}>GST %</th>}
                 <th style={{ textAlign: "right" }}>Min %</th>
                 <th style={{ textAlign: "right" }}>Max %</th>
-                <th style={{ textAlign: "right" }}>Purchase Rate</th>
-                <th style={{ textAlign: "right" }}>INR Unit (+15%)</th>
+                {!isSales && <th style={{ textAlign: "right" }}>Purchase Rate</th>}
+                {!isSales && <th style={{ textAlign: "right" }}>INR Unit (+15%)</th>}
                 <th></th>
               </tr>
             </thead>
@@ -539,41 +540,55 @@ export default function ProductMasterClient() {
                   <td style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>{p.manufacturer ?? <span style={{ color: "var(--text-muted)" }}>—</span>}</td>
                   <td style={{ fontFamily: "monospace", fontSize: "0.8rem" }}>{p.hsn ?? "—"}</td>
                   <td>{p.pack ?? "—"}</td>
-                  <td>
-                    {(p.qty != null || p.unitType) ? (
-                      <span className="badge badge-blue" style={{ fontSize: "0.72rem" }}>
-                        {p.qty != null ? `${p.qty} ` : ""}{p.unitType ?? ""}
-                      </span>
-                    ) : <span style={{ color: "var(--text-muted)" }}>—</span>}
-                  </td>
-                  <td style={{ fontFamily: "monospace", fontSize: "0.8rem" }}>
-                    {p.batchNo
-                      ? <span className="badge badge-blue" style={{ fontSize: "0.7rem" }}>{p.batchNo}</span>
-                      : <span style={{ color: "var(--text-muted)" }}>—</span>}
-                  </td>
-                  <td style={{ fontSize: "0.8rem", whiteSpace: "nowrap" }}>
-                    {p.mfgDate ?? "—"} / {p.expDate
-                      ? <span className="badge badge-amber" style={{ fontSize: "0.7rem" }}>{p.expDate}</span>
-                      : "—"}
-                  </td>
-                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                    {p.mrp != null ? `₹${p.mrp}` : "—"}
-                  </td>
-                  <td style={{ textAlign: "right" }}>{p.gstPercent != null ? `${p.gstPercent}%` : "—"}</td>
+                  {!isSales && (
+                    <td>
+                      {(p.qty != null || p.unitType) ? (
+                        <span className="badge badge-blue" style={{ fontSize: "0.72rem" }}>
+                          {p.qty != null ? `${p.qty} ` : ""}{p.unitType ?? ""}
+                        </span>
+                      ) : <span style={{ color: "var(--text-muted)" }}>—</span>}
+                    </td>
+                  )}
+                  {!isSales && (
+                    <td style={{ fontFamily: "monospace", fontSize: "0.8rem" }}>
+                      {p.batchNo
+                        ? <span className="badge badge-blue" style={{ fontSize: "0.7rem" }}>{p.batchNo}</span>
+                        : <span style={{ color: "var(--text-muted)" }}>—</span>}
+                    </td>
+                  )}
+                  {!isSales && (
+                    <td style={{ fontSize: "0.8rem", whiteSpace: "nowrap" }}>
+                      {p.mfgDate ?? "—"} / {p.expDate
+                        ? <span className="badge badge-amber" style={{ fontSize: "0.7rem" }}>{p.expDate}</span>
+                        : "—"}
+                    </td>
+                  )}
+                  {!isSales && (
+                    <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                      {p.mrp != null ? `₹${p.mrp}` : "—"}
+                    </td>
+                  )}
+                  {!isSales && (
+                    <td style={{ textAlign: "right" }}>{p.gstPercent != null ? `${p.gstPercent}%` : "—"}</td>
+                  )}
                   <td style={{ textAlign: "right", color: "var(--text-secondary)" }}>
                     {p.minMargin != null ? `${p.minMargin}%` : <span style={{ color: "var(--text-muted)" }}>—</span>}
                   </td>
                   <td style={{ textAlign: "right", color: "var(--text-secondary)" }}>
                     {p.maxMargin != null ? `${p.maxMargin}%` : <span style={{ color: "var(--text-muted)" }}>—</span>}
                   </td>
-                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-secondary)" }}>
-                    {p.latestRate != null ? `₹${p.latestRate.toFixed(2)}` : <span style={{ color: "var(--text-muted)" }}>—</span>}
-                  </td>
-                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                    {p.inrUnit != null
-                      ? <span className="badge badge-green" style={{ fontSize: "0.75rem" }}>₹{p.inrUnit.toFixed(2)}</span>
-                      : <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>No purchase</span>}
-                  </td>
+                  {!isSales && (
+                    <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--text-secondary)" }}>
+                      {p.latestRate != null ? `₹${p.latestRate.toFixed(2)}` : <span style={{ color: "var(--text-muted)" }}>—</span>}
+                    </td>
+                  )}
+                  {!isSales && (
+                    <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                      {p.inrUnit != null
+                        ? <span className="badge badge-green" style={{ fontSize: "0.75rem" }}>₹{p.inrUnit.toFixed(2)}</span>
+                        : <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>No purchase</span>}
+                    </td>
+                  )}
                   <td>
                     <div style={{ display: "flex", gap: "0.375rem" }}>
                       <button onClick={() => setLedgerProduct({ id: p.id, name: p.name })} className="btn btn-secondary btn-sm" style={{ fontSize: "0.72rem" }}>📊 Ledger</button>
