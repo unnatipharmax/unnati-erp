@@ -153,7 +153,7 @@ function AddProductModal({ onClose, onAdded }: { onClose: () => void; onAdded: (
               <Field label="Pack">
                 <input value={form.pack} onChange={e => set("pack", e.target.value)} placeholder="e.g. 10 tablets" className={inputCls} />
               </Field>
-              <Field label="MRP (₹)">
+              <Field label="MRP ($)">
                 <input value={form.mrp} onChange={e => set("mrp", e.target.value)} inputMode="decimal" placeholder="0.00" className={inputCls} />
               </Field>
             </div>
@@ -315,7 +315,7 @@ export default function OrderEntryForm({
             </select>
           </Field>
 
-          <Field label="Shipping Price (₹)">
+          <Field label="Shipping Price ($)">
             <input value={shippingPrice} onChange={e => setShippingPrice(e.target.value)} inputMode="decimal" placeholder="0" className={inputCls} />
           </Field>
 
@@ -392,7 +392,7 @@ export default function OrderEntryForm({
                   {/* Row total + delete */}
                   <div className="col-span-3 md:col-span-1 flex flex-col items-end justify-between pt-1 pb-0.5">
                     <span className="text-xs text-slate-600 font-mono tabular-nums">
-                      {rowTotal > 0 ? `₹${rowTotal.toFixed(2)}` : ""}
+                      {rowTotal > 0 ? `$${rowTotal.toFixed(2)}` : ""}
                     </span>
                     <button
                       type="button" onClick={() => removeRow(idx)}
@@ -416,7 +416,7 @@ export default function OrderEntryForm({
           <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-2.5">
             <span className="text-xs text-slate-500">Order Total</span>
             <span className="text-base font-bold text-slate-100 tabular-nums">
-              ₹{orderTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ${orderTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
         </div>
