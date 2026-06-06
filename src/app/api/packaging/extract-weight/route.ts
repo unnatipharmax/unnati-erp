@@ -44,7 +44,11 @@ export async function POST(req: Request) {
         { inline_data: { mime_type: mimeType || "image/jpeg", data: imageBase64 } },
       ],
     }],
-    generationConfig: { temperature: 0, maxOutputTokens: 64 },
+    generationConfig: {
+      temperature: 0,
+      maxOutputTokens: 2048,           // room so output isn't truncated
+      thinkingConfig: { thinkingBudget: 0 }, // disable 2.5 "thinking" so it answers directly
+    },
   };
 
   const geminiRes = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
@@ -59,14 +63,31 @@ export async function POST(req: Request) {
   }
 
   const geminiData = await geminiRes.json();
-  const raw = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  // Concatenate every text part (thinking-disabled output may still split)
+  const parts: any[] = geminiData?.candidates?.[0]?.content?.parts ?? [];
+  const raw: string = parts.map((p) => p?.text ?? "").join("").trim();
 
+  // Try strict JSON first
+  let netWeight: number | null = null;
   try {
     const cleaned = raw.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(cleaned);
-    const netWeight = typeof parsed.netWeight === "number" ? parsed.netWeight : null;
-    return NextResponse.json({ netWeight });
-  } catch {
-    return NextResponse.json({ netWeight: null, raw });
+    if (typeof parsed.netWeight === "number") netWeight = parsed.netWeight;
+  } catch { /* fall through to regex */ }
+
+  // Fallback: pull a "netWeight": <num> or the first decimal number out of the text
+  if (netWeight == null && raw) {
+    const m = raw.match(/"?netWeight"?\s*[:=]\s*(-?\d+(?:\.\d+)?)/i)
+           ?? raw.match(/(-?\d+\.\d+)/);
+    if (m) {
+      const n = parseFloat(m[1]);
+      if (!isNaN(n)) netWeight = Math.round(n * 1000) / 1000;
+    }
   }
+
+  if (netWeight == null) {
+    const finishReason = geminiData?.candidates?.[0]?.finishReason ?? "unknown";
+    return NextResponse.json({ netWeight: null, raw, finishReason });
+  }
+  return NextResponse.json({ netWeight });
 }
