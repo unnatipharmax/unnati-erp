@@ -20,24 +20,30 @@ export async function GET() {
       mrp: true,
       minMargin: true,
       maxMargin: true,
-      group: { select: { name: true } },
+      group: { select: { id: true, name: true } },
     },
   });
 
+  // Group-level default margins (read via raw SQL — columns added by migration)
+  const grpRows = await prisma.$queryRawUnsafe<{ id: string; dmin: number | null; dmax: number | null }[]>(
+    `SELECT id, "defaultMinMargin" AS dmin, "defaultMaxMargin" AS dmax FROM "ProductGroup"`
+  );
+  const grpDefaults = new Map(grpRows.map((g) => [g.id, { dmin: g.dmin, dmax: g.dmax }]));
+
   const priceList = products.map((p) => {
     const mrp = p.mrp ?? null;
+    const gd  = p.group ? grpDefaults.get(p.group.id) : undefined;
+
+    // Resolution: per-product override → group default → none
+    const effMin = p.minMargin ?? gd?.dmin ?? null;
+    const effMax = p.maxMargin ?? gd?.dmax ?? null;
+
     const minPrice =
-      mrp != null && p.minMargin != null
-        ? parseFloat((mrp * (1 + p.minMargin / 100)).toFixed(2))
-        : mrp != null
-        ? mrp
-        : null;
+      mrp != null && effMin != null ? parseFloat((mrp * (1 + effMin / 100)).toFixed(2))
+      : mrp != null ? mrp : null;
     const maxPrice =
-      mrp != null && p.maxMargin != null
-        ? parseFloat((mrp * (1 + p.maxMargin / 100)).toFixed(2))
-        : mrp != null
-        ? mrp
-        : null;
+      mrp != null && effMax != null ? parseFloat((mrp * (1 + effMax / 100)).toFixed(2))
+      : mrp != null ? mrp : null;
 
     return {
       id: p.id,
@@ -48,7 +54,8 @@ export async function GET() {
       group: p.group?.name ?? null,
       minPrice,
       maxPrice,
-      hasMargins: p.minMargin != null || p.maxMargin != null,
+      hasMargins: effMin != null || effMax != null,
+      isOverride: p.minMargin != null || p.maxMargin != null,
     };
   });
 

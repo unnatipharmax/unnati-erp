@@ -59,10 +59,14 @@ model Email {
 }
 
 model ProductGroup {
-  id        String    @id @default(uuid())
-  name      String    @unique
-  createdAt DateTime  @default(now())
-  products  Product[]
+  id               String    @id @default(uuid())
+  name             String    @unique
+  // Group-level default selling margins (% over MRP). Products inherit these
+  // unless they have their own minMargin/maxMargin override.
+  defaultMinMargin Float?
+  defaultMaxMargin Float?
+  createdAt        DateTime  @default(now())
+  products         Product[]
 }
 
 model Product {

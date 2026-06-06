@@ -12,6 +12,7 @@ type PriceItem = {
   minPrice: number | null;
   maxPrice: number | null;
   hasMargins: boolean;
+  isOverride?: boolean;
 };
 
 function fmt(n: number | null) {
@@ -26,7 +27,8 @@ export default function PriceListClient({ role }: { role?: string }) {
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState("");
   const [groupFilter, setGroupFilter] = useState("ALL");
-  const [showAdd, setShowAdd]   = useState(false);
+  const [showAdd, setShowAdd]       = useState(false);
+  const [showGroups, setShowGroups] = useState(false);
 
   // Inline edit state
   const [editId, setEditId]     = useState<string | null>(null);
@@ -104,6 +106,11 @@ export default function PriceListClient({ role }: { role?: string }) {
           <div className="text-xs text-slate-500 bg-slate-100 border border-slate-300 rounded-xl px-3 py-2">
             {filtered.length} of {items.length} products
           </div>
+          {canEdit && (
+            <button onClick={() => setShowGroups(true)} className="btn btn-secondary btn-sm">
+              ⚙ Group Margins
+            </button>
+          )}
           <button onClick={() => setShowAdd(true)} className="btn btn-primary btn-sm">
             ＋ Add Product
           </button>
@@ -157,11 +164,18 @@ export default function PriceListClient({ role }: { role?: string }) {
                       <div className="font-medium text-slate-900 leading-snug">{item.name.toUpperCase()}</div>
                       {item.composition && <div className="text-xs text-slate-500 mt-0.5">{item.composition}</div>}
                       {item.manufacturer && <div className="text-xs text-slate-600 mt-0.5">{item.manufacturer}</div>}
-                      {item.group && (
-                        <span className="inline-block mt-1 text-xs text-violet-600 bg-violet-500/10 border border-violet-500/20 rounded-md px-1.5 py-0.5">
-                          {item.group}
-                        </span>
-                      )}
+                      <span className="inline-flex items-center gap-1 mt-1">
+                        {item.group && (
+                          <span className="text-xs text-violet-600 bg-violet-500/10 border border-violet-500/20 rounded-md px-1.5 py-0.5">
+                            {item.group}
+                          </span>
+                        )}
+                        {canEdit && item.isOverride && (
+                          <span className="text-xs text-amber-700 bg-amber-100 border border-amber-300 rounded-md px-1.5 py-0.5">
+                            custom price
+                          </span>
+                        )}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-slate-500 hidden md:table-cell">{item.pack ?? "—"}</td>
 
@@ -228,27 +242,162 @@ export default function PriceListClient({ role }: { role?: string }) {
 
       {showAdd && (
         <AddProductModal
-          canSetPrice={canEdit}
           onClose={() => setShowAdd(false)}
           onCreated={() => { setShowAdd(false); load(); }}
+        />
+      )}
+
+      {showGroups && (
+        <GroupMarginsModal
+          onClose={() => setShowGroups(false)}
+          onApplied={load}
         />
       )}
     </div>
   );
 }
 
-// ── Add Product modal ─────────────────────────────────────────────────────────
-function AddProductModal({ canSetPrice, onClose, onCreated }: {
-  canSetPrice: boolean;
+// ── Group Margins modal — set DEFAULT Min%/Max% per group (inherited) ──────────
+type GroupRow = { id: string; name: string; total: number; overrides?: number; defaultMinMargin?: number | null; defaultMaxMargin?: number | null };
+
+function GroupMarginsModal({ onClose, onApplied }: { onClose: () => void; onApplied: () => void }) {
+  const [rows, setRows]   = useState<GroupRow[]>([]);
+  const [ung, setUng]     = useState<{ total: number }>({ total: 0 });
+  const [vals, setVals]   = useState<Record<string, { min: string; max: string }>>({});
+  const [busyId, setBusyId]       = useState<string | null>(null);
+  const [msg, setMsg]     = useState("");
+
+  async function loadGroups() {
+    const r = await fetch("/api/price-list/group-margins");
+    const d = await r.json();
+    const groups: GroupRow[] = d.groups ?? [];
+    setRows(groups);
+    setUng(d.ungrouped ?? { total: 0 });
+    // Prefill inputs from existing group defaults
+    setVals(prev => {
+      const next = { ...prev };
+      for (const g of groups) {
+        if (next[g.id] === undefined) {
+          next[g.id] = {
+            min: g.defaultMinMargin != null ? String(g.defaultMinMargin) : "",
+            max: g.defaultMaxMargin != null ? String(g.defaultMaxMargin) : "",
+          };
+        }
+      }
+      return next;
+    });
+  }
+  useEffect(() => { loadGroups(); }, []);
+
+  function setVal(id: string, key: "min" | "max", v: string) {
+    setVals(prev => ({ ...prev, [id]: { min: prev[id]?.min ?? "", max: prev[id]?.max ?? "", [key]: v } }));
+  }
+
+  async function apply(groupId: string, label: string) {
+    const v = vals[groupId] ?? { min: "", max: "" };
+    if (!v.min && !v.max) { setMsg("Enter a min or max % first"); return; }
+    setBusyId(groupId); setMsg("");
+    try {
+      const res = await fetch("/api/price-list/group-margins", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groupId, minMargin: v.min, maxMargin: v.max }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setMsg(d?.error || "Failed"); }
+      else {
+        setMsg(`✓ ${label} margins saved`);
+        await loadGroups();
+        onApplied();
+      }
+    } catch { setMsg("Network error"); }
+    setBusyId(null);
+  }
+
+  // Plain render helper (not a component) so inputs keep focus across renders
+  const renderRow = ({ id, name, total, overrides }: GroupRow) => {
+    const v = vals[id] ?? { min: "", max: "" };
+    return (
+      <div key={id} style={{ display: "grid", gridTemplateColumns: "1fr 80px 80px 70px", gap: 8, alignItems: "center", padding: "8px 0", borderTop: "1px solid var(--border)" }}>
+        <div>
+          <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>{name}</div>
+          <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+            {total} product{total !== 1 ? "s" : ""}{overrides ? ` · ${overrides} custom` : ""}
+          </div>
+        </div>
+        <input type="number" value={v.min} onChange={e => setVal(id, "min", e.target.value)} placeholder="Min %" style={{ padding: "5px 8px", fontSize: "0.8rem" }} />
+        <input type="number" value={v.max} onChange={e => setVal(id, "max", e.target.value)} placeholder="Max %" style={{ padding: "5px 8px", fontSize: "0.8rem" }} />
+        <button onClick={() => apply(id, name)} disabled={busyId === id || total === 0} className="btn btn-primary btn-sm" style={{ fontSize: "0.72rem", padding: "4px 8px" }}>
+          {busyId === id ? "…" : "Save"}
+        </button>
+      </div>
+    );
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal" style={{ maxWidth: 560, maxHeight: "92vh", display: "flex", flexDirection: "column" }}>
+        <div className="modal-header">
+          <div>
+            <h3 style={{ margin: 0 }}>Group Margins</h3>
+            <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "var(--text-muted)" }}>
+              Default Min% / Max% per category. Every product in the group inherits these
+              (Price = MRP × (1 + %)) — including products added later. A product&apos;s own
+              Edit overrides its group default.
+            </p>
+          </div>
+          <button onClick={onClose} className="btn btn-ghost btn-icon">✕</button>
+        </div>
+
+        <div className="modal-body" style={{ overflowY: "auto" }}>
+          {/* Column headers */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 80px 70px", gap: 8, padding: "4px 0", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)", fontWeight: 700 }}>
+            <div>Group</div><div>Min %</div><div>Max %</div><div></div>
+          </div>
+
+          {rows.map(r => renderRow(r))}
+          {ung.total > 0 && renderRow({ id: "UNGROUPED", name: "— Ungrouped —", total: ung.total })}
+
+          {rows.length === 0 && ung.total === 0 && (
+            <div style={{ padding: "1rem 0", color: "var(--text-muted)", fontSize: "0.85rem" }}>No product groups yet.</div>
+          )}
+          {ung.total > 0 && (
+            <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 8 }}>
+              Ungrouped products can&apos;t inherit a default — assign them to a group, or set their price via Edit.
+            </div>
+          )}
+        </div>
+
+        <div className="modal-footer" style={{ alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: "0.78rem", color: msg.startsWith("✓") ? "#047857" : "var(--text-secondary)" }}>{msg}</span>
+          <button onClick={onClose} className="btn btn-secondary">Done</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Add Product modal (full product details — same fields as Product Master,
+//    without price/margins; admin sets Min/Max % later) ────────────────────────
+type Group = { id: string; name: string };
+const UNIT_TYPES = ["Strip","Tube","Bottle","Sachet","Vial","Ampoule","Box","Inhaler","Cream","Ointment","Syrup","Drops","Spray","Injection","Patch","Tablet","Capsule"];
+
+function AddProductModal({ onClose, onCreated }: {
   onClose: () => void;
   onCreated: () => void;
 }) {
   const [form, setForm] = useState({
     name: "", composition: "", manufacturer: "", hsn: "", pack: "",
-    mrp: "", minPrice: "", maxPrice: "",
+    batchNo: "", mfgDate: "", expDate: "",
+    qty: "", unitType: "", unitWeightKg: "",
+    mrp: "", gstPercent: "", groupId: "",
   });
+  const [groups, setGroups] = useState<Group[]>([]);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
+
+  useEffect(() => {
+    fetch("/api/product-groups").then(r => r.json()).then(d => setGroups(d.groups ?? [])).catch(() => {});
+  }, []);
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })); }
 
@@ -256,27 +405,22 @@ function AddProductModal({ canSetPrice, onClose, onCreated }: {
     if (!form.name.trim()) { setErr("Product name is required"); return; }
     setSaving(true); setErr("");
 
-    // Derive margins from MRP + entered min/max price (so they show in the price list)
-    const mrpNum = form.mrp ? Number(form.mrp) : null;
-    const minP   = form.minPrice ? Number(form.minPrice) : null;
-    const maxP   = form.maxPrice ? Number(form.maxPrice) : null;
-    const base   = (mrpNum && mrpNum > 0) ? mrpNum : (maxP ?? minP ?? null);
-
-    let minMargin: number | null = null;
-    let maxMargin: number | null = null;
-    if (base && base > 0) {
-      if (minP != null) minMargin = parseFloat(((minP / base - 1) * 100).toFixed(4));
-      if (maxP != null) maxMargin = parseFloat(((maxP / base - 1) * 100).toFixed(4));
-    }
-
+    // No min/max margins — product lists with null prices until admin sets them
     const body: Record<string, unknown> = {
       name: form.name.trim(),
       composition: form.composition.trim() || null,
       manufacturer: form.manufacturer.trim() || null,
       hsn: form.hsn.trim() || null,
       pack: form.pack.trim() || null,
-      mrp: base ?? null,            // seed MRP so price list can show the range
-      minMargin, maxMargin,
+      batchNo: form.batchNo.trim() || null,
+      mfgDate: form.mfgDate.trim() || null,
+      expDate: form.expDate.trim() || null,
+      qty: form.qty || null,
+      unitType: form.unitType || null,
+      unitWeightKg: form.unitWeightKg || null,
+      mrp: form.mrp || null,
+      gstPercent: form.gstPercent || null,
+      groupId: form.groupId || null,
     };
 
     try {
@@ -293,42 +437,62 @@ function AddProductModal({ canSetPrice, onClose, onCreated }: {
 
   return (
     <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal" style={{ maxWidth: 480 }}>
+      <div className="modal" style={{ maxWidth: 560, maxHeight: "92vh", display: "flex", flexDirection: "column" }}>
         <div className="modal-header">
           <h3 style={{ margin: 0 }}>Add Product</h3>
           <button onClick={onClose} className="btn btn-ghost btn-icon">✕</button>
         </div>
-        <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+        <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "0.75rem", overflowY: "auto" }}>
           <Labelled label="Product Name *">
-            <input autoFocus value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. TADALAFIL 20MG" />
+            <input autoFocus value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. MORNING PILLS" />
           </Labelled>
           <Labelled label="Composition">
-            <input value={form.composition} onChange={e => set("composition", e.target.value)} placeholder="e.g. Tadalafil 20mg" />
+            <input value={form.composition} onChange={e => set("composition", e.target.value)} placeholder="e.g. LEVONORGESTREL TAB 1.5" />
           </Labelled>
+
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
             <Labelled label="Manufacturer">
-              <input value={form.manufacturer} onChange={e => set("manufacturer", e.target.value)} />
+              <input value={form.manufacturer} onChange={e => set("manufacturer", e.target.value)} placeholder="e.g. HEALING PHARMA" />
             </Labelled>
-            <Labelled label="Pack">
-              <input value={form.pack} onChange={e => set("pack", e.target.value)} placeholder="e.g. 10 tablets" />
-            </Labelled>
-            <Labelled label="HSN">
-              <input value={form.hsn} onChange={e => set("hsn", e.target.value)} placeholder="3004" />
-            </Labelled>
-            <Labelled label="MRP (₹)">
-              <input type="number" value={form.mrp} onChange={e => set("mrp", e.target.value)} placeholder="0.00" />
+            <Labelled label="HSN Code">
+              <input value={form.hsn} onChange={e => set("hsn", e.target.value)} placeholder="e.g. 30059060" />
             </Labelled>
           </div>
-          {canSetPrice && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-              <Labelled label="Min Price (₹)">
-                <input type="number" value={form.minPrice} onChange={e => set("minPrice", e.target.value)} placeholder="lowest quote" />
-              </Labelled>
-              <Labelled label="Max Price (₹)">
-                <input type="number" value={form.maxPrice} onChange={e => set("maxPrice", e.target.value)} placeholder="standard price" />
-              </Labelled>
-            </div>
-          )}
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
+            <Labelled label="Batch No"><input value={form.batchNo} onChange={e => set("batchNo", e.target.value)} placeholder="e.g. DH250092B" /></Labelled>
+            <Labelled label="Mfg Date"><input value={form.mfgDate} onChange={e => set("mfgDate", e.target.value)} placeholder="e.g. Jul-25" /></Labelled>
+            <Labelled label="Exp Date"><input value={form.expDate} onChange={e => set("expDate", e.target.value)} placeholder="e.g. Jun-27" /></Labelled>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
+            <Labelled label="Qty / Pack"><input value={form.qty} onChange={e => set("qty", e.target.value)} inputMode="numeric" placeholder="e.g. 10" /></Labelled>
+            <Labelled label="Unit Type">
+              <select value={form.unitType} onChange={e => set("unitType", e.target.value)}>
+                <option value="">—</option>
+                {UNIT_TYPES.map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
+            </Labelled>
+            <Labelled label="Unit Wt (kg)"><input value={form.unitWeightKg} onChange={e => set("unitWeightKg", e.target.value)} inputMode="decimal" placeholder="0.00823" /></Labelled>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
+            <Labelled label="Pack / Unit"><input value={form.pack} onChange={e => set("pack", e.target.value)} placeholder="e.g. 1TAB" /></Labelled>
+            <Labelled label="MRP (₹)"><input value={form.mrp} onChange={e => set("mrp", e.target.value)} inputMode="decimal" placeholder="0.00" /></Labelled>
+            <Labelled label="GST %"><input value={form.gstPercent} onChange={e => set("gstPercent", e.target.value)} inputMode="decimal" placeholder="5" /></Labelled>
+          </div>
+
+          <Labelled label="Group">
+            <select value={form.groupId} onChange={e => set("groupId", e.target.value)}>
+              <option value="">— No Group —</option>
+              {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+          </Labelled>
+
+          <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+            Min / Max selling price will be set by the admin afterwards.
+          </div>
+
           {err && <div className="alert alert-error" style={{ fontSize: "0.8rem" }}>{err}</div>}
         </div>
         <div className="modal-footer">

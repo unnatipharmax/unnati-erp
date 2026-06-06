@@ -33,7 +33,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 });
 
   // Base for margin math: existing MRP, else the max (or min) price entered.
-  let base = product.mrp && product.mrp > 0 ? product.mrp : (maxP ?? minP ?? 0);
+  const base = product.mrp && product.mrp > 0 ? product.mrp : (maxP ?? minP ?? 0);
   if (!base || base <= 0)
     return NextResponse.json({ error: "Enter a max price to set the base" }, { status: 400 });
 
