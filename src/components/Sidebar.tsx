@@ -63,7 +63,7 @@ const GROUPS: Group[] = [
   {
     label: "Masters",
     items: [
-      { name: "Products",  path: "/dashboard/product-master", icon: Package,    roles: ["ADMIN","MANAGER","SALES","PACKAGING"] },
+      { name: "Products",  path: "/dashboard/product-master", icon: Package,    roles: ["ADMIN","MANAGER","PACKAGING"] },
       { name: "Clients",   path: "/dashboard/client-master",  icon: Users,      roles: ["ADMIN","MANAGER"] },
       { name: "Suppliers", path: "/dashboard/party",          icon: Building2,  roles: ["ADMIN","MANAGER"] },
     ],

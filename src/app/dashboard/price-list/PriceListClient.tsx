@@ -19,18 +19,29 @@ function fmt(n: number | null) {
   return n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export default function PriceListClient() {
+export default function PriceListClient({ role }: { role?: string }) {
+  const canEdit = role === "ADMIN" || role === "MANAGER";
+
   const [items, setItems]       = useState<PriceItem[]>([]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState("");
   const [groupFilter, setGroupFilter] = useState("ALL");
+  const [showAdd, setShowAdd]   = useState(false);
 
-  useEffect(() => {
+  // Inline edit state
+  const [editId, setEditId]     = useState<string | null>(null);
+  const [editMin, setEditMin]   = useState("");
+  const [editMax, setEditMax]   = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  function load() {
+    setLoading(true);
     fetch("/api/price-list")
       .then(r => r.json())
       .then(data => { setItems(Array.isArray(data) ? data : []); setLoading(false); })
       .catch(() => setLoading(false));
-  }, []);
+  }
+  useEffect(() => { load(); }, []);
 
   const groups = useMemo(() => {
     const s = new Set<string>();
@@ -52,6 +63,33 @@ export default function PriceListClient() {
     });
   }, [items, search, groupFilter]);
 
+  function startEdit(item: PriceItem) {
+    setEditId(item.id);
+    setEditMin(item.minPrice != null ? String(item.minPrice) : "");
+    setEditMax(item.maxPrice != null ? String(item.maxPrice) : "");
+  }
+
+  async function saveEdit(id: string) {
+    setSavingEdit(true);
+    try {
+      const res = await fetch(`/api/price-list/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ minPrice: editMin, maxPrice: editMax }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setItems(prev => prev.map(it => it.id === id ? { ...it, minPrice: data.minPrice, maxPrice: data.maxPrice, hasMargins: true } : it));
+        setEditId(null);
+      } else {
+        alert(data?.error || "Failed to save");
+      }
+    } catch {
+      alert("Network error");
+    }
+    setSavingEdit(false);
+  }
+
   return (
     <div>
       {/* Header */}
@@ -62,8 +100,13 @@ export default function PriceListClient() {
             Selling price range for each product. Do not share MRP with clients.
           </p>
         </div>
-        <div className="text-xs text-slate-500 bg-slate-100 border border-slate-300 rounded-xl px-3 py-2 self-center">
-          {filtered.length} of {items.length} products
+        <div className="flex items-center gap-3 self-center">
+          <div className="text-xs text-slate-500 bg-slate-100 border border-slate-300 rounded-xl px-3 py-2">
+            {filtered.length} of {items.length} products
+          </div>
+          <button onClick={() => setShowAdd(true)} className="btn btn-primary btn-sm">
+            ＋ Add Product
+          </button>
         </div>
       </div>
 
@@ -101,52 +144,71 @@ export default function PriceListClient() {
                 <th className="px-4 py-3 text-left font-medium hidden md:table-cell">Pack</th>
                 <th className="px-4 py-3 text-right font-medium">Min Price (₹)</th>
                 <th className="px-4 py-3 text-right font-medium">Max Price (₹)</th>
+                {canEdit && <th className="px-4 py-3 text-right font-medium w-24"></th>}
               </tr>
             </thead>
             <tbody>
-              {filtered.map((item, idx) => (
-                <tr
-                  key={item.id}
-                  className="border-t border-slate-200 hover:bg-slate-50 transition-colors duration-100"
-                >
-                  <td className="px-4 py-3 text-slate-600 tabular-nums">{idx + 1}</td>
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-slate-900 leading-snug">{item.name}</div>
-                    {item.composition && (
-                      <div className="text-xs text-slate-500 mt-0.5">{item.composition}</div>
+              {filtered.map((item, idx) => {
+                const editing = editId === item.id;
+                return (
+                  <tr key={item.id} className="border-t border-slate-200 hover:bg-slate-50 transition-colors duration-100">
+                    <td className="px-4 py-3 text-slate-600 tabular-nums">{idx + 1}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-slate-900 leading-snug">{item.name.toUpperCase()}</div>
+                      {item.composition && <div className="text-xs text-slate-500 mt-0.5">{item.composition}</div>}
+                      {item.manufacturer && <div className="text-xs text-slate-600 mt-0.5">{item.manufacturer}</div>}
+                      {item.group && (
+                        <span className="inline-block mt-1 text-xs text-violet-600 bg-violet-500/10 border border-violet-500/20 rounded-md px-1.5 py-0.5">
+                          {item.group}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-slate-500 hidden md:table-cell">{item.pack ?? "—"}</td>
+
+                    {/* Min Price */}
+                    <td className="px-4 py-3 text-right">
+                      {editing ? (
+                        <input
+                          type="number" value={editMin} onChange={e => setEditMin(e.target.value)}
+                          placeholder="Min" min="0" step="0.01"
+                          className="w-24 rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-right text-slate-900 outline-none focus:ring-2 focus:ring-amber-500"
+                        />
+                      ) : item.minPrice != null ? (
+                        <span className="font-semibold text-emerald-600 tabular-nums">₹{fmt(item.minPrice)}</span>
+                      ) : <span className="text-slate-600">—</span>}
+                    </td>
+
+                    {/* Max Price */}
+                    <td className="px-4 py-3 text-right">
+                      {editing ? (
+                        <input
+                          type="number" value={editMax} onChange={e => setEditMax(e.target.value)}
+                          placeholder="Max" min="0" step="0.01"
+                          className="w-24 rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-right text-slate-900 outline-none focus:ring-2 focus:ring-amber-500"
+                        />
+                      ) : item.maxPrice != null ? (
+                        <span className="font-semibold text-blue-600 tabular-nums">₹{fmt(item.maxPrice)}</span>
+                      ) : <span className="text-slate-600">—</span>}
+                    </td>
+
+                    {/* Edit actions */}
+                    {canEdit && (
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        {editing ? (
+                          <span className="flex gap-1.5 justify-end">
+                            <button disabled={savingEdit} onClick={() => saveEdit(item.id)} className="btn btn-primary btn-sm" style={{ fontSize: "0.72rem", padding: "2px 10px" }}>
+                              {savingEdit ? "…" : "Save"}
+                            </button>
+                            <button onClick={() => setEditId(null)} className="btn btn-secondary btn-sm" style={{ fontSize: "0.72rem", padding: "2px 8px" }}>✕</button>
+                          </span>
+                        ) : (
+                          <button onClick={() => startEdit(item)} className="btn btn-secondary btn-sm" style={{ fontSize: "0.72rem", padding: "2px 10px" }}>Edit</button>
+                        )}
+                      </td>
                     )}
-                    {item.manufacturer && (
-                      <div className="text-xs text-slate-600 mt-0.5">{item.manufacturer}</div>
-                    )}
-                    {item.group && (
-                      <span className="inline-block mt-1 text-xs text-violet-600 bg-violet-500/10 border border-violet-500/20 rounded-md px-1.5 py-0.5">
-                        {item.group}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-slate-500 hidden md:table-cell">
-                    {item.pack ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {item.minPrice != null ? (
-                      <span className="font-semibold text-emerald-600 tabular-nums">
-                        ₹{fmt(item.minPrice)}
-                      </span>
-                    ) : (
-                      <span className="text-slate-600">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {item.maxPrice != null ? (
-                      <span className="font-semibold text-blue-600 tabular-nums">
-                        ₹{fmt(item.maxPrice)}
-                      </span>
-                    ) : (
-                      <span className="text-slate-600">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -163,6 +225,128 @@ export default function PriceListClient() {
           Max Price — standard selling price
         </span>
       </div>
+
+      {showAdd && (
+        <AddProductModal
+          canSetPrice={canEdit}
+          onClose={() => setShowAdd(false)}
+          onCreated={() => { setShowAdd(false); load(); }}
+        />
+      )}
     </div>
+  );
+}
+
+// ── Add Product modal ─────────────────────────────────────────────────────────
+function AddProductModal({ canSetPrice, onClose, onCreated }: {
+  canSetPrice: boolean;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [form, setForm] = useState({
+    name: "", composition: "", manufacturer: "", hsn: "", pack: "",
+    mrp: "", minPrice: "", maxPrice: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })); }
+
+  async function save() {
+    if (!form.name.trim()) { setErr("Product name is required"); return; }
+    setSaving(true); setErr("");
+
+    // Derive margins from MRP + entered min/max price (so they show in the price list)
+    const mrpNum = form.mrp ? Number(form.mrp) : null;
+    const minP   = form.minPrice ? Number(form.minPrice) : null;
+    const maxP   = form.maxPrice ? Number(form.maxPrice) : null;
+    const base   = (mrpNum && mrpNum > 0) ? mrpNum : (maxP ?? minP ?? null);
+
+    let minMargin: number | null = null;
+    let maxMargin: number | null = null;
+    if (base && base > 0) {
+      if (minP != null) minMargin = parseFloat(((minP / base - 1) * 100).toFixed(4));
+      if (maxP != null) maxMargin = parseFloat(((maxP / base - 1) * 100).toFixed(4));
+    }
+
+    const body: Record<string, unknown> = {
+      name: form.name.trim(),
+      composition: form.composition.trim() || null,
+      manufacturer: form.manufacturer.trim() || null,
+      hsn: form.hsn.trim() || null,
+      pack: form.pack.trim() || null,
+      mrp: base ?? null,            // seed MRP so price list can show the range
+      minMargin, maxMargin,
+    };
+
+    try {
+      const res = await fetch("/api/products", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) { setErr(data?.error || "Failed to add product"); setSaving(false); return; }
+      onCreated();
+    } catch {
+      setErr("Network error"); setSaving(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal" style={{ maxWidth: 480 }}>
+        <div className="modal-header">
+          <h3 style={{ margin: 0 }}>Add Product</h3>
+          <button onClick={onClose} className="btn btn-ghost btn-icon">✕</button>
+        </div>
+        <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          <Labelled label="Product Name *">
+            <input autoFocus value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. TADALAFIL 20MG" />
+          </Labelled>
+          <Labelled label="Composition">
+            <input value={form.composition} onChange={e => set("composition", e.target.value)} placeholder="e.g. Tadalafil 20mg" />
+          </Labelled>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+            <Labelled label="Manufacturer">
+              <input value={form.manufacturer} onChange={e => set("manufacturer", e.target.value)} />
+            </Labelled>
+            <Labelled label="Pack">
+              <input value={form.pack} onChange={e => set("pack", e.target.value)} placeholder="e.g. 10 tablets" />
+            </Labelled>
+            <Labelled label="HSN">
+              <input value={form.hsn} onChange={e => set("hsn", e.target.value)} placeholder="3004" />
+            </Labelled>
+            <Labelled label="MRP (₹)">
+              <input type="number" value={form.mrp} onChange={e => set("mrp", e.target.value)} placeholder="0.00" />
+            </Labelled>
+          </div>
+          {canSetPrice && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+              <Labelled label="Min Price (₹)">
+                <input type="number" value={form.minPrice} onChange={e => set("minPrice", e.target.value)} placeholder="lowest quote" />
+              </Labelled>
+              <Labelled label="Max Price (₹)">
+                <input type="number" value={form.maxPrice} onChange={e => set("maxPrice", e.target.value)} placeholder="standard price" />
+              </Labelled>
+            </div>
+          )}
+          {err && <div className="alert alert-error" style={{ fontSize: "0.8rem" }}>{err}</div>}
+        </div>
+        <div className="modal-footer">
+          <button onClick={onClose} className="btn btn-secondary" style={{ flex: 1 }}>Cancel</button>
+          <button onClick={save} disabled={saving} className="btn btn-primary" style={{ flex: 1 }}>
+            {saving ? "Saving…" : "Add Product"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Labelled({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label style={{ display: "block" }}>
+      <span style={{ fontSize: "0.72rem", color: "var(--text-secondary)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</span>
+      <div style={{ marginTop: 4 }}>{children}</div>
+    </label>
   );
 }

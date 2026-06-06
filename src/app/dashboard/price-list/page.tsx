@@ -7,7 +7,7 @@ export default async function PriceListPage() {
   if (!session) redirect("/login");
   return (
     <div className="p-6">
-      <PriceListClient />
+      <PriceListClient role={session.role} />
     </div>
   );
 }
