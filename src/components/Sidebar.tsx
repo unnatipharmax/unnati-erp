@@ -4,7 +4,7 @@ import { useState } from "react";
 import {
   Home, Link2, FileText, Users, Package, Settings,
   BookOpen, Box, ClipboardList, Wallet, Tag,
-  Bell, RotateCcw, ShoppingCart, BarChart2, Building2, PenLine, Truck,
+  Bell, RotateCcw, ShoppingCart, BarChart2, Building2, PenLine, Truck, FileSpreadsheet,
 } from "lucide-react";
 
 type Role = "ADMIN" | "MANAGER" | "SALES" | "ACCOUNTS" | "PACKAGING";
@@ -50,8 +50,9 @@ const GROUPS: Group[] = [
   {
     label: "Accounts",
     items: [
-      { name: "Ledger",   path: "/dashboard/ledger",   icon: BookOpen, roles: ["ADMIN","MANAGER","ACCOUNTS"] },
-      { name: "Expenses", path: "/dashboard/expenses", icon: Wallet,   roles: ["ADMIN","MANAGER","ACCOUNTS"] },
+      { name: "Ledger",      path: "/dashboard/ledger",      icon: BookOpen,        roles: ["ADMIN","MANAGER","ACCOUNTS"] },
+      { name: "Expenses",    path: "/dashboard/expenses",    icon: Wallet,          roles: ["ADMIN","MANAGER","ACCOUNTS"] },
+      { name: "GST Filing",  path: "/dashboard/gst-filing",  icon: FileSpreadsheet, roles: ["ADMIN","MANAGER","ACCOUNTS"] },
     ],
   },
   {

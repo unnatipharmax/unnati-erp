@@ -1,5 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
+import { RevenueAreaChart, DonutChart, RadialGauge, StackedBar } from "./DashboardCharts";
+
+// palette for donut / categorical charts
+const PALETTE = ["#f3b942", "#2563c9", "#047857", "#ea580c", "#7c3aed", "#dc2626", "#0891b2", "#db2777", "#65a30d", "#9333ea"];
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type ProductRow = { id: string; name: string; pack: string | null; batchNo: string | null; expDate: string; manufacturer: string | null; qty: number | null };
@@ -25,18 +29,31 @@ function fmtShort(n: number) {
   if (n >= 1_000)     return "$" + (n / 1_000).toFixed(1) + "K";
   return "$" + n.toFixed(0);
 }
-function fmtMonth(s: string) {
-  const [y, m] = s.split("-");
-  return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
-}
-
 // ── KPI Card ───────────────────────────────────────────────────────────────────
-function KpiCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color: string }) {
+function KpiCard({ label, value, sub, color, icon }: { label: string; value: string; sub?: string; color: string; icon: string }) {
+  const [hover, setHover] = useState(false);
   return (
-    <div className="card" style={{ padding: "1rem 1.25rem" }}>
-      <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: "1.35rem", fontWeight: 800, color, fontFamily: "monospace", lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 4 }}>{sub}</div>}
+    <div className="card"
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      style={{
+        padding: "1rem 1.25rem", position: "relative", overflow: "hidden",
+        transform: hover ? "translateY(-3px)" : "none",
+        boxShadow: hover ? `0 8px 22px ${color}33` : undefined,
+        transition: "transform 0.2s ease, box-shadow 0.2s ease",
+        borderTop: `3px solid ${color}`,
+      }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{label}</div>
+          <div style={{ fontSize: "1.35rem", fontWeight: 800, color, fontFamily: "monospace", lineHeight: 1 }}>{value}</div>
+          {sub && <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 4 }}>{sub}</div>}
+        </div>
+        <div style={{
+          width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+          background: `${color}18`, display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: "1.1rem", transition: "transform 0.2s", transform: hover ? "scale(1.12)" : "none",
+        }}>{icon}</div>
+      </div>
     </div>
   );
 }
@@ -80,33 +97,6 @@ function RankRow({ rank, label, sub, value, valueColor = "#2563c9", bar, maxBar 
       <div style={{ height: 4, borderRadius: 2, background: "var(--surface-2)", overflow: "hidden" }}>
         <div style={{ height: "100%", width: `${pct}%`, background: valueColor, borderRadius: 2, transition: "width 0.5s ease" }} />
       </div>
-    </div>
-  );
-}
-
-// ── Monthly bar chart ──────────────────────────────────────────────────────────
-function MonthlyChart({ data }: { data: ReportData["monthlyRevenue"] }) {
-  if (data.length === 0) return <div style={{ color: "var(--text-muted)", fontSize: "0.82rem", padding: "1rem 0" }}>No data yet.</div>;
-  const maxRev = Math.max(...data.map(d => d.totalRevenue), 1);
-  return (
-    <div style={{ display: "flex", alignItems: "flex-end", gap: "0.375rem", height: 100, paddingBottom: 20, position: "relative" }}>
-      {data.map(d => {
-        const h = Math.max(4, Math.round((d.totalRevenue / maxRev) * 80));
-        return (
-          <div key={d.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, position: "relative" }}>
-            <div title={`${fmtMonth(d.month)}: ${fmtShort(d.totalRevenue)} (${d.orderCount} orders)`} style={{
-              width: "100%", height: h, background: "linear-gradient(to top, #c9820f, #f3b942)",
-              borderRadius: "3px 3px 0 0", cursor: "pointer", transition: "opacity 0.2s",
-            }}
-              onMouseEnter={e => (e.currentTarget.style.opacity = "0.7")}
-              onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
-            />
-            <span style={{ fontSize: "0.58rem", color: "var(--text-muted)", position: "absolute", bottom: 0, whiteSpace: "nowrap" }}>
-              {fmtMonth(d.month)}
-            </span>
-          </div>
-        );
-      })}
     </div>
   );
 }
@@ -190,21 +180,68 @@ export default function DashboardClient() {
           [1,2,3,4,5,6].map(i => <div key={i} className="skeleton" style={{ height: 86, borderRadius: 12 }} />)
         ) : kpis ? (
           <>
-            <KpiCard label="Total Orders"      value={kpis.totalOrders.toString()}       color="#f3b942" />
-            <KpiCard label="Dispatched"        value={kpis.dispatchedCount.toString()}   color="#047857" sub="completed orders" />
-            <KpiCard label="Total Revenue"     value={fmtShort(kpis.totalRevenue)}       color="#b45309" sub="dispatched orders" />
-            <KpiCard label="Active Products"   value={kpis.totalProducts.toString()}     color="#2563c9" />
-            <KpiCard label="Active Parties"    value={kpis.totalParties.toString()}      color="#ea580c" />
-            <KpiCard label="Pending Bills"     value={fmt(kpis.totalPendingAmount)}      color="#dc2626" sub={`${kpis.pendingBillCount} parties`} />
+            <KpiCard label="Total Orders"      value={kpis.totalOrders.toString()}       color="#f3b942" icon="📦" />
+            <KpiCard label="Dispatched"        value={kpis.dispatchedCount.toString()}   color="#047857" sub="completed orders" icon="🚚" />
+            <KpiCard label="Total Revenue"     value={fmtShort(kpis.totalRevenue)}       color="#b45309" sub="dispatched orders" icon="💵" />
+            <KpiCard label="Active Products"   value={kpis.totalProducts.toString()}     color="#2563c9" icon="💊" />
+            <KpiCard label="Active Parties"    value={kpis.totalParties.toString()}      color="#ea580c" icon="🤝" />
+            <KpiCard label="Pending Bills"     value={fmt(kpis.totalPendingAmount)}      color="#dc2626" sub={`${kpis.pendingBillCount} parties`} icon="⏳" />
           </>
         ) : null}
       </div>
 
-      {/* ── Monthly Revenue Chart ── */}
-      <Section title="Monthly Revenue (Last 12 Months)" icon="📈">
-        {loadingR ? <div className="skeleton" style={{ height: 120, borderRadius: 8 }} /> :
-          reports ? <MonthlyChart data={reports.monthlyRevenue} /> : null}
-      </Section>
+      {/* ── Monthly Revenue Chart + Composition row ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)", gap: "1rem", alignItems: "stretch" }} className="dash-chart-row">
+        <Section title="Revenue & Orders Trend (Last 12 Months)" icon="📈">
+          {loadingR ? <div className="skeleton" style={{ height: 220, borderRadius: 8 }} /> :
+            reports ? <RevenueAreaChart data={reports.monthlyRevenue.map(m => ({ label: m.month, revenue: m.totalRevenue, orders: m.orderCount }))} /> : null}
+        </Section>
+
+        <Section title="Order Composition by Country" icon="🌐" accent="#2563c9">
+          {loadingR ? <div className="skeleton" style={{ height: 160, borderRadius: 8 }} /> :
+            reports ? (() => {
+              const top = reports.countrySales.slice(0, 6);
+              const rest = reports.countrySales.slice(6).reduce((s, c) => s + c.orderCount, 0);
+              const slices = top.map((c, i) => ({ label: c.country, value: c.orderCount, color: PALETTE[i % PALETTE.length] }));
+              if (rest > 0) slices.push({ label: "Others", value: rest, color: "#94a3b8" });
+              const totalOrders = slices.reduce((s, c) => s + c.value, 0);
+              return <DonutChart slices={slices} centerLabel="orders" centerValue={totalOrders.toLocaleString()} />;
+            })() : null}
+        </Section>
+      </div>
+
+      {/* ── Performance gauges ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+        <Section title="Dispatch Rate" icon="🎯" accent="#047857">
+          {loadingR ? <div className="skeleton" style={{ height: 150, borderRadius: 8 }} /> :
+            kpis ? <RadialGauge value={kpis.dispatchedCount} max={kpis.totalOrders || 1} label="dispatched" color="#047857"
+              sublabel={`${kpis.dispatchedCount} of ${kpis.totalOrders} orders completed`} /> : null}
+        </Section>
+        <Section title="Avg. Revenue / Order" icon="💎" accent="#b45309">
+          {loadingR ? <div className="skeleton" style={{ height: 150, borderRadius: 8 }} /> :
+            kpis ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: 150, gap: 6 }}>
+                <div style={{ fontSize: "2rem", fontWeight: 800, color: "#b45309", fontFamily: "monospace" }}>
+                  {fmtShort(kpis.dispatchedCount > 0 ? kpis.totalRevenue / kpis.dispatchedCount : 0)}
+                </div>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>per dispatched order</div>
+              </div>
+            ) : null}
+        </Section>
+        <Section title="Expiry Risk Overview" icon="⚠️" accent="#f59e0b">
+          {loadingE ? <div className="skeleton" style={{ height: 150, borderRadius: 8 }} /> :
+            expiry ? (
+              <div style={{ paddingTop: 8 }}>
+                <StackedBar segments={[
+                  { label: "Expired", value: expiry.expired.length, color: "#ef4444" },
+                  { label: "≤2 mo", value: expiry.within2.length, color: "#f97316" },
+                  { label: "≤5 mo", value: expiry.within5.length, color: "#f59e0b" },
+                  { label: "≤7 mo", value: expiry.within7.length, color: "#eab308" },
+                ]} />
+              </div>
+            ) : null}
+        </Section>
+      </div>
 
       {/* ── 3-column grid: Top Products | Best Sellers | Country Sales ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem" }}>

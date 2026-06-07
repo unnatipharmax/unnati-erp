@@ -39,6 +39,7 @@ type Order = {
   remitterName: string;
   amountPaid: number;
   currency: string;
+  grsNumber: string | null;
   exchangeRate: number;
   dollarAmount: number | null;
   inrAmount: number | null;
@@ -73,6 +74,28 @@ function getInvoiceDate(order: Order): Date {
 
 function formatDateLongIN(d: Date): string {
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+}
+
+// ── Payment category (GRS vs Non-GRS) ────────────────────────────────────────
+// Rule (per accounts entry): if the GRS number contains "GRS" → GRS payment.
+// Anything else (NEFT / RTGS / UPI / blank / other) → Non-GRS payment.
+// Only orders of the SAME category may be combined into one document set.
+type PayCategory = "GRS" | "NON_GRS";
+function getPayCategory(order: Order): PayCategory {
+  const g = (order.grsNumber ?? "").toUpperCase();
+  return g.includes("GRS") ? "GRS" : "NON_GRS";
+}
+function payCategoryLabel(c: PayCategory): string {
+  return c === "GRS" ? "GRS" : "Non-GRS";
+}
+
+// ── Currency symbol for the small box on each card ────────────────────────────
+function currencySymbol(code: string): string {
+  const map: Record<string, string> = {
+    USD: "$", INR: "₹", EUR: "€", GBP: "£", AUD: "A$", CAD: "C$",
+    AED: "د.إ", SGD: "S$", JPY: "¥", CNY: "¥", NZD: "NZ$", ZAR: "R",
+  };
+  return map[(code || "").toUpperCase()] ?? (code || "?");
 }
 
 // ── Status badge ─────────────────────────────────────────────────────────────
@@ -3339,6 +3362,7 @@ function BatchActionBar({
   onClear,
   generating,
   err,
+  incompatible,
 }: {
   selectedCount: number;
   onGenerate: () => void;
@@ -3346,14 +3370,16 @@ function BatchActionBar({
   onClear: () => void;
   generating: boolean;
   err: string;
+  incompatible: string | null;
 }) {
   if (selectedCount === 0) return null;
+  const blocked = !!incompatible;
 
   return (
     <div style={{
       position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
       background: "var(--bg-card)",
-      borderTop: "2px solid var(--primary)",
+      borderTop: `2px solid ${blocked ? "#dc2626" : "var(--primary)"}`,
       padding: "0.75rem 1.5rem",
       display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap",
       boxShadow: "0 -4px 24px rgba(0,0,0,0.25)",
@@ -3366,18 +3392,23 @@ function BatchActionBar({
       </span>
       <div style={{ flex: 1 }} />
       <button onClick={onClear} className="btn btn-secondary btn-sm">✕ Clear</button>
-      <button onClick={onViewDocs} className="btn btn-secondary" style={{ fontSize: "0.9rem" }}>
+      <button onClick={onViewDocs} disabled={blocked} className="btn btn-secondary" style={{ fontSize: "0.9rem", opacity: blocked ? 0.5 : 1, cursor: blocked ? "not-allowed" : "pointer" }}>
         View Combined Docs
       </button>
       <button
         onClick={onGenerate}
-        disabled={generating}
+        disabled={generating || blocked}
         className="btn btn-primary"
-        style={{ fontSize: "0.9rem" }}
+        style={{ fontSize: "0.9rem", opacity: blocked ? 0.5 : 1, cursor: blocked ? "not-allowed" : "pointer" }}
       >
         {generating ? "Generating…" : "Generate Combined Documents"}
       </button>
-      {err && <span style={{ color: "#dc2626", fontSize: "0.82rem", width: "100%" }}>{err}</span>}
+      {/* Combinability warning takes precedence; otherwise show server error */}
+      {incompatible ? (
+        <span style={{ color: "#dc2626", fontSize: "0.82rem", width: "100%", fontWeight: 600 }}>⚠ {incompatible}</span>
+      ) : err ? (
+        <span style={{ color: "#dc2626", fontSize: "0.82rem", width: "100%" }}>{err}</span>
+      ) : null}
     </div>
   );
 }
@@ -3445,6 +3476,32 @@ function OrderCard({
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
             <span style={{ fontWeight: 700, fontSize: "1rem" }}>{order.fullName}</span>
             <StatusBadge s={order.status} />
+            {/* Payment category — only same-category orders can be combined */}
+            {(() => {
+              const cat = getPayCategory(order);
+              const isGrs = cat === "GRS";
+              const c = isGrs ? "#7c3aed" : "#0891b2";
+              return (
+                <span title={order.grsNumber ? `GRS / Ref No: ${order.grsNumber}` : "No GRS number recorded"}
+                  style={{
+                    fontSize: "0.68rem", fontWeight: 800, letterSpacing: "0.04em",
+                    color: c, background: `${c}18`, border: `1px solid ${c}55`,
+                    borderRadius: 20, padding: "2px 9px", textTransform: "uppercase",
+                  }}>
+                  {payCategoryLabel(cat)}
+                </span>
+              );
+            })()}
+            {/* Order currency symbol — only same-currency orders can be combined */}
+            <span title={`Currency: ${order.currency}`}
+              style={{
+                fontSize: "0.74rem", fontWeight: 800, fontFamily: "monospace",
+                color: "#b45309", background: "#b4530918", border: "1px solid #b4530955",
+                borderRadius: 6, padding: "1px 8px", display: "inline-flex", alignItems: "center", gap: 4,
+              }}>
+              <span style={{ fontSize: "0.9rem" }}>{currencySymbol(order.currency)}</span>
+              {order.currency}
+            </span>
             {hasInvoice && (
               <span className="badge badge-green" style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>
                 {order.invoiceNo}
@@ -3734,6 +3791,104 @@ export default function PackagingClient() {
 
   useEffect(() => { load(); }, []);
 
+  // ── Combined reorder list across ALL orders with out-of-stock items ──────────
+  const [printingReorder, setPrintingReorder] = useState(false);
+
+  // Aggregate out-of-stock items across every loaded order, summing qty per product
+  function collectReorderItems() {
+    const agg = new Map<string, { productId: string; productName: string; qtyToOrder: number }>();
+    for (const o of orders) {
+      for (const it of o.items) {
+        if (it.stockQty != null && it.stockQty >= it.quantity) continue; // fully covered
+        const shortage = it.stockQty != null && it.stockQty > 0 ? it.quantity - it.stockQty : it.quantity;
+        if (shortage <= 0) continue;
+        const cur = agg.get(it.productId) ?? { productId: it.productId, productName: it.productName, qtyToOrder: 0 };
+        cur.qtyToOrder += shortage;
+        agg.set(it.productId, cur);
+      }
+    }
+    return [...agg.values()];
+  }
+
+  const reorderCount = collectReorderItems().length;
+
+  async function printAllReorders() {
+    const items = collectReorderItems();
+    if (items.length === 0) return;
+    setPrintingReorder(true);
+    try {
+      // Look up cheapest past supplier for each product
+      const ids = items.map(i => i.productId).join(",");
+      let supplierMap: Record<string, { partyName: string; phone: string | null; bestRate: number }[]> = {};
+      try {
+        const r = await fetch(`/api/packaging/product-suppliers?productIds=${encodeURIComponent(ids)}`);
+        if (r.ok) supplierMap = await r.json();
+      } catch { /* fall back to blank suppliers */ }
+
+      const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] ?? c));
+      const dateStr = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+
+      const rows = items
+        .sort((a, b) => a.productName.localeCompare(b.productName))
+        .map((it, i) => {
+          const cheapest = supplierMap[it.productId]?.[0] ?? null; // API sorts cheapest-first
+          const supplier = cheapest
+            ? `${esc(cheapest.partyName)}${cheapest.phone ? ` <span style="color:#555;font-size:11px">(${esc(cheapest.phone)})</span>` : ""}`
+            : "—";
+          const rate = cheapest ? "&#8377;" + cheapest.bestRate.toFixed(2) : "—";
+          return `<tr>
+            <td style="text-align:center">${i + 1}</td>
+            <td>${esc(it.productName)}</td>
+            <td style="text-align:center;font-weight:bold">${it.qtyToOrder}</td>
+            <td>${supplier}</td>
+            <td style="text-align:right">${rate}</td>
+            <td></td>
+          </tr>`;
+        }).join("");
+
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+        <title>Reorder List - ${dateStr}</title>
+        <style>
+          * { font-family: Arial, sans-serif; color:#000; box-sizing:border-box; }
+          body { padding: 24px; }
+          h1 { font-size: 18px; margin: 0 0 2px; letter-spacing:.04em; }
+          .sub { font-size: 12px; color:#444; margin-bottom: 16px; }
+          table { width:100%; border-collapse: collapse; }
+          th, td { border:1px solid #000; padding:7px 9px; font-size:12px; vertical-align: top; }
+          thead th { background:#e8e8e8; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+          .note { margin-top:18px; font-size:11px; color:#555; }
+          @media print { body { padding: 0; } @page { margin: 14mm; } }
+        </style></head>
+        <body>
+          <h1>UNNATI PHARMAX — REORDER LIST</h1>
+          <div class="sub">Combined procurement sheet · ${items.length} product${items.length !== 1 ? "s" : ""} to order · Generated ${dateStr}</div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width:5%;text-align:center">#</th>
+                <th style="width:34%">Product Name</th>
+                <th style="width:12%;text-align:center">Qty to Order</th>
+                <th style="width:28%">Supplier (lowest past price)</th>
+                <th style="width:11%;text-align:right">Last Rate</th>
+                <th style="width:10%">Done ✓</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div class="note">Quantities are totalled across all pending orders. Supplier shown is the one from whom each product was last purchased at the lowest price. Confirm current rates before ordering.</div>
+          <script>window.onload = function(){ window.print(); }</script>
+        </body></html>`;
+
+      const w = window.open("", "_blank", "width=900,height=700");
+      if (!w) { alert("Pop-up blocked — allow pop-ups to print the reorder list."); return; }
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+    } finally {
+      setPrintingReorder(false);
+    }
+  }
+
   const handleInvoiceGenerated = useCallback(
     (id: string, invoiceNo: string, trackingNo: string, licenseNo: string) => {
       setOrders((prev) =>
@@ -3757,7 +3912,26 @@ export default function PackagingClient() {
     });
   }
 
+  // Validate that a set of orders may be combined: same payment category AND
+  // same currency. Returns an error message, or null when combinable.
+  function validateCombinable(selected: Order[]): string | null {
+    if (selected.length < 2) return null;
+    const cats = new Set(selected.map(getPayCategory));
+    if (cats.size > 1) {
+      return "Cannot combine GRS and Non-GRS orders together. Select orders of the same payment type (all GRS or all Non-GRS).";
+    }
+    const currencies = new Set(selected.map(o => (o.currency || "").toUpperCase()));
+    if (currencies.size > 1) {
+      return `Cannot combine orders with different currencies (${[...currencies].join(", ")}). Select orders of the same currency.`;
+    }
+    return null;
+  }
+
   async function generateCombined() {
+    const selected = singleReady.filter(o => selectedIds.has(o.id));
+    const combineErr = validateCombinable(selected);
+    if (combineErr) { setBatchErr(combineErr); return; }
+
     setBatchGenerating(true);
     setBatchErr("");
     let invoiceNo: string | null = null;
@@ -3853,7 +4027,19 @@ export default function PackagingClient() {
             )}
           </p>
         </div>
-        <button onClick={load} className="btn btn-secondary btn-sm">↺ Refresh</button>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          {reorderCount > 0 && (
+            <button
+              onClick={printAllReorders}
+              disabled={printingReorder}
+              className="btn btn-secondary btn-sm"
+              title="Print a combined order list for all out-of-stock products across pending orders"
+            >
+              {printingReorder ? "Preparing…" : `🖨 Print All Reorders (${reorderCount})`}
+            </button>
+          )}
+          <button onClick={load} className="btn btn-secondary btn-sm">↺ Refresh</button>
+        </div>
       </div>
 
       {/* Top-level tabs: Single Order / Multi Order */}
@@ -4028,9 +4214,12 @@ export default function PackagingClient() {
       {/* Batch action bar — slides in from bottom when orders are selected */}
       <BatchActionBar
         selectedCount={selectedIds.size}
+        incompatible={validateCombinable(singleReady.filter(o => selectedIds.has(o.id)))}
         onGenerate={generateCombined}
         onViewDocs={() => {
           const selected = singleReady.filter(o => selectedIds.has(o.id));
+          const combineErr = validateCombinable(selected);
+          if (combineErr) { setBatchErr(combineErr); return; }
           if (selected.length > 0) setActiveDocsOrders(selected);
         }}
         onClear={() => { setSelectedIds(new Set()); setOrderDetails(new Map()); setBatchErr(""); }}

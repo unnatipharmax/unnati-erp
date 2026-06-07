@@ -442,3 +442,9 @@ tbody td     {
   outline: 2px solid var(--blue);
   outline-offset: 2px;
 }
+/* ── Dashboard chart row: stack on narrow screens ────────────────────────── */
+@media (max-width: 860px) {
+  .dash-chart-row {
+    grid-template-columns: 1fr !important;
+  }
+}

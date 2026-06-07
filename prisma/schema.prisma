@@ -366,11 +366,20 @@ model Expense {
   id          String   @id @default(uuid())
   category    String   // PERSONAL | STATIONARY | MONTHLY | YEARLY
   description String
-  amount      Float
+  amount      Float    // gross amount paid (incl. GST)
   expenseDate DateTime @default(now())
   paymentMode String?
   notes       String?
   createdAt   DateTime @default(now())
+
+  // ── GST / ITC fields (per accountant SOP) ────────────────────────────────
+  vendorName    String?  // payee / supplier name
+  vendorGstin   String?  // vendor GSTIN — required to claim ITC
+  billNo        String?  // vendor bill / invoice number
+  taxableAmount Float?   // amount before GST (auto from amount & gstPercent if blank)
+  gstPercent    Float?   // GST rate applied e.g. 5/12/18/28
+  gstAmount     Float?   // GST rupee amount (ITC claimable)
+  itcEligible   Boolean  @default(false) // is input credit claimable on this expense?
 
   @@index([category])
   @@index([expenseDate])

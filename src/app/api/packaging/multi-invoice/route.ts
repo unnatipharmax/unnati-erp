@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   // Verify all orders are PAYMENT_VERIFIED and don't already have an invoice
   const dbOrders = await prisma.orderInitiation.findMany({
     where: { id: { in: orderIds } },
-    select: { id: true, status: true, invoiceNo: true },
+    select: { id: true, status: true, invoiceNo: true, currency: true, grsNumber: true },
   });
 
   const alreadyInvoiced = dbOrders.filter((o) => !!o.invoiceNo);
@@ -51,6 +51,27 @@ export async function POST(req: Request) {
       { error: `${notVerified.length} order(s) are not PAYMENT_VERIFIED` },
       { status: 400 }
     );
+
+  // ── Combinability guards (mirror of the packaging UI rules) ────────────────
+  // 1. Only same payment category: GRS (grsNumber contains "GRS") vs Non-GRS.
+  // 2. Only same currency.
+  if (dbOrders.length > 1) {
+    const categories = new Set(
+      dbOrders.map((o) => ((o.grsNumber ?? "").toUpperCase().includes("GRS") ? "GRS" : "NON_GRS"))
+    );
+    if (categories.size > 1)
+      return NextResponse.json(
+        { error: "Cannot combine GRS and Non-GRS orders together." },
+        { status: 400 }
+      );
+
+    const currencies = new Set(dbOrders.map((o) => (o.currency || "").toUpperCase()));
+    if (currencies.size > 1)
+      return NextResponse.json(
+        { error: `Cannot combine orders with different currencies (${[...currencies].join(", ")}).` },
+        { status: 400 }
+      );
+  }
 
   const fy = getFinancialYear();
 

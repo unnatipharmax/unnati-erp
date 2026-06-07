@@ -23,6 +23,12 @@ type ProductEntry = {
 
 type SupplierMap = Record<string, Supplier[]>;
 
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] ?? c)
+  );
+}
+
 export default function SupplierSuggestions({
   outOfStockItems,
   onProceedToUpload,
@@ -75,6 +81,77 @@ export default function SupplierSuggestions({
     (item) => (map?.[item.productId]?.length ?? 0) > 0
   );
 
+  // Build the reorder rows: product, qty to order, cheapest supplier (lowest past price)
+  function buildOrderRows() {
+    return outOfStockItems.map((item) => {
+      const qtyToOrder = item.stockQty != null && item.stockQty > 0
+        ? item.neededQty - item.stockQty
+        : item.neededQty;
+      const cheapest = map?.[item.productId]?.[0] ?? null; // already sorted cheapest-first
+      return {
+        productName: item.productName,
+        qtyToOrder,
+        supplierName: cheapest?.partyName ?? "—",
+        supplierPhone: cheapest?.phone ?? null,
+        lastRate: cheapest?.bestRate ?? null,
+      };
+    });
+  }
+
+  function printOrderList() {
+    const rows = buildOrderRows();
+    const dateStr = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+    const bodyRows = rows.map((r, i) => `
+      <tr>
+        <td style="text-align:center">${i + 1}</td>
+        <td>${escapeHtml(r.productName)}</td>
+        <td style="text-align:center;font-weight:bold">${r.qtyToOrder}</td>
+        <td>${escapeHtml(r.supplierName)}${r.supplierPhone ? ` <span style="color:#555;font-size:11px">(${escapeHtml(r.supplierPhone)})</span>` : ""}</td>
+        <td style="text-align:right">${r.lastRate != null ? "&#8377;" + r.lastRate.toFixed(2) : "—"}</td>
+        <td></td>
+      </tr>`).join("");
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+      <title>Reorder List - ${dateStr}</title>
+      <style>
+        * { font-family: Arial, sans-serif; color:#000; box-sizing:border-box; }
+        body { padding: 24px; }
+        h1 { font-size: 18px; margin: 0 0 2px; letter-spacing: .04em; }
+        .sub { font-size: 12px; color:#444; margin-bottom: 16px; }
+        table { width:100%; border-collapse: collapse; }
+        th, td { border:1px solid #000; padding:7px 9px; font-size:12px; vertical-align: top; }
+        thead th { background:#e8e8e8; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+        tfoot td { font-weight:bold; }
+        .note { margin-top:18px; font-size:11px; color:#555; }
+        @media print { body { padding: 0; } @page { margin: 14mm; } }
+      </style></head>
+      <body>
+        <h1>UNNATI PHARMAX — REORDER LIST</h1>
+        <div class="sub">Items to be procured &nbsp;·&nbsp; Generated ${dateStr}</div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:5%;text-align:center">#</th>
+              <th style="width:34%">Product Name</th>
+              <th style="width:12%;text-align:center">Qty to Order</th>
+              <th style="width:28%">Supplier (lowest past price)</th>
+              <th style="width:11%;text-align:right">Last Rate</th>
+              <th style="width:10%">Done ✓</th>
+            </tr>
+          </thead>
+          <tbody>${bodyRows}</tbody>
+        </table>
+        <div class="note">Supplier shown is the one from whom this product was last purchased at the lowest price. Confirm current rates before ordering.</div>
+        <script>window.onload = function(){ window.print(); }</script>
+      </body></html>`;
+
+    const w = window.open("", "_blank", "width=900,height=700");
+    if (!w) { setErr("Pop-up blocked — allow pop-ups to print the order list."); return; }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  }
+
   return (
     <div style={{
       marginTop: "1rem",
@@ -94,9 +171,14 @@ export default function SupplierSuggestions({
             ({outOfStockItems.length} item{outOfStockItems.length !== 1 ? "s" : ""} need ordering)
           </span>
         </div>
-        <button onClick={onProceedToUpload} className="btn btn-primary btn-sm" style={{ fontSize: "0.78rem" }}>
-          + Upload New Bill
-        </button>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <button onClick={printOrderList} className="btn btn-secondary btn-sm" style={{ fontSize: "0.78rem" }}>
+            🖨 Print Order List
+          </button>
+          <button onClick={onProceedToUpload} className="btn btn-primary btn-sm" style={{ fontSize: "0.78rem" }}>
+            + Upload New Bill
+          </button>
+        </div>
       </div>
 
       {/* Per-product supplier cards */}

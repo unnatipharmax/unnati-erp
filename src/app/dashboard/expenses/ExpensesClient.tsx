@@ -13,6 +13,14 @@ type Expense = {
   paymentMode: string | null;
   notes: string | null;
   createdAt: string;
+  // GST / ITC
+  vendorName: string | null;
+  vendorGstin: string | null;
+  billNo: string | null;
+  taxableAmount: number | null;
+  gstPercent: number | null;
+  gstAmount: number | null;
+  itcEligible: boolean | null;
 };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -47,11 +55,24 @@ function AddExpenseForm({
     expenseDate: today(),
     paymentMode: "Cash",
     notes: "",
+    // GST / ITC
+    vendorName: "",
+    vendorGstin: "",
+    billNo: "",
+    gstPercent: "",
+    itcEligible: false,
   });
+  const [showGst, setShowGst] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
-  function set(k: string, v: string) { setForm(p => ({ ...p, [k]: v })); }
+  function set(k: string, v: string | boolean) { setForm(p => ({ ...p, [k]: v })); }
+
+  // Live GST split preview from gross amount + GST %
+  const grossNum = parseFloat(form.amount) || 0;
+  const pctNum = parseFloat(form.gstPercent) || 0;
+  const taxablePreview = pctNum > 0 ? Math.round((grossNum / (1 + pctNum / 100)) * 100) / 100 : grossNum;
+  const gstPreview = pctNum > 0 ? Math.round((grossNum - taxablePreview) * 100) / 100 : 0;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -60,12 +81,16 @@ function AddExpenseForm({
     const res = await fetch("/api/expenses", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, category, amount: parseFloat(form.amount) }),
+      body: JSON.stringify({
+        ...form, category, amount: parseFloat(form.amount),
+        gstPercent: form.gstPercent === "" ? null : parseFloat(form.gstPercent),
+      }),
     });
     const data = await res.json();
     setSaving(false);
     if (!res.ok) { setErr(data.error ?? "Failed"); return; }
-    setForm({ description: "", amount: "", expenseDate: today(), paymentMode: "Cash", notes: "" });
+    setForm({ description: "", amount: "", expenseDate: today(), paymentMode: "Cash", notes: "", vendorName: "", vendorGstin: "", billNo: "", gstPercent: "", itcEligible: false });
+    setShowGst(false);
     onAdded();
   }
 
@@ -100,11 +125,58 @@ function AddExpenseForm({
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "flex-end" }}>
-        <div>
-          <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: 3 }}>Notes (optional)</label>
-          <input style={inp} value={form.notes} onChange={e => set("notes", e.target.value)} placeholder="Additional notes..." />
-        </div>
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: 3 }}>Notes (optional)</label>
+        <input style={inp} value={form.notes} onChange={e => set("notes", e.target.value)} placeholder="Additional notes..." />
+      </div>
+
+      {/* GST / ITC details — collapsible, for claimable input credit */}
+      <div style={{ marginBottom: 12 }}>
+        <button type="button" onClick={() => setShowGst(s => !s)}
+          style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, padding: 0 }}>
+          {showGst ? "▼" : "▶"} GST / ITC details {form.itcEligible ? "(ITC enabled)" : "(optional)"}
+        </button>
+
+        {showGst && (
+          <div style={{ marginTop: 10, padding: 14, border: "1px solid var(--border)", borderRadius: 10, background: "var(--surface-2)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1.5fr 1fr 0.8fr", gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={{ fontSize: "0.72rem", color: "var(--text-muted)", display: "block", marginBottom: 3 }}>Vendor / Payee Name</label>
+                <input style={inp} value={form.vendorName} onChange={e => set("vendorName", e.target.value)} placeholder="Supplier name" />
+              </div>
+              <div>
+                <label style={{ fontSize: "0.72rem", color: "var(--text-muted)", display: "block", marginBottom: 3 }}>Vendor GSTIN</label>
+                <input style={inp} value={form.vendorGstin} onChange={e => set("vendorGstin", e.target.value.toUpperCase())} placeholder="e.g. 27ABCDE1234F1Z5" />
+              </div>
+              <div>
+                <label style={{ fontSize: "0.72rem", color: "var(--text-muted)", display: "block", marginBottom: 3 }}>Bill / Invoice No.</label>
+                <input style={inp} value={form.billNo} onChange={e => set("billNo", e.target.value)} placeholder="Bill no." />
+              </div>
+              <div>
+                <label style={{ fontSize: "0.72rem", color: "var(--text-muted)", display: "block", marginBottom: 3 }}>GST %</label>
+                <input style={inp} type="number" min="0" step="0.01" value={form.gstPercent} onChange={e => set("gstPercent", e.target.value)} placeholder="18" />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.8rem", cursor: "pointer" }}>
+                <input type="checkbox" checked={form.itcEligible} onChange={e => set("itcEligible", e.target.checked)} />
+                ITC eligible (claim input credit)
+              </label>
+              {pctNum > 0 && grossNum > 0 && (
+                <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                  Split → Taxable <strong>{fmtAmt(taxablePreview)}</strong> + GST <strong style={{ color: "#047857" }}>{fmtAmt(gstPreview)}</strong> = {fmtAmt(grossNum)}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 8 }}>
+              Amount above is the gross (incl. GST). Enter GST % to auto-split taxable & GST for ITC. Vendor GSTIN is needed to claim credit.
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <button
           type="submit"
           disabled={saving}
@@ -134,6 +206,15 @@ function ExpenseRow({ expense, onDeleted }: { expense: Expense; onDeleted: () =>
       <td style={{ padding: "10px 12px", fontSize: "0.85rem" }}>{expense.description}</td>
       <td style={{ padding: "10px 12px", fontSize: "0.85rem", textAlign: "right", fontWeight: 600 }}>
         {fmtAmt(expense.amount)}
+      </td>
+      <td style={{ padding: "10px 12px", fontSize: "0.82rem", textAlign: "right", color: expense.gstAmount ? "#047857" : "var(--text-muted)" }}>
+        {expense.gstAmount ? fmtAmt(expense.gstAmount) : "—"}
+        {expense.gstPercent ? <span style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}> ({expense.gstPercent}%)</span> : null}
+      </td>
+      <td style={{ padding: "10px 12px", fontSize: "0.78rem", color: "var(--text-muted)", fontFamily: "monospace" }}>
+        {expense.vendorGstin
+          ? <span title={expense.itcEligible ? "ITC eligible" : "ITC not marked"}>{expense.itcEligible ? "✓ " : ""}{expense.vendorGstin}</span>
+          : "—"}
       </td>
       <td style={{ padding: "10px 12px", fontSize: "0.82rem", color: "var(--text-muted)" }}>
         {expense.paymentMode ?? "—"}
@@ -174,6 +255,7 @@ function CategoryPanel({ tab }: { tab: typeof TABS[number] }) {
   useEffect(() => { load(); }, [load]);
 
   const total = expenses.reduce((s, e) => s + e.amount, 0);
+  const gstTotal = expenses.reduce((s, e) => s + (e.gstAmount ?? 0), 0);
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
@@ -218,6 +300,12 @@ function CategoryPanel({ tab }: { tab: typeof TABS[number] }) {
             <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>TOTAL</div>
             <div style={{ fontWeight: 700, fontSize: "1.1rem", color: tab.color }}>{fmtAmt(total)}</div>
           </div>
+          {gstTotal > 0 && (
+            <div style={{ background: "var(--surface-1)", borderRadius: 10, padding: "8px 18px", textAlign: "center", borderLeft: "3px solid #047857" }}>
+              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>GST / ITC</div>
+              <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "#047857" }}>{fmtAmt(gstTotal)}</div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -236,6 +324,8 @@ function CategoryPanel({ tab }: { tab: typeof TABS[number] }) {
                 <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600 }}>Date</th>
                 <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600 }}>Description</th>
                 <th style={{ padding: "10px 12px", textAlign: "right", fontWeight: 600 }}>Amount</th>
+                <th style={{ padding: "10px 12px", textAlign: "right", fontWeight: 600 }}>GST (ITC)</th>
+                <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600 }}>Vendor GSTIN</th>
                 <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600 }}>Mode</th>
                 <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600 }}>Notes</th>
                 <th style={{ padding: "10px 12px" }}></th>
@@ -252,7 +342,10 @@ function CategoryPanel({ tab }: { tab: typeof TABS[number] }) {
                 <td style={{ padding: "10px 12px", textAlign: "right", fontSize: "0.9rem", color: tab.color }}>
                   {fmtAmt(total)}
                 </td>
-                <td colSpan={3}></td>
+                <td style={{ padding: "10px 12px", textAlign: "right", fontSize: "0.85rem", color: "#047857" }}>
+                  {fmtAmt(gstTotal)}
+                </td>
+                <td colSpan={4}></td>
               </tr>
             </tfoot>
           </table>

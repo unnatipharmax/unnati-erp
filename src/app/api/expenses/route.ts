@@ -29,6 +29,9 @@ export async function GET(req: Request) {
       id: string; category: string; description: string;
       amount: number; expenseDate: Date; paymentMode: string | null;
       notes: string | null; createdAt: Date;
+      vendorName: string | null; vendorGstin: string | null; billNo: string | null;
+      taxableAmount: number | null; gstPercent: number | null; gstAmount: number | null;
+      itcEligible: boolean | null;
     }[]>(
       `SELECT * FROM "Expense" ${where} ORDER BY "expenseDate" DESC, "createdAt" DESC`,
       ...args
@@ -45,7 +48,10 @@ export async function POST(req: Request) {
   if (!session || !["ADMIN", "MANAGER", "ACCOUNTS"].includes(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { category, description, amount, expenseDate, paymentMode, notes } = await req.json();
+  const {
+    category, description, amount, expenseDate, paymentMode, notes,
+    vendorName, vendorGstin, billNo, gstPercent, gstAmount, taxableAmount, itcEligible,
+  } = await req.json();
 
   if (!category || !description || !amount)
     return NextResponse.json({ error: "category, description and amount are required" }, { status: 400 });
@@ -53,12 +59,27 @@ export async function POST(req: Request) {
   const id = crypto.randomUUID();
   const date = expenseDate ? new Date(expenseDate) : new Date();
 
+  // Derive GST split from gross amount + gstPercent when not explicitly provided.
+  const gross = Number(amount);
+  const pct = gstPercent != null && gstPercent !== "" ? Number(gstPercent) : null;
+  let taxable = taxableAmount != null && taxableAmount !== "" ? Number(taxableAmount) : null;
+  let gst = gstAmount != null && gstAmount !== "" ? Number(gstAmount) : null;
+  if (pct != null && pct > 0 && gst == null) {
+    // gross = taxable * (1 + pct/100) → taxable = gross / (1+pct/100)
+    taxable = Math.round((gross / (1 + pct / 100)) * 100) / 100;
+    gst = Math.round((gross - taxable) * 100) / 100;
+  }
+
   try {
     await prisma.$executeRawUnsafe(
-      `INSERT INTO "Expense" ("id","category","description","amount","expenseDate","paymentMode","notes","createdAt")
-       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())`,
-      id, category, description, Number(amount), date,
-      paymentMode || null, notes || null
+      `INSERT INTO "Expense"
+        ("id","category","description","amount","expenseDate","paymentMode","notes",
+         "vendorName","vendorGstin","billNo","taxableAmount","gstPercent","gstAmount","itcEligible","createdAt")
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW())`,
+      id, category, description, gross, date,
+      paymentMode || null, notes || null,
+      vendorName || null, vendorGstin || null, billNo || null,
+      taxable, pct, gst, Boolean(itcEligible)
     );
     return NextResponse.json({ success: true, id });
   } catch (err: any) {
