@@ -578,28 +578,130 @@ function InvoiceInlineEditor({ invoice, onClose, onSaved }: {
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────────
+// ── Editable grid row (order-level fields, safe to bulk-PATCH without items) ──
+type EditRow = {
+  id: string;
+  invoiceNo: string;
+  status: string;
+  invoiceDate: string;   // yyyy-mm-dd
+  fullName: string;
+  city: string;
+  country: string;
+  trackingNo: string;
+  shipmentMode: string;
+  currency: string;
+  amountPaid: string;
+  exchangeRate: string;
+  dollarAmount: string;
+  inrAmount: string;
+  shippingPrice: string;
+};
+
+function toRow(inv: Invoice): EditRow {
+  return {
+    id: inv.id,
+    invoiceNo: inv.invoiceNo,
+    status: inv.status,
+    invoiceDate: isoDateVal(inv.invoiceGeneratedAt),
+    fullName: inv.fullName ?? "",
+    city: inv.city ?? "",
+    country: inv.country ?? "",
+    trackingNo: inv.trackingNo ?? "",
+    shipmentMode: inv.orderEntry?.shipmentMode ?? "EMS",
+    currency: inv.currency ?? "USD",
+    amountPaid: String(inv.amountPaid ?? ""),
+    exchangeRate: inv.exchangeRate != null ? String(inv.exchangeRate) : "",
+    dollarAmount: inv.dollarAmount != null ? String(inv.dollarAmount) : "",
+    inrAmount: inv.inrAmount != null ? String(inv.inrAmount) : "",
+    shippingPrice: String(inv.orderEntry?.shippingPrice ?? ""),
+  };
+}
+
+const CURRENCIES = ["USD", "EUR", "GBP", "INR", "AUD", "CAD", "SGD"];
+
 export default function InvoicesClient() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [rows,     setRows]     = useState<EditRow[]>([]);
+  const [orig,     setOrig]     = useState<Record<string, EditRow>>({});
   const [loading,  setLoading]  = useState(true);
   const [search,   setSearch]   = useState("");
   const [editing,  setEditing]  = useState<Invoice | null>(null);
   const [err,      setErr]      = useState("");
+  const [saving,   setSaving]   = useState(false);
+  const [savedMsg, setSavedMsg] = useState("");
 
   const load = useCallback(async (q = "") => {
-    setLoading(true); setErr("");
+    setLoading(true); setErr(""); setSavedMsg("");
     const res  = await fetch(`/api/invoices?search=${encodeURIComponent(q)}`);
     const data = await res.json();
     if (!res.ok) { setErr(data?.error || "Failed to load"); setLoading(false); return; }
-    setInvoices(data.orders ?? []);
+    const list: Invoice[] = data.orders ?? [];
+    const draftRows = list.map(toRow);
+    setInvoices(list);
+    setRows(draftRows);
+    setOrig(Object.fromEntries(draftRows.map(r => [r.id, r])));
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, []);
 
-  function handleSearch(v: string) {
-    setSearch(v);
-    load(v);
+  function handleSearch(v: string) { setSearch(v); load(v); }
+
+  function setCell(id: string, key: keyof EditRow, val: string) {
+    setRows(prev => prev.map(r => r.id === id ? { ...r, [key]: val } : r));
+    setSavedMsg("");
   }
+
+  // Dirty rows = those differing from their original snapshot
+  const dirtyIds = rows.filter(r => JSON.stringify(r) !== JSON.stringify(orig[r.id])).map(r => r.id);
+
+  async function saveAll() {
+    if (dirtyIds.length === 0) return;
+    setSaving(true); setErr(""); setSavedMsg("");
+    let okCount = 0;
+    for (const id of dirtyIds) {
+      const r = rows.find(x => x.id === id)!;
+      const body = {
+        invoiceGeneratedAt: r.invoiceDate || null,
+        fullName: r.fullName,
+        city: r.city,
+        country: r.country,
+        trackingNo: r.trackingNo || null,
+        shipmentMode: r.shipmentMode,
+        shippingPrice: Number(r.shippingPrice) || 0,
+        currency: r.currency,
+        amountPaid: Number(r.amountPaid) || 0,
+        exchangeRate: r.exchangeRate ? Number(r.exchangeRate) : null,
+        dollarAmount: r.dollarAmount ? Number(r.dollarAmount) : null,
+        inrAmount:    r.inrAmount    ? Number(r.inrAmount)    : null,
+        // items intentionally omitted → preserved by the API
+      };
+      try {
+        const res = await fetch(`/api/invoices/${id}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) okCount++;
+        else { const d = await res.json().catch(() => ({})); setErr(`${r.invoiceNo}: ${d?.error || "save failed"}`); }
+      } catch {
+        setErr(`${r.invoiceNo}: network error`);
+      }
+    }
+    setSaving(false);
+    setSavedMsg(`✓ Saved ${okCount} invoice${okCount !== 1 ? "s" : ""}`);
+    load(search);
+  }
+
+  // Cell styles
+  const cellInput: React.CSSProperties = {
+    width: "100%", border: "1px solid transparent", background: "transparent",
+    padding: "4px 6px", fontSize: "0.8rem", borderRadius: 4, outline: "none",
+  };
+  const th: React.CSSProperties = {
+    padding: "8px 6px", textAlign: "left", fontSize: "0.66rem", fontWeight: 700,
+    textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)",
+    background: "var(--surface-2)", whiteSpace: "nowrap", position: "sticky", top: 0, zIndex: 1,
+  };
 
   return (
     <div>
@@ -607,23 +709,36 @@ export default function InvoicesClient() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem", flexWrap: "wrap", gap: "0.75rem" }}>
         <div>
           <h1>Edit Invoices</h1>
-          <p style={{ marginTop: "0.25rem" }}>{invoices.length} invoice{invoices.length !== 1 ? "s" : ""} found</p>
+          <p style={{ marginTop: "0.25rem" }}>
+            {invoices.length} invoice{invoices.length !== 1 ? "s" : ""} · edit any cell, then Save All
+          </p>
         </div>
-        <input
-          value={search}
-          onChange={e => handleSearch(e.target.value)}
-          placeholder="Search invoice no., name, email, tracking…"
-          style={{ padding: "0.5rem 0.75rem", minWidth: 280, fontSize: "0.875rem" }}
-        />
+        <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            value={search}
+            onChange={e => handleSearch(e.target.value)}
+            placeholder="Search invoice no., name, email, tracking…"
+            style={{ padding: "0.5rem 0.75rem", minWidth: 260, fontSize: "0.875rem" }}
+          />
+          <button
+            onClick={saveAll}
+            disabled={saving || dirtyIds.length === 0}
+            className="btn btn-primary"
+            style={{ fontSize: "0.85rem", whiteSpace: "nowrap" }}
+          >
+            {saving ? "Saving…" : dirtyIds.length > 0 ? `💾 Save All (${dirtyIds.length})` : "💾 Save All"}
+          </button>
+        </div>
       </div>
 
       {err && <div className="alert alert-error" style={{ marginBottom: "1rem" }}>{err}</div>}
+      {savedMsg && <div className="alert alert-success" style={{ marginBottom: "1rem" }}>{savedMsg}</div>}
 
       {loading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          {[1,2,3,4].map(i => <div key={i} className="skeleton" style={{ height: 72, borderRadius: 12 }} />)}
+          {[1,2,3,4].map(i => <div key={i} className="skeleton" style={{ height: 44, borderRadius: 8 }} />)}
         </div>
-      ) : invoices.length === 0 ? (
+      ) : rows.length === 0 ? (
         <div className="card" style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
           <div style={{ fontSize: "2rem", marginBottom: "0.5rem", opacity: 0.4 }}>🧾</div>
           <div style={{ fontWeight: 600 }}>No invoices found</div>
@@ -632,52 +747,77 @@ export default function InvoicesClient() {
           </div>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
-          {invoices.map(inv => {
-            const sc = STATUS_COLOR[inv.status] ?? { bg: "rgba(156,163,175,0.15)", color: "#9ca3af" };
-            return (
-              <div key={inv.id} className="card" style={{ padding: "0.875rem 1rem" }}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.75rem", flexWrap: "wrap" }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.25rem" }}>
-                      <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.95rem", color: "#6d28d9" }}>
-                        {inv.invoiceNo}
+        <div style={{ border: "1px solid var(--border)", borderRadius: 12, overflow: "auto", maxHeight: "72vh", background: "var(--surface-1)" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem", minWidth: 1280 }}>
+            <thead>
+              <tr>
+                <th style={{ ...th, minWidth: 110 }}>Invoice</th>
+                <th style={{ ...th, width: 130 }}>Date</th>
+                <th style={{ ...th, minWidth: 160 }}>Customer Name</th>
+                <th style={{ ...th, minWidth: 110 }}>City</th>
+                <th style={{ ...th, minWidth: 120 }}>Country</th>
+                <th style={{ ...th, minWidth: 140 }}>Tracking No</th>
+                <th style={{ ...th, width: 80 }}>Mode</th>
+                <th style={{ ...th, width: 75 }}>Currency</th>
+                <th style={{ ...th, width: 95, textAlign: "right" }}>Amount Paid</th>
+                <th style={{ ...th, width: 85, textAlign: "right" }}>Exch Rate</th>
+                <th style={{ ...th, width: 95, textAlign: "right" }}>Dollar Amt</th>
+                <th style={{ ...th, width: 95, textAlign: "right" }}>INR Amt</th>
+                <th style={{ ...th, width: 90, textAlign: "right" }}>Shipping</th>
+                <th style={{ ...th, width: 70 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => {
+                const inv = invoices.find(i => i.id === r.id);
+                const dirty = JSON.stringify(r) !== JSON.stringify(orig[r.id]);
+                const sc = STATUS_COLOR[r.status] ?? { bg: "rgba(156,163,175,0.15)", color: "#9ca3af" };
+                return (
+                  <tr key={r.id} style={{ borderTop: "1px solid var(--border)", background: dirty ? "rgba(229,152,26,0.07)" : undefined }}>
+                    <td style={{ padding: "4px 8px", whiteSpace: "nowrap" }}>
+                      <div style={{ fontFamily: "monospace", fontWeight: 700, color: "#6d28d9", fontSize: "0.78rem" }}>{r.invoiceNo}</div>
+                      <span style={{ fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", padding: "1px 5px", borderRadius: 3, background: sc.bg, color: sc.color }}>
+                        {r.status.replace("_", " ")}
                       </span>
-                      <span style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", padding: "2px 7px", borderRadius: 4, background: sc.bg, color: sc.color }}>
-                        {inv.status.replace("_", " ")}
-                      </span>
-                      <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
-                        {fmtDate(inv.invoiceGeneratedAt ?? inv.createdAt)}
-                      </span>
-                    </div>
-                    <div style={{ fontWeight: 600, fontSize: "0.88rem", marginBottom: "0.2rem" }}>{inv.fullName}</div>
-                    <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", fontSize: "0.78rem", color: "var(--text-secondary)" }}>
-                      <span>📍 {inv.city}, {inv.country}</span>
-                      {inv.trackingNo && <span style={{ fontFamily: "monospace" }}>🚚 {inv.trackingNo}</span>}
-                      {inv.orderEntry?.shipmentMode && <span>{inv.orderEntry.shipmentMode}</span>}
-                      <span style={{ fontFamily: "monospace", color: "#047857" }}>
-                        {inv.currency} {inv.amountPaid.toFixed(2)}
-                      </span>
-                      {inv.orderEntry && (
-                        <span style={{ color: "var(--text-muted)" }}>
-                          {inv.orderEntry.items.length} item{inv.orderEntry.items.length !== 1 ? "s" : ""}
-                        </span>
+                    </td>
+                    <td><input type="date" value={r.invoiceDate} onChange={e => setCell(r.id, "invoiceDate", e.target.value)} style={cellInput} /></td>
+                    <td><input value={r.fullName} onChange={e => setCell(r.id, "fullName", e.target.value)} style={cellInput} /></td>
+                    <td><input value={r.city} onChange={e => setCell(r.id, "city", e.target.value)} style={cellInput} /></td>
+                    <td><input value={r.country} onChange={e => setCell(r.id, "country", e.target.value)} style={cellInput} /></td>
+                    <td><input value={r.trackingNo} onChange={e => setCell(r.id, "trackingNo", e.target.value)} placeholder="—" style={{ ...cellInput, fontFamily: "monospace" }} /></td>
+                    <td>
+                      <select value={r.shipmentMode} onChange={e => setCell(r.id, "shipmentMode", e.target.value)} style={{ ...cellInput, cursor: "pointer" }}>
+                        {SHIPMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)}
+                      </select>
+                    </td>
+                    <td>
+                      <select value={r.currency} onChange={e => setCell(r.id, "currency", e.target.value)} style={{ ...cellInput, cursor: "pointer" }}>
+                        {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </td>
+                    <td><input type="number" value={r.amountPaid} onChange={e => setCell(r.id, "amountPaid", e.target.value)} style={{ ...cellInput, textAlign: "right" }} /></td>
+                    <td><input type="number" value={r.exchangeRate} onChange={e => setCell(r.id, "exchangeRate", e.target.value)} style={{ ...cellInput, textAlign: "right" }} /></td>
+                    <td><input type="number" value={r.dollarAmount} onChange={e => setCell(r.id, "dollarAmount", e.target.value)} style={{ ...cellInput, textAlign: "right" }} /></td>
+                    <td><input type="number" value={r.inrAmount} onChange={e => setCell(r.id, "inrAmount", e.target.value)} style={{ ...cellInput, textAlign: "right" }} /></td>
+                    <td><input type="number" value={r.shippingPrice} onChange={e => setCell(r.id, "shippingPrice", e.target.value)} style={{ ...cellInput, textAlign: "right" }} /></td>
+                    <td style={{ padding: "4px 6px", textAlign: "center" }}>
+                      {inv && (
+                        <button onClick={() => setEditing(inv)} className="btn btn-secondary btn-sm" style={{ fontSize: "0.7rem", padding: "3px 8px" }} title="Edit items & full details">
+                          Items
+                        </button>
                       )}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setEditing(inv)}
-                    className="btn btn-secondary btn-sm"
-                    style={{ fontSize: "0.78rem", flexShrink: 0 }}
-                  >
-                    ✏️ Edit
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
+
+      <p style={{ marginTop: "0.6rem", fontSize: "0.72rem", color: "var(--text-muted)" }}>
+        Changed rows are highlighted. Use <b>Items</b> to edit products, address &amp; dosage for an invoice.
+      </p>
 
       {editing && (
         <InvoiceInlineEditor
