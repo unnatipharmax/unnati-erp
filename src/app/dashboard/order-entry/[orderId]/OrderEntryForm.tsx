@@ -29,7 +29,7 @@ function Spinner({ size = 16 }: { size?: number }) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block group cursor-text">
-      <span className="text-xs font-medium text-slate-400 group-focus-within:text-blue-400 transition-colors duration-150">
+      <span className="text-xs font-medium text-slate-500 group-focus-within:text-amber-600 transition-colors duration-150">
         {label}
       </span>
       <div className="mt-1">{children}</div>
@@ -38,17 +38,17 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 const inputCls = [
-  "w-full rounded-xl border bg-slate-950/60 px-3 py-2.5 text-slate-100 text-sm",
+  "w-full rounded-xl border bg-white px-3 py-2.5 text-slate-900 text-sm",
   "outline-none transition-all duration-150",
-  "border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20",
-  "placeholder:text-slate-600 hover:border-slate-600",
+  "border-slate-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30",
+  "placeholder:text-slate-600 hover:border-slate-300",
 ].join(" ");
 
 const selectCls = [
-  "w-full rounded-xl border bg-slate-950/60 px-3 py-2.5 text-slate-100 text-sm",
+  "w-full rounded-xl border bg-white px-3 py-2.5 text-slate-900 text-sm",
   "outline-none transition-all duration-150 cursor-pointer",
-  "border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20",
-  "hover:border-slate-600",
+  "border-slate-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30",
+  "hover:border-slate-300",
 ].join(" ");
 
 // ── Add Product Modal ─────────────────────────────────────────────────────────
@@ -105,24 +105,24 @@ function AddProductModal({ onClose, onAdded }: { onClose: () => void; onAdded: (
         opacity: visible ? 1 : 0,
         transition: "transform 0.22s cubic-bezier(0.34,1.4,0.64,1), opacity 0.18s ease",
       }}>
-        <div className="bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="bg-white border border-slate-300 rounded-2xl shadow-2xl overflow-hidden">
 
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800/80">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/80">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-blue-400">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-amber-600">
                   <path d="M12 5v14M5 12h14" strokeLinecap="round"/>
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-100 leading-tight">Add New Product</p>
+                <p className="text-sm font-semibold text-slate-900 leading-tight">Add New Product</p>
                 <p className="text-xs text-slate-500 leading-tight mt-0.5">Saved to Product Master instantly</p>
               </div>
             </div>
             <button
               onClick={close}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-200 hover:bg-slate-800 transition-all duration-150 cursor-pointer"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all duration-150 cursor-pointer"
               title="Close (Esc)"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -165,10 +165,10 @@ function AddProductModal({ onClose, onAdded }: { onClose: () => void; onAdded: (
             {/* Error banner */}
             {err && (
               <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2.5" style={{ animation: "fadeIn 0.15s ease" }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-400 shrink-0">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-600 shrink-0">
                   <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01" strokeLinecap="round"/>
                 </svg>
-                <p className="text-xs text-red-300">{err}</p>
+                <p className="text-xs text-red-700">{err}</p>
               </div>
             )}
           </div>
@@ -180,15 +180,15 @@ function AddProductModal({ onClose, onAdded }: { onClose: () => void; onAdded: (
               className={[
                 "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150",
                 loading
-                  ? "bg-blue-700/50 text-white/50 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white shadow-lg shadow-blue-600/25 cursor-pointer",
+                  ? "bg-[#e5981a]/60 text-[#1c1503]/60 cursor-not-allowed"
+                  : "bg-[#e5981a] hover:bg-[#cf870f] active:scale-[0.98] text-[#1c1503] shadow-lg shadow-amber-600/25 cursor-pointer",
               ].join(" ")}
             >
               {loading ? <><Spinner size={13} /> Adding...</> : "Add Product"}
             </button>
             <button
               onClick={close} disabled={loading}
-              className="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-400 hover:text-slate-100 hover:bg-slate-800 hover:border-slate-600 text-sm transition-all duration-150 cursor-pointer"
+              className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-500 hover:text-slate-900 hover:bg-slate-100 hover:border-slate-300 text-sm transition-all duration-150 cursor-pointer"
             >
               Cancel
             </button>
@@ -305,7 +305,7 @@ export default function OrderEntryForm({
         />
       )}
 
-      <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 max-w-4xl">
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-4xl">
 
         {/* Top fields */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -329,10 +329,10 @@ export default function OrderEntryForm({
         {/* Items section */}
         <div className="mt-6">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-slate-200">Items</h3>
+            <h3 className="text-sm font-semibold text-slate-800">Items</h3>
             <button
               type="button" onClick={addRow}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700/60 hover:border-slate-600 text-slate-300 text-sm font-medium transition-all duration-150 cursor-pointer active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-100 hover:bg-slate-200 hover:border-slate-300 text-slate-700 text-sm font-medium transition-all duration-150 cursor-pointer active:scale-95"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M12 5v14M5 12h14" strokeLinecap="round"/>
@@ -347,7 +347,7 @@ export default function OrderEntryForm({
               const hasLastPrice = r.productId && lastPrices[r.productId];
               const isAutoFilled = hasLastPrice && r.sellingPrice === lastPrices[r.productId];
               return (
-                <div key={idx} className="grid grid-cols-12 gap-2.5 rounded-xl border border-slate-800 bg-slate-950/40 hover:border-slate-700/80 p-3 transition-colors duration-150 group">
+                <div key={idx} className="grid grid-cols-12 gap-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:border-slate-300 p-3 transition-colors duration-150 group">
 
                   {/* Product */}
                   <div className="col-span-12 md:col-span-6">
@@ -379,13 +379,13 @@ export default function OrderEntryForm({
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-medium text-slate-500">Selling Price ($)</label>
                       {isAutoFilled && (
-                        <span className="text-xs text-amber-400/80 font-medium">↩ last order</span>
+                        <span className="text-xs text-amber-600 font-medium">↩ last order</span>
                       )}
                     </div>
                     <input
                       value={r.sellingPrice} onChange={e => updateRow(idx, { sellingPrice: e.target.value })}
                       inputMode="decimal" placeholder="0.00"
-                      className={inputCls + " mt-1" + (isAutoFilled ? " border-amber-500/40 focus:border-amber-500" : "")}
+                      className={inputCls + " mt-1" + (isAutoFilled ? " border-amber-500 focus:border-amber-500" : "")}
                     />
                   </div>
 
@@ -398,7 +398,7 @@ export default function OrderEntryForm({
                       type="button" onClick={() => removeRow(idx)}
                       disabled={rows.length === 1}
                       title="Remove row"
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all duration-150 cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed"
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:text-red-600 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all duration-150 cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed"
                     >
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" strokeLinecap="round" strokeLinejoin="round"/>
@@ -413,23 +413,23 @@ export default function OrderEntryForm({
 
         {/* Order total */}
         <div className="mt-4 flex justify-end">
-          <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-2.5">
+          <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2.5">
             <span className="text-xs text-slate-500">Order Total</span>
-            <span className="text-base font-bold text-slate-100 tabular-nums">
+            <span className="text-base font-bold text-slate-900 tabular-nums">
               ${orderTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
         </div>
 
         {/* Dosage Tracking */}
-        <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+        <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
           <div className="flex items-center gap-2 mb-3">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-violet-400">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-violet-600">
               <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <h3 className="text-sm font-semibold text-slate-200">Dosage Tracking</h3>
+            <h3 className="text-sm font-semibold text-slate-800">Dosage Tracking</h3>
             {reminderDate && (
-              <span className="ml-auto text-xs text-violet-400 bg-violet-500/10 border border-violet-500/20 rounded-lg px-2 py-0.5">
+              <span className="ml-auto text-xs text-violet-600 bg-violet-500/10 border border-violet-500/20 rounded-lg px-2 py-0.5">
                 Reminder: {reminderDate}
               </span>
             )}
@@ -476,10 +476,10 @@ export default function OrderEntryForm({
               {dosageSaving ? <><Spinner size={12} /> Saving...</> : "Save Dosage"}
             </button>
             {dosageErr && (
-              <p className="text-xs text-red-400">{dosageErr}</p>
+              <p className="text-xs text-red-600">{dosageErr}</p>
             )}
             {dosageOk && (
-              <p className="text-xs text-emerald-400">{dosageOk}</p>
+              <p className="text-xs text-emerald-600">{dosageOk}</p>
             )}
           </div>
         </div>
@@ -491,8 +491,8 @@ export default function OrderEntryForm({
             className={[
               "flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150",
               loading
-                ? "bg-blue-700/50 text-white/50 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white shadow-lg shadow-blue-600/20 cursor-pointer",
+                ? "bg-[#e5981a]/60 text-[#1c1503]/60 cursor-not-allowed"
+                : "bg-[#e5981a] hover:bg-[#cf870f] active:scale-[0.98] text-[#1c1503] shadow-lg shadow-amber-600/20 cursor-pointer",
             ].join(" ")}
           >
             {loading ? (
@@ -510,18 +510,18 @@ export default function OrderEntryForm({
 
           {err && (
             <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2" style={{ animation: "fadeIn 0.15s ease" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-400 shrink-0">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-600 shrink-0">
                 <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01" strokeLinecap="round"/>
               </svg>
-              <p className="text-xs text-red-300">{err}</p>
+              <p className="text-xs text-red-700">{err}</p>
             </div>
           )}
           {ok && (
             <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2" style={{ animation: "fadeIn 0.15s ease" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-400 shrink-0">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-600 shrink-0">
                 <path d="M20 6 9 17l-5-5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              <p className="text-xs text-emerald-300">{ok}</p>
+              <p className="text-xs text-emerald-700">{ok}</p>
             </div>
           )}
         </div>

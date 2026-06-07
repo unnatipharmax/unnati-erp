@@ -64,8 +64,8 @@ export default async function OrderEntryPage({
 
   if (!order) {
     return (
-      <div className="p-6 text-slate-100">
-        Order not found: <span className="text-slate-400">{orderId}</span>
+      <div className="p-6 text-slate-900">
+        Order not found: <span className="text-slate-500">{orderId}</span>
       </div>
     );
   }
@@ -90,9 +90,9 @@ export default async function OrderEntryPage({
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold text-slate-100">Add Order Entry</h1>
-      <p className="text-slate-400 mt-1">
-        Order: <span className="text-slate-300 font-semibold">{order.fullName}</span> •{" "}
+      <h1 className="text-2xl font-bold text-slate-900">Add Order Entry</h1>
+      <p className="text-slate-500 mt-1">
+        Order: <span className="text-slate-700 font-semibold">{order.fullName}</span> •{" "}
         {order.id}
       </p>
 
