@@ -2507,7 +2507,10 @@ function MultiPackingListDoc({ orders }: { orders: Order[] }) {
 function MultiDocumentsOverlay({ orders, onClose }: { orders: Order[]; onClose: () => void }) {
   const [ds, setDs]           = useState<DocSettings>(DOC_SETTINGS_DEFAULT);
   const [weightMap, setWeightMap] = useState<Record<string, number>>({});
-  const [cn22Desc, setCn22Desc]   = useState("");
+  const [cn22Desc, setCn22Desc]         = useState("");
+  const [cn22Value, setCn22Value]       = useState("");
+  const [cn22Currency, setCn22Currency] = useState(orders[0]?.currency ?? "USD");
+  const [cn22Hsn, setCn22Hsn]           = useState("");
   useEffect(() => {
     fetch("/api/settings/company").then(r => r.json()).then(s => setDs({
       chaName: s.chaName || DOC_SETTINGS_DEFAULT.chaName,
@@ -2531,7 +2534,7 @@ function MultiDocumentsOverlay({ orders, onClose }: { orders: Order[]; onClose: 
     { label: "Packing List",       landscape: true,  multiPage: true,  comp: <MultiPackingListDoc      orders={effectiveOrders} /> },
     { label: "Form II",           landscape: true,  multiPage: true,  comp: <Form2Doc          order={first} orders={effectiveOrders} /> },
     { label: "EDF",               landscape: true,  multiPage: false, comp: <EdfDoc            order={first} /> },
-    { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={first} companyName={ds.companyName} companyAddress={ds.companyAddress} customDesc={cn22Desc || undefined} /> },
+    { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={first} companyName={ds.companyName} companyAddress={ds.companyAddress} customDesc={cn22Desc || undefined} customValue={cn22Value ? Number(cn22Value) : undefined} customCurrency={cn22Currency || undefined} customHsn={cn22Hsn || undefined} /> },
   ];
 
   function handlePrint() {
@@ -2602,33 +2605,16 @@ function MultiDocumentsOverlay({ orders, onClose }: { orders: Order[]; onClose: 
           </div>
         ))}
 
-        {/* ── CN22 label description input ── */}
+        {/* ── CN22 label fields ── */}
         <div style={{
           background: "#1a1a2e", borderBottom: "1px solid #374151",
-          padding: "7px 20px", display: "flex", alignItems: "center", gap: 10,
+          padding: "7px 20px", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
         }}>
-          <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#9ca3af", whiteSpace: "nowrap" }}>
-            📦 Label description:
-          </span>
-          <input
-            type="text"
-            value={cn22Desc}
-            onChange={e => setCn22Desc(e.target.value)}
-            placeholder="Auto-generated from product names…"
-            style={{
-              flex: 1, padding: "4px 10px", fontSize: "0.8rem",
-              background: "#0f172a", color: "#f1f5f9",
-              border: "1px solid #374151", borderRadius: 5, outline: "none",
-            }}
-          />
-          {cn22Desc && (
-            <button
-              onClick={() => setCn22Desc("")}
-              style={{ padding: "3px 10px", fontSize: "0.75rem", background: "rgba(255,255,255,0.08)", color: "#9ca3af", border: "none", borderRadius: 4, cursor: "pointer" }}
-            >
-              ✕ Clear
-            </button>
-          )}
+          <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#9ca3af", whiteSpace: "nowrap" }}>📦 Label:</span>
+          <input value={cn22Desc}     onChange={e => setCn22Desc(e.target.value)}     placeholder="Description…" style={{ ...lblInput(220), flex: 1 }} />
+          <input value={cn22Value}    onChange={e => setCn22Value(e.target.value)}    placeholder="Value" type="number" style={lblInput(90)} />
+          <input value={cn22Currency} onChange={e => setCn22Currency(e.target.value)} placeholder="Currency" style={lblInput(70)} />
+          <input value={cn22Hsn}      onChange={e => setCn22Hsn(e.target.value)}      placeholder="HS tariff no…" style={lblInput(110)} />
         </div>
 
         <div id="unnati-multi-docs-root" style={{ background: "#fff", color: "#000" }}>
@@ -2663,6 +2649,13 @@ function MultiDocumentsOverlay({ orders, onClose }: { orders: Order[]; onClose: 
     </div>
   );
 }
+
+// Shared dark-bar input style for CN22 label fields inside doc overlays
+const lblInput = (width: number): React.CSSProperties => ({
+  width, padding: "4px 8px", fontSize: "0.78rem",
+  background: "#0f172a", color: "#f1f5f9",
+  border: "1px solid #374151", borderRadius: 5, outline: "none",
+});
 
 // ── Inline weight-capture bar (used inside doc overlays) ─────────────────────
 // Lets the user upload a weighing-machine photo; AI reads the weight and the
@@ -2777,12 +2770,17 @@ function WeightCaptureBar({
 type DocSettings = { chaName: string; chaNo: string; stampB64: string; sigB64: string; companyName: string; companyAddress: string; };
 const DOC_SETTINGS_DEFAULT: DocSettings = { chaName: "AARPEE CLEARING & LOGISTICS", chaNo: "11/2623", stampB64: "", sigB64: "", companyName: "UNNATI PHARMAX", companyAddress: "1/04 Guruvanada Appartment, Central Ave, Lakadganj, Nagpur 440008" };
 
-function DocumentsOverlay({ order, labelOverrides, onClose }: { order: Order; labelOverrides?: LabelOverrides; onClose: () => void }) {
+function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => void }) {
   const isDHL        = order.shipmentMode === "DHL";
   const downloadHref = `/api/packaging/orders/${order.id}/documents`;
 
   const [ds, setDs] = useState<DocSettings>(DOC_SETTINGS_DEFAULT);
   const [weightKg, setWeightKg] = useState<number | null>(null);
+  // CN22 label fields — collected here, applied to the label
+  const [lblDesc,     setLblDesc]     = useState("");
+  const [lblValue,    setLblValue]    = useState("");
+  const [lblCurrency, setLblCurrency] = useState(order.currency ?? "USD");
+  const [lblHsn,      setLblHsn]      = useState("");
   const o = weightKg != null ? { ...order, netWeight: weightKg, grossWeight: weightKg } : order;
 
   useEffect(() => {
@@ -2804,7 +2802,7 @@ function DocumentsOverlay({ order, labelOverrides, onClose }: { order: Order; la
     { label: "Packing List",       landscape: true,  multiPage: false, comp: <PackingListDoc      order={o} /> },
     { label: "Form II",           landscape: true,  multiPage: false, comp: <Form2Doc          order={o} /> },
     { label: "EDF",               landscape: true,  multiPage: false, comp: <EdfDoc            order={o} /> },
-    { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={o} companyName={ds.companyName} companyAddress={ds.companyAddress} customDesc={labelOverrides?.desc || undefined} customValue={labelOverrides?.value ? Number(labelOverrides.value) : undefined} customCurrency={labelOverrides?.currency || undefined} customHsn={labelOverrides?.hsn || undefined} /> },
+    { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={o} companyName={ds.companyName} companyAddress={ds.companyAddress} customDesc={lblDesc || undefined} customValue={lblValue ? Number(lblValue) : undefined} customCurrency={lblCurrency || undefined} customHsn={lblHsn || undefined} /> },
   ];
 
   const dhlDocs = [
@@ -2944,6 +2942,17 @@ function DocumentsOverlay({ order, labelOverrides, onClose }: { order: Order; la
           currentWeight={order.netWeight}
           onExtracted={kg => setWeightKg(kg)}
         />
+
+        {/* ── CN22 label fields ── */}
+        {!isDHL && (
+          <div style={{ background: "#1a1a2e", borderBottom: "1px solid #374151", padding: "7px 20px", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#9ca3af", whiteSpace: "nowrap" }}>📦 Label:</span>
+            <input value={lblDesc}     onChange={e => setLblDesc(e.target.value)}     placeholder="Description…" style={lblInput(200)} />
+            <input value={lblValue}    onChange={e => setLblValue(e.target.value)}    placeholder="Value" type="number" style={lblInput(90)} />
+            <input value={lblCurrency} onChange={e => setLblCurrency(e.target.value)} placeholder="Currency" style={lblInput(70)} />
+            <input value={lblHsn}      onChange={e => setLblHsn(e.target.value)}      placeholder="HS tariff no…" style={lblInput(110)} />
+          </div>
+        )}
 
         {/* ── All documents stacked (screen view) ── */}
         <div id="unnati-docs-root" style={{ background: "#fff", color: "#000" }}>
@@ -3381,7 +3390,7 @@ function OrderCard({
 }: {
   order: Order;
   onInvoiceGenerated: (id: string, invoiceNo: string, trackingNo: string, licenseNo: string) => void;
-  onViewDocs: (order: Order, labelOverrides: LabelOverrides) => void;
+  onViewDocs: (order: Order) => void;
 }) {
   const isDHL = order.shipmentMode === "DHL";
   const [generating, setGenerating] = useState(false);
@@ -3391,11 +3400,6 @@ function OrderCard({
   const [trackingNo, setTrackingNo]   = useState("");
   const [netWeight,  setNetWeight]    = useState("");
   const [grossWeight, setGrossWeight] = useState("");
-  // CN22 label overrides — collected before invoice generation
-  const [labelDesc,     setLabelDesc]     = useState("");
-  const [labelValue,    setLabelValue]    = useState("");
-  const [labelCurrency, setLabelCurrency] = useState(order.currency ?? "USD");
-  const [labelHsn,      setLabelHsn]      = useState("");
 
   async function generateInvoice() {
     if (!trackingNo.trim()) { setErr("Please enter a tracking number first."); return; }
@@ -3460,18 +3464,10 @@ function OrderCard({
         </div>
 
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
-          {hasInvoice && (
-            <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.4rem" }}>
-              <input type="text"   value={labelDesc}     onChange={e => setLabelDesc(e.target.value)}     placeholder="Label description…"  style={{ width: 160, fontSize: "0.78rem", padding: "0.25rem 0.5rem" }} />
-              <input type="number" value={labelValue}    onChange={e => setLabelValue(e.target.value)}    placeholder="Label value"         style={{ width: 90,  fontSize: "0.78rem", padding: "0.25rem 0.5rem" }} />
-              <input type="text"   value={labelCurrency} onChange={e => setLabelCurrency(e.target.value)} placeholder="Currency"            style={{ width: 70,  fontSize: "0.78rem", padding: "0.25rem 0.5rem" }} />
-              <input type="text"   value={labelHsn}      onChange={e => setLabelHsn(e.target.value)}      placeholder="HS tariff no…"       style={{ width: 100, fontSize: "0.78rem", padding: "0.25rem 0.5rem" }} />
-            </div>
-          )}
           {hasInvoice ? (
             <>
             <button
-              onClick={() => onViewDocs(order, { desc: labelDesc, value: labelValue, currency: labelCurrency || order.currency, hsn: labelHsn })}
+              onClick={() => onViewDocs(order)}
               className="btn btn-primary btn-sm"
             >
               📄 View Documents
@@ -3514,36 +3510,6 @@ function OrderCard({
                 placeholder="Gross Wt (kg)"
                 min="0" step="0.01"
                 style={{ width: 110, fontSize: "0.82rem", padding: "0.3rem 0.6rem" }}
-              />
-              {/* CN22 label fields */}
-              <input
-                type="text"
-                value={labelDesc}
-                onChange={e => setLabelDesc(e.target.value)}
-                placeholder="Label description…"
-                style={{ width: 160, fontSize: "0.82rem", padding: "0.3rem 0.6rem" }}
-              />
-              <input
-                type="number"
-                value={labelValue}
-                onChange={e => setLabelValue(e.target.value)}
-                placeholder="Label value"
-                min="0" step="0.01"
-                style={{ width: 90, fontSize: "0.82rem", padding: "0.3rem 0.6rem" }}
-              />
-              <input
-                type="text"
-                value={labelCurrency}
-                onChange={e => setLabelCurrency(e.target.value)}
-                placeholder="Currency"
-                style={{ width: 70, fontSize: "0.82rem", padding: "0.3rem 0.6rem" }}
-              />
-              <input
-                type="text"
-                value={labelHsn}
-                onChange={e => setLabelHsn(e.target.value)}
-                placeholder="HS tariff no…"
-                style={{ width: 100, fontSize: "0.82rem", padding: "0.3rem 0.6rem" }}
               />
               <button
                 onClick={generateInvoice}
@@ -3737,7 +3703,6 @@ export default function PackagingClient() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeDocsOrder,   setActiveDocsOrder]   = useState<Order | null>(null);
-  const [activeDocsLabels,  setActiveDocsLabels]  = useState<LabelOverrides>({ desc: "", value: "", currency: "USD", hsn: "" });
   const [activeDocsOrders,  setActiveDocsOrders]  = useState<Order[] | null>(null);
   const [mainMode, setMainMode] = useState<"single" | "multi">("single");
   const [singleStatusTab, setSingleStatusTab] = useState<"ready" | "packing">("ready");
@@ -3780,9 +3745,8 @@ export default function PackagingClient() {
     []
   );
 
-  const handleViewDocs = useCallback((order: Order, labels: LabelOverrides) => {
+  const handleViewDocs = useCallback((order: Order) => {
     setActiveDocsOrder(order);
-    setActiveDocsLabels(labels);
   }, []);
 
   function toggleSelect(id: string) {
@@ -3989,17 +3953,6 @@ export default function PackagingClient() {
                                 onClick={(e) => e.stopPropagation()}
                               />
                             </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                              <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>License No:</label>
-                              <input
-                                type="text"
-                                value={det.licenseNo}
-                                onChange={(e) => setOrderDetail(o.id, "licenseNo", e.target.value)}
-                                placeholder="License number"
-                                style={{ width: 150, fontSize: "0.8rem", padding: "0.25rem 0.5rem" }}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            </div>
                           </div>
                         )}
                       </div>
@@ -4065,7 +4018,7 @@ export default function PackagingClient() {
       )}
 
       {/* Single-order documents overlay */}
-      {activeDocsOrder && <DocumentsOverlay order={activeDocsOrder} labelOverrides={activeDocsLabels} onClose={() => setActiveDocsOrder(null)} />}
+      {activeDocsOrder && <DocumentsOverlay order={activeDocsOrder} onClose={() => setActiveDocsOrder(null)} />}
 
       {/* Multi-order combined documents overlay */}
       {activeDocsOrders && (
