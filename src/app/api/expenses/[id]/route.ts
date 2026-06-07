@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { getSession } from "../../../../lib/auth";
+import { deleteExpenseBill } from "../../../../lib/expenseBills";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,11 @@ export async function DELETE(
 
   const { id } = await params;
   try {
+    // Remove the attached bill file (if any) before deleting the row.
+    const rows = await prisma.$queryRawUnsafe<{ billStoredName: string | null }[]>(
+      `SELECT "billStoredName" FROM "Expense" WHERE id = $1`, id
+    );
+    await deleteExpenseBill(rows[0]?.billStoredName);
     await prisma.$executeRawUnsafe(`DELETE FROM "Expense" WHERE id = $1`, id);
     return NextResponse.json({ success: true });
   } catch (err: any) {

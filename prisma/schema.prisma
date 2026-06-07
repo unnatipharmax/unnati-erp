@@ -381,6 +381,11 @@ model Expense {
   gstAmount     Float?   // GST rupee amount (ITC claimable)
   itcEligible   Boolean  @default(false) // is input credit claimable on this expense?
 
+  // ── Bill attachment (audit proof) ────────────────────────────────────────
+  billOriginalName String? // original file name
+  billStoredName   String? // uuid filename on disk
+  billMimeType     String? // image/jpeg etc.
+
   @@index([category])
   @@index([expenseDate])
 }

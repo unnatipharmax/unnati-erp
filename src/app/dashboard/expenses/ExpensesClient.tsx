@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Category = "PERSONAL" | "STATIONARY" | "MONTHLY" | "YEARLY";
@@ -21,6 +21,9 @@ type Expense = {
   gstPercent: number | null;
   gstAmount: number | null;
   itcEligible: boolean | null;
+  billOriginalName: string | null;
+  billStoredName: string | null;
+  billMimeType: string | null;
 };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -64,9 +67,57 @@ function AddExpenseForm({
   });
   const [showGst, setShowGst] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanMsg, setScanMsg] = useState("");
   const [err, setErr] = useState("");
+  const billRef = useRef<HTMLInputElement>(null);
+  // Attached bill image (kept for upload + thumbnail preview)
+  const [bill, setBill] = useState<{ dataUrl: string; base64: string; mime: string; name: string } | null>(null);
 
   function set(k: string, v: string | boolean) { setForm(p => ({ ...p, [k]: v })); }
+
+  // Read a bill photo and prefill the form fields via AI extraction.
+  async function scanBill(file: File) {
+    setErr(""); setScanMsg(""); setScanning(true);
+    try {
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = e => resolve(e.target?.result as string);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+      const base64 = dataUrl.split(",")[1];
+      const mime = file.type || "image/jpeg";
+      // Keep the image so it's saved with the expense as audit proof.
+      setBill({ dataUrl, base64, mime, name: file.name || "bill" });
+      const res = await fetch("/api/expenses/extract-bill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: base64, mimeType: mime }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setErr(d?.error || "Could not read the bill."); return; }
+
+      setForm(p => ({
+        ...p,
+        description: d.description ?? p.description,
+        amount:      d.amount != null ? String(d.amount) : p.amount,
+        expenseDate: d.billDate || p.expenseDate,
+        vendorName:  d.vendorName ?? p.vendorName,
+        vendorGstin: d.vendorGstin ?? p.vendorGstin,
+        billNo:      d.billNo ?? p.billNo,
+        gstPercent:  d.gstPercent != null ? String(d.gstPercent) : p.gstPercent,
+        itcEligible: d.vendorGstin ? true : p.itcEligible,
+      }));
+      if (d.vendorName || d.vendorGstin || d.gstPercent != null) setShowGst(true);
+      const got = [d.vendorName && "vendor", d.vendorGstin && "GSTIN", d.amount != null && "amount", d.billNo && "bill no"].filter(Boolean);
+      setScanMsg(got.length ? `Read ${got.join(", ")} — review & edit below.` : "Scanned — please review the fields.");
+    } catch {
+      setErr("Network error while reading the bill.");
+    } finally {
+      setScanning(false);
+    }
+  }
 
   // Live GST split preview from gross amount + GST %
   const grossNum = parseFloat(form.amount) || 0;
@@ -84,6 +135,9 @@ function AddExpenseForm({
       body: JSON.stringify({
         ...form, category, amount: parseFloat(form.amount),
         gstPercent: form.gstPercent === "" ? null : parseFloat(form.gstPercent),
+        billImageBase64: bill?.base64 ?? null,
+        billMimeType: bill?.mime ?? null,
+        billOriginalName: bill?.name ?? null,
       }),
     });
     const data = await res.json();
@@ -91,6 +145,8 @@ function AddExpenseForm({
     if (!res.ok) { setErr(data.error ?? "Failed"); return; }
     setForm({ description: "", amount: "", expenseDate: today(), paymentMode: "Cash", notes: "", vendorName: "", vendorGstin: "", billNo: "", gstPercent: "", itcEligible: false });
     setShowGst(false);
+    setScanMsg("");
+    setBill(null);
     onAdded();
   }
 
@@ -101,7 +157,27 @@ function AddExpenseForm({
 
   return (
     <form onSubmit={submit} style={{ background: "var(--surface-1)", borderRadius: 12, padding: 20, marginBottom: 24 }}>
-      <div style={{ fontWeight: 700, marginBottom: 14, fontSize: "0.9rem" }}>Add Expense</div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+        <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>Add Expense</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          {scanMsg && <span style={{ fontSize: "0.76rem", color: "#047857" }}>{scanMsg}</span>}
+          {bill && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={bill.dataUrl} alt="bill" style={{ width: 34, height: 34, objectFit: "cover", borderRadius: 6, border: "1px solid var(--border)" }} />
+              <span style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>bill attached</span>
+              <button type="button" onClick={() => setBill(null)} title="Remove attachment"
+                style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "0.85rem" }}>✕</button>
+            </div>
+          )}
+          <button type="button" onClick={() => billRef.current?.click()} disabled={scanning}
+            style={{ padding: "6px 14px", background: scanning ? "var(--surface-2)" : "transparent", color: "var(--accent)", border: "1px solid var(--accent)", borderRadius: 7, fontWeight: 600, fontSize: "0.8rem", cursor: scanning ? "wait" : "pointer", whiteSpace: "nowrap" }}>
+            {scanning ? "Reading bill…" : bill ? "📷 Replace Bill" : "📷 Scan Bill Photo"}
+          </button>
+          <input ref={billRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) scanBill(f); e.target.value = ""; }} />
+        </div>
+      </div>
       {err && <div style={{ color: "#dc2626", marginBottom: 10, fontSize: "0.83rem" }}>{err}</div>}
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
@@ -222,6 +298,13 @@ function ExpenseRow({ expense, onDeleted }: { expense: Expense; onDeleted: () =>
       <td style={{ padding: "10px 12px", fontSize: "0.82rem", color: "var(--text-muted)" }}>
         {expense.notes ?? "—"}
       </td>
+      <td style={{ padding: "10px 12px", fontSize: "0.82rem", textAlign: "center" }}>
+        {expense.billStoredName
+          ? <a href={`/api/expenses/${expense.id}/bill`} target="_blank" rel="noopener noreferrer"
+              title={expense.billOriginalName ?? "View bill"}
+              style={{ color: "var(--accent)", textDecoration: "none", fontWeight: 600 }}>📄 View</a>
+          : <span style={{ color: "var(--text-muted)" }}>—</span>}
+      </td>
       <td style={{ padding: "10px 12px", textAlign: "right" }}>
         <button
           onClick={del}
@@ -328,6 +411,7 @@ function CategoryPanel({ tab }: { tab: typeof TABS[number] }) {
                 <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600 }}>Vendor GSTIN</th>
                 <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600 }}>Mode</th>
                 <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600 }}>Notes</th>
+                <th style={{ padding: "10px 12px", textAlign: "center", fontWeight: 600 }}>Bill</th>
                 <th style={{ padding: "10px 12px" }}></th>
               </tr>
             </thead>
@@ -345,7 +429,7 @@ function CategoryPanel({ tab }: { tab: typeof TABS[number] }) {
                 <td style={{ padding: "10px 12px", textAlign: "right", fontSize: "0.85rem", color: "#047857" }}>
                   {fmtAmt(gstTotal)}
                 </td>
-                <td colSpan={4}></td>
+                <td colSpan={5}></td>
               </tr>
             </tfoot>
           </table>
