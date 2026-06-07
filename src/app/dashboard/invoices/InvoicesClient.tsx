@@ -8,6 +8,11 @@ type Item = {
   productName:  string;
   composition:  string | null;
   pack:         string | null;
+  hsn:          string | null;
+  manufacturer: string | null;
+  batchNo:      string | null;
+  mfgDate:      string | null;
+  expDate:      string | null;
   quantity:     number;
   sellingPrice: number;
 };
@@ -165,7 +170,13 @@ function InvoiceInlineEditor({ invoice, onClose, onSaved }: {
       shipmentMode,
       shippingPrice: Number(shippingPrice) || 0,
       notes: notes || null,
-      items: items.map(it => ({ productId: it.productId, quantity: Number(it.quantity), sellingPrice: Number(it.sellingPrice) })),
+      items: items.map(it => ({
+        productId: it.productId, quantity: Number(it.quantity), sellingPrice: Number(it.sellingPrice),
+        // product-master field edits (applied to the linked product)
+        productName: it.productName, composition: it.composition, pack: it.pack,
+        hsn: it.hsn, manufacturer: it.manufacturer, batchNo: it.batchNo,
+        mfgDate: it.mfgDate, expDate: it.expDate,
+      })),
       amountPaid:   Number(amountPaid)   || 0,
       currency,
       exchangeRate: exchangeRate ? Number(exchangeRate) : null,
@@ -401,14 +412,30 @@ function InvoiceInlineEditor({ invoice, onClose, onSaved }: {
                 return (
                   <tr key={item.id ?? idx} style={{ textAlign: "center" }}>
                     <td style={td}>{idx + 1}</td>
-                    <td style={td}></td>
-                    <td style={{ ...td, textAlign: "left" }}>{item.productName}</td>
-                    <td style={{ ...td, textAlign: "left" }}>{item.composition ?? ""}</td>
-                    <td style={td}></td>
-                    <td style={td}></td>
-                    <td style={td}></td>
-                    <td style={td}></td>
-                    <td style={td}>{item.pack ?? ""}</td>
+                    <td style={td}>
+                      <input value={item.hsn ?? ""} onChange={e => updateItem(idx, "hsn", e.target.value)} style={{ textAlign: "center" }} />
+                    </td>
+                    <td style={{ ...td, textAlign: "left" }}>
+                      <input value={item.productName} onChange={e => updateItem(idx, "productName", e.target.value)} style={{ textAlign: "left", fontWeight: "bold" }} />
+                    </td>
+                    <td style={{ ...td, textAlign: "left" }}>
+                      <input value={item.composition ?? ""} onChange={e => updateItem(idx, "composition", e.target.value)} style={{ textAlign: "left" }} />
+                    </td>
+                    <td style={td}>
+                      <input value={item.mfgDate ?? ""} onChange={e => updateItem(idx, "mfgDate", e.target.value)} placeholder="Mon-YY" style={{ textAlign: "center" }} />
+                    </td>
+                    <td style={td}>
+                      <input value={item.expDate ?? ""} onChange={e => updateItem(idx, "expDate", e.target.value)} placeholder="Mon-YY" style={{ textAlign: "center" }} />
+                    </td>
+                    <td style={td}>
+                      <input value={item.batchNo ?? ""} onChange={e => updateItem(idx, "batchNo", e.target.value)} style={{ textAlign: "center" }} />
+                    </td>
+                    <td style={td}>
+                      <input value={item.manufacturer ?? ""} onChange={e => updateItem(idx, "manufacturer", e.target.value)} style={{ textAlign: "left" }} />
+                    </td>
+                    <td style={td}>
+                      <input value={item.pack ?? ""} onChange={e => updateItem(idx, "pack", e.target.value)} style={{ textAlign: "center" }} />
+                    </td>
                     <td style={td}>
                       <input
                         type="number" min="1"
@@ -748,7 +775,7 @@ export default function InvoicesClient() {
         </div>
       ) : (
         <div style={{ border: "1px solid var(--border)", borderRadius: 12, overflow: "auto", maxHeight: "72vh", background: "var(--surface-1)" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem", minWidth: 1280 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem", tableLayout: "fixed", minWidth: 1120 }}>
             <thead>
               <tr>
                 <th style={{ ...th, minWidth: 110 }}>Invoice</th>

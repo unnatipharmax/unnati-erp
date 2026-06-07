@@ -64,6 +64,23 @@ export async function PATCH(
         if (body.notes         !== undefined) entryData.notes         = body.notes || null;
 
         if (body.items !== undefined && Array.isArray(body.items)) {
+          // Apply product-master field edits (HS code, generic name, dates, batch, etc.)
+          for (const it of body.items) {
+            if (!it.productId) continue;
+            const pd: Prisma.ProductUpdateInput = {};
+            if (it.productName  !== undefined && it.productName?.trim()) pd.name        = it.productName.trim();
+            if (it.composition  !== undefined) pd.composition  = it.composition  || null;
+            if (it.pack         !== undefined) pd.pack         = it.pack         || null;
+            if (it.hsn          !== undefined) pd.hsn          = it.hsn          || null;
+            if (it.manufacturer !== undefined) pd.manufacturer = it.manufacturer || null;
+            if (it.batchNo      !== undefined) pd.batchNo      = it.batchNo      || null;
+            if (it.mfgDate      !== undefined) pd.mfgDate      = it.mfgDate      || null;
+            if (it.expDate      !== undefined) pd.expDate      = it.expDate      || null;
+            if (Object.keys(pd).length > 0) {
+              await tx.product.update({ where: { id: it.productId }, data: pd });
+            }
+          }
+
           entryData.items = {
             deleteMany: {},
             create: body.items.map((it: { productId: string; quantity: number; sellingPrice: number }) => ({
