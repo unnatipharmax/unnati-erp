@@ -43,7 +43,7 @@ const GROUPS: Group[] = [
       { name: "Packaging",         path: "/dashboard/packaging",          icon: Box,        roles: ["ADMIN","MANAGER","PACKAGING"] },
       { name: "Edit Invoices",     path: "/dashboard/invoices",           icon: FileText,   roles: ["ADMIN","MANAGER"] },
       { name: "Export Returns",    path: "/dashboard/returns",            icon: RotateCcw,  roles: ["ADMIN","MANAGER"] },
-      { name: "Anjani Courier",    path: "/dashboard/anjani-courier",     icon: Truck,      roles: ["ADMIN","MANAGER","PACKAGING","ACCOUNTS"] },
+      { name: "Local Courier Sheet", path: "/dashboard/anjani-courier",   icon: Truck,      roles: ["ADMIN","MANAGER","PACKAGING","ACCOUNTS"] },
       { name: "Dosage Reminders",  path: "/dashboard/dosage-reminders",   icon: Bell,       roles: ["ADMIN","MANAGER"] },
     ],
   },
