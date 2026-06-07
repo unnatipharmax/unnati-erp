@@ -1317,17 +1317,26 @@ function CN22LabelDoc({ order, companyName, companyAddress, customDesc, customVa
 }
 
 // ── DOC 3: Form-II (template) ────────────────────────────────────────────────
-function Form2Doc({ order }: { order: Order }) {
+function Form2Doc({ order, orders }: { order: Order; orders?: Order[] }) {
+  const allOrders = orders && orders.length ? orders : [order];
+  const isMulti   = allOrders.length > 1;
+
   const invDate  = getInvoiceDate(order);
   const dateStr  = invDate.toLocaleDateString("en-GB").replaceAll("/", ".");
-  const totalQty = order.items.reduce((s, i) => s + i.quantity, 0);
-  const hsn      = order.items[0]?.hsn ?? "3004";
-  const fob      = order.dollarAmount ?? 0;
   const exRate   = order.exchangeRate ?? 84;
-  const amtInr   = Math.round(fob * exRate * 100) / 100;
+  const invoiceLabel = allOrders.map(o => o.invoiceNo).filter(Boolean).join(" / ") || "—";
 
-  const cityLine = [order.city, order.state].filter(Boolean).join(", ");
-  const buyerAddr = [order.fullName, order.address, cityLine + " " + order.postalCode, order.country].filter(Boolean).join("\n");
+  // Per-order helpers
+  const ordFob  = (o: Order) => o.dollarAmount ?? 0;
+  const ordInr  = (o: Order) => Math.round(ordFob(o) * (o.exchangeRate ?? 84) * 100) / 100;
+  const ordQty  = (o: Order) => o.items.reduce((s, i) => s + i.quantity, 0);
+  const ordAddr = (o: Order) => {
+    const cl = [o.city, o.state].filter(Boolean).join(", ");
+    return [o.fullName, o.address, (cl + " " + o.postalCode).trim(), o.country].filter(Boolean).join("\n");
+  };
+  const ordDateStr = (o: Order) => getInvoiceDate(o).toLocaleDateString("en-GB").replaceAll("/", ".");
+  const ordWeight  = (o: Order) => o.grossWeight != null ? `${Math.round(o.grossWeight * 1000)} GMS`
+                                 : o.netWeight  != null ? `${Math.round(o.netWeight  * 1000)} GMS` : "GROSS";
 
   const b = "1px solid #000";
   const td:  React.CSSProperties = { border: b, padding: "2px 3px", verticalAlign: "middle", fontSize: "7px", color: "#000", background: "#fff" };
@@ -1377,7 +1386,7 @@ function Form2Doc({ order }: { order: Order }) {
         </thead>
         <tbody>
           <tr>
-            <td style={{ ...td, ...ctr }}>{order.invoiceNo ?? ""}<br/>{dateStr}</td>
+            <td style={{ ...td, ...ctr }}>{invoiceLabel}<br/>{dateStr}</td>
             <td style={{ ...td, ...ctr }}>INBOM5</td>
             <td style={{ ...td, fontWeight: "bold" }}>UNNATI PHARMAX</td>
             <td style={td}>SHOP NO 181 GURUKRUPA APARTMENT, CENTRAL AVE, LAKADGANJ NAGPUR MAHARSHTRA 440008</td>
@@ -1444,13 +1453,9 @@ function Form2Doc({ order }: { order: Order }) {
         </tbody>
       </table>
 
-      {/* ══ DETAILS OF PARCEL ══ (one row per product, shared cells row-spanned) */}
+      {/* ══ DETAILS OF PARCEL ══ (one row per product; each customer's cells row-spanned) */}
       {(() => {
-        const items   = order.items.length ? order.items : [{ productName: "", hsn: "", pack: "", quantity: 0 } as Item];
-        const R       = items.length;
-        const grossWt = order.grossWeight != null ? `${Math.round(order.grossWeight * 1000)} GMS`
-                      : order.netWeight  != null ? `${Math.round(order.netWeight  * 1000)} GMS` : "GROSS";
-        const tdv     = { ...td, verticalAlign: "middle" as const };
+        const tdv = { ...td, verticalAlign: "middle" as const };
         return (
           <table style={{ ...tbl, tableLayout: "fixed" }}>
             <colgroup>
@@ -1493,48 +1498,52 @@ function Form2Doc({ order }: { order: Order }) {
                 <th style={th} rowSpan={2}>Exchange rate</th>
                 <th style={th} rowSpan={2}>Amount in INR</th>
               </tr>
-              {/* Sub-sub row (Quinty split) */}
+              {/* Sub-sub row (Quantity split) */}
               <tr>
                 <th style={th}>Unit<br/><span style={{ fontWeight: 400, fontSize: "6px" }}>(pieces, liters, kgs., meters)</span></th>
                 <th style={th}>number</th>
               </tr>
             </thead>
             <tbody>
-              {items.map((it, idx) => (
-                <tr key={idx}>
-                  {idx === 0 && (
-                    <td style={{ ...tdv, whiteSpace: "pre-line" }} rowSpan={R}>{buyerAddr}</td>
-                  )}
-                  {idx === 0 && (
-                    <td style={{ ...tdv, ...ctr }} rowSpan={R}>{(order.country || "").toUpperCase()}</td>
-                  )}
-                  <td style={{ ...td, fontWeight: "bold" }}>{it.productName}</td>
-                  <td style={{ ...td, ...ctr }}>{it.hsn ?? ""}</td>
-                  <td style={{ ...td, ...ctr }}>{it.pack ?? ""}</td>
-                  <td style={{ ...td, ...ctr, fontWeight: "bold" }}>{it.quantity}</td>
-                  {idx === 0 && (
-                    <td style={{ ...tdv, ...ctr }} rowSpan={R}>{order.invoiceNo ?? "—"}<br/>{dateStr}</td>
-                  )}
-                  {idx === 0 && (
-                    <td style={{ ...tdv, ...ctr }} rowSpan={R}>{grossWt}</td>
-                  )}
-                  {idx === 0 && (
-                    <td style={{ ...tdv, ...ctr, fontWeight: "bold" }} rowSpan={R}>{order.trackingNo ?? ""}</td>
-                  )}
-                  {idx === 0 && (
-                    <td style={{ ...tdv, ...ctr, fontWeight: "bold" }} rowSpan={R}>{fob.toFixed(2)}</td>
-                  )}
-                  {idx === 0 && (
-                    <td style={{ ...tdv, ...ctr }} rowSpan={R}>{order.currency}</td>
-                  )}
-                  {idx === 0 && (
-                    <td style={{ ...tdv, ...ctr }} rowSpan={R}>{exRate.toFixed(2)}</td>
-                  )}
-                  {idx === 0 && (
-                    <td style={{ ...tdv, ...ctr, fontWeight: "bold" }} rowSpan={R}>{amtInr.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-                  )}
-                </tr>
-              ))}
+              {allOrders.flatMap((o) => {
+                const items = o.items.length ? o.items : [{ productName: "", hsn: "", pack: "", quantity: 0 } as Item];
+                const R = items.length;
+                return items.map((it, idx) => (
+                  <tr key={`${o.id}-${idx}`}>
+                    {idx === 0 && (
+                      <td style={{ ...tdv, whiteSpace: "pre-line" }} rowSpan={R}>{ordAddr(o)}</td>
+                    )}
+                    {idx === 0 && (
+                      <td style={{ ...tdv, ...ctr }} rowSpan={R}>{(o.country || "").toUpperCase()}</td>
+                    )}
+                    <td style={{ ...td, fontWeight: "bold" }}>{it.productName}</td>
+                    <td style={{ ...td, ...ctr }}>{it.hsn ?? ""}</td>
+                    <td style={{ ...td, ...ctr }}>{it.pack ?? ""}</td>
+                    <td style={{ ...td, ...ctr, fontWeight: "bold" }}>{it.quantity}</td>
+                    {idx === 0 && (
+                      <td style={{ ...tdv, ...ctr }} rowSpan={R}>{o.invoiceNo ?? "—"}<br/>{ordDateStr(o)}</td>
+                    )}
+                    {idx === 0 && (
+                      <td style={{ ...tdv, ...ctr }} rowSpan={R}>{ordWeight(o)}</td>
+                    )}
+                    {idx === 0 && (
+                      <td style={{ ...tdv, ...ctr, fontWeight: "bold" }} rowSpan={R}>{o.trackingNo ?? ""}</td>
+                    )}
+                    {idx === 0 && (
+                      <td style={{ ...tdv, ...ctr, fontWeight: "bold" }} rowSpan={R}>{ordFob(o).toFixed(2)}</td>
+                    )}
+                    {idx === 0 && (
+                      <td style={{ ...tdv, ...ctr }} rowSpan={R}>{o.currency}</td>
+                    )}
+                    {idx === 0 && (
+                      <td style={{ ...tdv, ...ctr }} rowSpan={R}>{(o.exchangeRate ?? 84).toFixed(2)}</td>
+                    )}
+                    {idx === 0 && (
+                      <td style={{ ...tdv, ...ctr, fontWeight: "bold" }} rowSpan={R}>{ordInr(o).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                    )}
+                  </tr>
+                ));
+              })}
             </tbody>
           </table>
         );
@@ -1597,23 +1606,25 @@ function Form2Doc({ order }: { order: Order }) {
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td style={{ ...td, ...ctr }}>{hsn}</td>
-            <td style={{ ...td, ...ctr }}>{order.invoiceNo ?? "—"}<br/>{dateStr}</td>
-            <td style={{ ...td, ...ctr }}>{totalQty}</td>
-            <td style={{ ...td, ...ctr }}>{fob.toFixed(2)}</td>
-            <td style={{ ...td, ...ctr }}>0</td>
-            <td style={{ ...td, ...ctr }}>0</td>
-            <td style={{ ...td, ...ctr }}>0</td>
-            <td style={{ ...td, ...ctr }}>0</td>
-            <td style={{ ...td, ...ctr }}>0</td>
-            <td style={{ ...td, ...ctr }}>0</td>
-            <td style={{ ...td, ...ctr }}>0</td>
-            <td style={{ ...td, ...ctr }}>0</td>
-            <td style={{ ...td, ...ctr, fontSize: "6px" }}>{order.licenseNo ?? "AD270326012421K"}</td>
-            <td style={{ ...td, ...ctr }}>0</td>
-            <td style={{ ...td, ...ctr }}>0</td>
-          </tr>
+          {allOrders.map((o) => (
+            <tr key={o.id}>
+              <td style={{ ...td, ...ctr }}>{o.items[0]?.hsn ?? "3004"}</td>
+              <td style={{ ...td, ...ctr }}>{o.invoiceNo ?? "—"}<br/>{ordDateStr(o)}</td>
+              <td style={{ ...td, ...ctr }}>{ordQty(o)}</td>
+              <td style={{ ...td, ...ctr }}>{ordFob(o).toFixed(2)}</td>
+              <td style={{ ...td, ...ctr }}>0</td>
+              <td style={{ ...td, ...ctr }}>0</td>
+              <td style={{ ...td, ...ctr }}>0</td>
+              <td style={{ ...td, ...ctr }}>0</td>
+              <td style={{ ...td, ...ctr }}>0</td>
+              <td style={{ ...td, ...ctr }}>0</td>
+              <td style={{ ...td, ...ctr }}>0</td>
+              <td style={{ ...td, ...ctr }}>0</td>
+              <td style={{ ...td, ...ctr, fontSize: "6px" }}>{o.licenseNo ?? "AD270326012421K"}</td>
+              <td style={{ ...td, ...ctr }}>0</td>
+              <td style={{ ...td, ...ctr }}>0</td>
+            </tr>
+          ))}
         </tbody>
       </table>
 
@@ -2518,7 +2529,7 @@ function MultiDocumentsOverlay({ orders, onClose }: { orders: Order[]; onClose: 
     { label: "Export Invoice",     landscape: true,  multiPage: true,  comp: <MultiExportInvoiceDoc    orders={effectiveOrders} /> },
     { label: "Export Invoice INR", landscape: true,  multiPage: true,  comp: <MultiExportInvoiceINRDoc orders={effectiveOrders} /> },
     { label: "Packing List",       landscape: true,  multiPage: true,  comp: <MultiPackingListDoc      orders={effectiveOrders} /> },
-    { label: "Form II",           landscape: true,  multiPage: false, comp: <Form2Doc          order={first} /> },
+    { label: "Form II",           landscape: true,  multiPage: true,  comp: <Form2Doc          order={first} orders={effectiveOrders} /> },
     { label: "EDF",               landscape: true,  multiPage: false, comp: <EdfDoc            order={first} /> },
     { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={first} companyName={ds.companyName} companyAddress={ds.companyAddress} customDesc={cn22Desc || undefined} /> },
   ];
