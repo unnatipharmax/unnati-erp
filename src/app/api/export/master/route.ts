@@ -25,7 +25,10 @@ export async function GET() {
   ] = await Promise.all([
     db.orderInitiation.findMany({
       orderBy: { createdAt: "desc" },
-      include: { orderEntry: true },
+      include: {
+        orderEntry: { include: { items: { include: { product: { select: { name: true } } } } } },
+        account: { select: { name: true } },
+      },
     }),
     db.orderEntryItem.findMany({
       include: {
@@ -64,6 +67,16 @@ export async function GET() {
       include: { party: { select: { name: true } } },
     }),
   ]);
+
+  // Order weights live on OrderInitiation but aren't in the Prisma schema → raw SQL
+  const orderIds = orders.map((o) => o.id);
+  const weightMap: Record<string, { net: number | null; gross: number | null }> = {};
+  if (orderIds.length) {
+    const wr = await db.$queryRaw<{ id: string; netWeight: number | null; grossWeight: number | null }[]>`
+      SELECT id, "netWeight", "grossWeight" FROM "OrderInitiation" WHERE id = ANY(${orderIds}::text[])
+    `;
+    for (const r of wr) weightMap[r.id] = { net: r.netWeight, gross: r.grossWeight };
+  }
 
   // ── Build workbook ────────────────────────────────────────────────────────
   const wb = new ExcelJS.Workbook();
@@ -150,6 +163,49 @@ export async function GET() {
 
     ws.getColumn(1).width = 30;
     ws.getColumn(2).width = 16;
+  }
+
+  // ── Sheet: All Orders (Full) — one row per order with EVERY field ─────────
+  {
+    const ws = wb.addWorksheet("All Orders (Full)");
+    const headers = [
+      "Order ID", "Order Date", "Status", "Invoice No", "Invoice Date",
+      "Customer Name", "Email", "Phone", "Address", "City", "State", "Postal Code", "Country",
+      "Account", "Remitter", "Currency", "Amount Paid", "INR Amount", "Dollar Amount",
+      "Exchange Rate", "GRS No", "Payment Date",
+      "Shipment Mode", "Shipping Price", "Tracking No", "License No",
+      "Net Weight (kg)", "Gross Weight (kg)",
+      "Items", "Item Count", "Total Qty", "Items Total (USD)",
+      "Dosage/Day", "Total Dosages", "Dosage Start", "Reminder Date", "Prescription",
+      "Created At", "Updated At",
+    ];
+    styleSheet(ws, headers);
+
+    orders.forEach((o) => {
+      const items      = o.orderEntry?.items ?? [];
+      const itemsStr   = items.map((it) => `${it.product.name} x${it.quantity} @${num(it.sellingPrice)}`).join("; ");
+      const totalQty   = items.reduce((s, it) => s + it.quantity, 0);
+      const itemsTotal = items.reduce((s, it) => s + it.quantity * num(it.sellingPrice), 0);
+      const w          = weightMap[o.id] ?? { net: null, gross: null };
+      ws.addRow([
+        o.id, fmtDate(o.createdAt), o.status, o.invoiceNo ?? "", fmtDate(o.invoiceGeneratedAt),
+        o.fullName, o.email, o.phone, o.address, o.city, o.state, o.postalCode, o.country,
+        o.account?.name ?? "", o.remitterName, o.currency, num(o.amountPaid), num(o.inrAmount), num(o.dollarAmount),
+        num(o.exchangeRate), o.grsNumber ?? "", fmtDate(o.paymentDepositDate),
+        o.orderEntry?.shipmentMode ?? "", num(o.orderEntry?.shippingPrice), o.trackingNo ?? "", o.licenseNo ?? "",
+        w.net ?? "", w.gross ?? "",
+        itemsStr, items.length, totalQty, +itemsTotal.toFixed(2),
+        o.dosagePerDay ?? "", o.totalDosages ?? "", fmtDate(o.dosageStartDate), fmtDate(o.dosageReminderDate), o.prescriptionOriginalName ?? "",
+        fmtDate(o.createdAt), fmtDate(o.updatedAt),
+      ]);
+    });
+    altRows(ws, 2, orders.length);
+
+    ws.getColumn(1).width = 20;  // Order ID
+    ws.getColumn(6).width = 24;  // Customer
+    ws.getColumn(9).width = 28;  // Address
+    ws.getColumn(29).width = 44; // Items
+    [17, 18, 19, 20, 24, 32].forEach((c) => { ws.getColumn(c).numFmt = "#,##0.00"; ws.getColumn(c).width = 14; });
   }
 
   // ── Sheet 2: Orders ───────────────────────────────────────────────────────

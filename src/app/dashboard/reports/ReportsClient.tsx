@@ -129,8 +129,10 @@ export default function ReportsClient({ isAdmin }: { isAdmin: boolean }) {
           📊 Master Excel Export
         </h2>
         <p style={{ color: "#555", fontSize: "0.88rem", marginBottom: "1rem" }}>
-          Downloads a multi-sheet Excel workbook with: Orders, Order Items, Products, Purchase Bills,
-          Purchase Items, Clients, Ledger, Expenses, Suppliers, Supplier Payments, Export Returns.
+          Includes an <b>&ldquo;All Orders (Full)&rdquo;</b> sheet — one row per order with every field
+          (customer, payment, shipping, tracking, weights, items, dosage) so you can split it yourself —
+          plus separate sheets: Orders, Order Items, Products, Purchase Bills, Purchase Items, Clients,
+          Ledger, Expenses, Suppliers, Supplier Payments, Export Returns.
         </p>
         <button style={btnGold} onClick={downloadExcel} disabled={exportingExcel}>
           {exportingExcel ? "Generating…" : "⬇ Download Excel Master Sheet"}
