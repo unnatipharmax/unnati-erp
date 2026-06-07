@@ -2520,7 +2520,6 @@ function MultiDocumentsOverlay({ orders, onClose }: { orders: Order[]; onClose: 
     { label: "Packing List",       landscape: true,  multiPage: true,  comp: <MultiPackingListDoc      orders={effectiveOrders} /> },
     { label: "Form II",           landscape: true,  multiPage: false, comp: <Form2Doc          order={first} /> },
     { label: "EDF",               landscape: true,  multiPage: false, comp: <EdfDoc            order={first} /> },
-    { label: "Covering Letter",   landscape: false, multiPage: true,  comp: <CoveringLetterDoc order={first} chaName={ds.chaName} chaNo={ds.chaNo} /> },
     { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={first} companyName={ds.companyName} companyAddress={ds.companyAddress} customDesc={cn22Desc || undefined} /> },
   ];
 
@@ -2794,7 +2793,6 @@ function DocumentsOverlay({ order, labelOverrides, onClose }: { order: Order; la
     { label: "Packing List",       landscape: true,  multiPage: false, comp: <PackingListDoc      order={o} /> },
     { label: "Form II",           landscape: true,  multiPage: false, comp: <Form2Doc          order={o} /> },
     { label: "EDF",               landscape: true,  multiPage: false, comp: <EdfDoc            order={o} /> },
-    { label: "Covering Letter",   landscape: false, multiPage: true,  comp: <CoveringLetterDoc order={o} chaName={ds.chaName} chaNo={ds.chaNo} /> },
     { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={o} companyName={ds.companyName} companyAddress={ds.companyAddress} customDesc={labelOverrides?.desc || undefined} customValue={labelOverrides?.value ? Number(labelOverrides.value) : undefined} customCurrency={labelOverrides?.currency || undefined} customHsn={labelOverrides?.hsn || undefined} /> },
   ];
 
