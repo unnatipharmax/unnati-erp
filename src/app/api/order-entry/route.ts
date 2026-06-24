@@ -4,6 +4,22 @@ import { Prisma, ShipmentMode, LedgerType } from "@prisma/client";
 
 export const runtime = "nodejs";
 
+// Build a Prisma.Decimal from possibly-messy user input (trailing spaces,
+// currency symbols, thousands separators). Returns null when not a valid number.
+function toDecimal(value: unknown): Prisma.Decimal | null {
+  if (value == null) return null;
+  let s = String(value).trim();
+  if (s === "") return null;
+  // strip currency symbols / spaces / thousands separators, keep digits . and -
+  s = s.replace(/[,\s₹$€£]/g, "");
+  if (!/^-?\d*\.?\d+$/.test(s)) return null;
+  try {
+    return new Prisma.Decimal(s);
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -14,21 +30,27 @@ export async function POST(req: Request) {
     if (!Array.isArray(items) || items.length === 0)
       return NextResponse.json({ error: "At least 1 item required" }, { status: 400 });
 
+    // Validate + normalize each item's price up front so we never hand a bad
+    // string to Prisma.Decimal (which throws an opaque DecimalError 500).
+    const itemPrices: Prisma.Decimal[] = [];
     for (const it of items) {
       if (!it.productId) return NextResponse.json({ error: "productId required" }, { status: 400 });
       if (!it.quantity || Number(it.quantity) <= 0)
         return NextResponse.json({ error: "quantity must be > 0" }, { status: 400 });
       if (it.sellingPrice === undefined || it.sellingPrice === null)
         return NextResponse.json({ error: "sellingPrice required" }, { status: 400 });
+      const price = toDecimal(it.sellingPrice);
+      if (price == null)
+        return NextResponse.json({ error: `Invalid selling price: "${it.sellingPrice}"` }, { status: 400 });
+      itemPrices.push(price);
     }
 
-    const ship = new Prisma.Decimal(String(shippingPrice || "0"));
+    const ship = toDecimal(shippingPrice) ?? new Prisma.Decimal("0");
 
     // total = sum(qty*price) + shipping
-    const itemsTotal = items.reduce((sum: Prisma.Decimal, it: any) => {
+    const itemsTotal = items.reduce((sum: Prisma.Decimal, it: any, i: number) => {
       const q = Number(it.quantity);
-      const p = new Prisma.Decimal(String(it.sellingPrice));
-      return sum.add(p.mul(q));
+      return sum.add(itemPrices[i].mul(q));
     }, new Prisma.Decimal("0"));
 
     const orderTotal = itemsTotal.add(ship);
@@ -51,10 +73,10 @@ export async function POST(req: Request) {
           shippingPrice: ship,
           notes: notes || null,
           items: {
-            create: items.map((it: any) => ({
+            create: items.map((it: any, i: number) => ({
               productId: it.productId,
               quantity: Number(it.quantity),
-              sellingPrice: new Prisma.Decimal(String(it.sellingPrice)),
+              sellingPrice: itemPrices[i],
             })),
           },
         },
@@ -64,10 +86,10 @@ export async function POST(req: Request) {
           notes: notes || null,
           items: {
             deleteMany: {},
-            create: items.map((it: any) => ({
+            create: items.map((it: any, i: number) => ({
               productId: it.productId,
               quantity: Number(it.quantity),
-              sellingPrice: new Prisma.Decimal(String(it.sellingPrice)),
+              sellingPrice: itemPrices[i],
             })),
           },
         },

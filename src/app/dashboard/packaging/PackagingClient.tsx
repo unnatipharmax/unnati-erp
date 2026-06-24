@@ -37,6 +37,8 @@ type Order = {
   postalCode: string;
   country: string;
   remitterName: string;
+  email: string | null;
+  phone: string | null;
   amountPaid: number;
   currency: string;
   grsNumber: string | null;
@@ -1059,6 +1061,8 @@ function CN22LabelDoc({ order, companyName, companyAddress, customDesc, customVa
   const recipientName    = order.fullName;
   const recipientAddr    = [order.address, order.city, order.state, order.postalCode].filter(Boolean).join(", ");
   const recipientCountry = order.country ?? "";
+  const recipientPhone   = order.phone ?? "";
+  const recipientEmail   = order.email ?? "";
   const totalUsd         = customValue ?? (order.dollarAmount ?? order.amountPaid);
   const displayCurrency  = customCurrency || order.currency || "USD";
   const netWt            = order.netWeight;
@@ -1311,6 +1315,8 @@ function CN22LabelDoc({ order, companyName, companyAddress, customDesc, customVa
                       <div style={{ fontWeight: 800, fontSize: "9pt" }}>{recipientName}</div>
                       <div>{recipientAddr}</div>
                       <div style={{ fontWeight: 800, marginTop: 3 }}>{recipientCountry}</div>
+                      {recipientPhone && <div style={{ marginTop: 3 }}>Tel: {recipientPhone}</div>}
+                      {recipientEmail && <div>Email: {recipientEmail}</div>}
                     </td>
                   </tr>
                 </tbody>
@@ -2557,7 +2563,15 @@ function MultiDocumentsOverlay({ orders, onClose }: { orders: Order[]; onClose: 
     { label: "Packing List",       landscape: true,  multiPage: true,  comp: <MultiPackingListDoc      orders={effectiveOrders} /> },
     { label: "Form II",           landscape: true,  multiPage: true,  comp: <Form2Doc          order={first} orders={effectiveOrders} /> },
     { label: "EDF",               landscape: true,  multiPage: false, comp: <EdfDoc            order={first} /> },
-    { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={first} companyName={ds.companyName} companyAddress={ds.companyAddress} customDesc={cn22Desc || undefined} customValue={cn22Value ? Number(cn22Value) : undefined} customCurrency={cn22Currency || undefined} customHsn={cn22Hsn || undefined} /> },
+    // CN22 is a per-parcel customs label → one label per selected order.
+    ...effectiveOrders.map((o, i) => ({
+      label: `CN22 Label${effectiveOrders.length > 1 ? ` (${i + 1}/${effectiveOrders.length}) — ${o.fullName}` : ""}`,
+      landscape: false,
+      multiPage: false,
+      comp: <CN22LabelDoc order={o} companyName={ds.companyName} companyAddress={ds.companyAddress}
+        customDesc={cn22Desc || undefined} customValue={cn22Value ? Number(cn22Value) : undefined}
+        customCurrency={cn22Currency || undefined} customHsn={cn22Hsn || undefined} />,
+    })),
   ];
 
   function handlePrint() {

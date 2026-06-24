@@ -285,7 +285,12 @@ export default function OrderEntryForm({
     setLoading(true); setErr(null); setOk(null);
     const items = rows
       .filter(r => r.productId && r.quantity && r.sellingPrice)
-      .map(r => ({ productId: r.productId, quantity: Number(r.quantity), sellingPrice: r.sellingPrice }));
+      .map(r => ({
+        productId: r.productId,
+        quantity: Number(r.quantity),
+        // normalize: trim spaces and strip currency symbols / separators
+        sellingPrice: r.sellingPrice.trim().replace(/[,\s₹$€£]/g, ""),
+      }));
     const res  = await fetch("/api/order-entry", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ orderId, shipmentMode, shippingPrice, notes, items }),

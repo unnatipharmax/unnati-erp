@@ -121,6 +121,8 @@ export async function GET() {
         postalCode:      o.postalCode,
         country:         o.country,
         remitterName:    o.remitterName,
+        email:           o.email ?? null,
+        phone:           o.phone ?? null,
         amountPaid:      Number(o.amountPaid),
         currency:        o.currency,
         grsNumber:       o.grsNumber ?? null,

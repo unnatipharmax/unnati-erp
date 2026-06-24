@@ -109,11 +109,10 @@ function PaymentRow({
     setForm(f => {
       const next = { ...f, [k]: v };
       if (k === "inrAmount" || k === "dollarAmount") {
+        // Exchange rate = INR per 1 USD (1 USD = ₹X), matching how invoices convert.
         const inr = parseFloat(k === "inrAmount" ? v : f.inrAmount);
         const usd = parseFloat(k === "dollarAmount" ? v : f.dollarAmount);
-        if (inr > 0 && usd > 0) {
-          next.exchangeRate = (inr / usd).toFixed(2);
-        }
+        next.exchangeRate = inr > 0 && usd > 0 ? (inr / usd).toFixed(4) : "";
       }
       return next;
     });
@@ -136,6 +135,22 @@ function PaymentRow({
     if (!res.ok) { setErr(data?.error || "Save failed"); setSaving(false); return; }
     onSaved(data);
     setEditing(false); setSaving(false);
+  }
+
+  function openEdit() {
+    // Recompute the rate from the stored amounts so a stale/wrong saved rate
+    // self-corrects to INR ÷ USD when the row is opened.
+    const inr = order.inrAmount ?? 0;
+    const usd = order.dollarAmount ?? 0;
+    const computed = inr > 0 && usd > 0 ? (inr / usd).toFixed(4) : (order.exchangeRate?.toString() ?? "");
+    setForm({
+      inrAmount:          order.inrAmount?.toString()          ?? "",
+      dollarAmount:       order.dollarAmount?.toString()       ?? "",
+      exchangeRate:       computed,
+      grsNumber:          order.grsNumber                      ?? "",
+      paymentDepositDate: order.paymentDepositDate             ?? "",
+    });
+    setEditing(true); setErr(null);
   }
 
   function cancel() {
@@ -194,7 +209,7 @@ function PaymentRow({
               <span className="text-teal-600 text-[10px] font-medium">✓</span>
             )}
             <button
-              onClick={() => editing ? cancel() : setEditing(true)}
+              onClick={() => editing ? cancel() : openEdit()}
               className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
                 editing
                   ? "bg-slate-200 text-slate-700 hover:bg-slate-200"
