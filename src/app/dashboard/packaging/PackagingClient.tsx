@@ -3942,7 +3942,7 @@ export default function PackagingClient() {
   }
 
   async function generateCombined() {
-    const selected = singleReady.filter(o => selectedIds.has(o.id));
+    const selected = activeReady.filter(o => selectedIds.has(o.id));
     const combineErr = validateCombinable(selected);
     if (combineErr) { setBatchErr(combineErr); return; }
 
@@ -4013,9 +4013,13 @@ export default function PackagingClient() {
   const multiReady    = multiOrders.filter((o)  => o.status === "PAYMENT_VERIFIED");
   const multiPacking  = multiOrders.filter((o)  => o.status === "PACKING");
 
-  // Keep selected IDs in sync when orders refresh (drop IDs that no longer exist)
+  // The "ready" list that batch selection currently operates on (depends on the active tab).
+  const activeReady = mainMode === "single" ? singleReady : multiReady;
+
+  // Keep selected IDs in sync when orders refresh (drop IDs that no longer exist
+  // in either ready list — selection is cleared on tab switch anyway).
   useEffect(() => {
-    const validIds = new Set(singleReady.map((o) => o.id));
+    const validIds = new Set([...singleReady, ...multiReady].map((o) => o.id));
     setSelectedIds((prev) => {
       const filtered = new Set([...prev].filter((id) => validIds.has(id)));
       return filtered.size === prev.size ? prev : filtered;
@@ -4175,7 +4179,7 @@ export default function PackagingClient() {
         </>
       )}
 
-      {/* ── MULTI ORDER tab: account/bulk clients — individual order flow, no batch ── */}
+      {/* ── MULTI ORDER tab: account/bulk clients — same batch selection as Single ── */}
       {mainMode === "multi" && (
         <>
           <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem" }}>
@@ -4185,12 +4189,26 @@ export default function PackagingClient() {
             ].map((t) => (
               <button
                 key={t.key}
-                onClick={() => setMultiStatusTab(t.key as "ready" | "packing")}
+                onClick={() => { setMultiStatusTab(t.key as "ready" | "packing"); setSelectedIds(new Set()); }}
                 className={`btn btn-sm ${multiStatusTab === t.key ? "btn-primary" : "btn-secondary"}`}
               >
                 {t.label}
               </button>
             ))}
+            {/* Select-all shortcut when in Ready tab */}
+            {multiStatusTab === "ready" && multiReady.length > 0 && (
+              <button
+                onClick={() =>
+                  selectedIds.size === multiReady.length
+                    ? setSelectedIds(new Set())
+                    : setSelectedIds(new Set(multiReady.map((o) => o.id)))
+                }
+                className="btn btn-secondary btn-sm"
+                style={{ marginLeft: "auto" }}
+              >
+                {selectedIds.size === multiReady.length ? "Deselect All" : "Select All"}
+              </button>
+            )}
           </div>
           {loading ? <Skeleton /> : (
             <>
@@ -4199,9 +4217,49 @@ export default function PackagingClient() {
                   <div className="card" style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
                     No account orders ready for invoicing.
                   </div>
-                ) : multiReady.map((o) => (
-                  <OrderCard key={o.id} order={o} onInvoiceGenerated={handleInvoiceGenerated} onViewDocs={handleViewDocs} />
-                ))
+                ) : multiReady.map((o) => {
+                  const checked = selectedIds.has(o.id);
+                  const det = orderDetails.get(o.id) ?? { trackingNo: "", licenseNo: "" };
+                  return (
+                    <div key={o.id} style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem", marginBottom: "0.75rem" }}>
+                      <div style={{ paddingTop: 22, flexShrink: 0 }}>
+                        <SquareCheckbox checked={checked} onChange={() => toggleSelect(o.id)} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ outline: checked ? "2px solid var(--primary)" : "none", borderRadius: 14 }}>
+                          <OrderCard
+                            order={o}
+                            onInvoiceGenerated={handleInvoiceGenerated}
+                            onViewDocs={handleViewDocs}
+                          />
+                        </div>
+                        {checked && (
+                          <div style={{
+                            display: "flex", gap: "0.6rem", flexWrap: "wrap",
+                            padding: "0.5rem 0.75rem",
+                            background: "rgba(99,102,241,0.06)",
+                            border: "1px solid rgba(99,102,241,0.25)",
+                            borderTop: "none",
+                            borderRadius: "0 0 10px 10px",
+                            marginTop: "-2px",
+                          }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                              <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>Tracking No:</label>
+                              <input
+                                type="text"
+                                value={det.trackingNo}
+                                onChange={(e) => setOrderDetail(o.id, "trackingNo", e.target.value)}
+                                placeholder="e.g. EM123456789IN"
+                                style={{ width: 170, fontSize: "0.8rem", padding: "0.25rem 0.5rem" }}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
               )}
               {multiStatusTab === "packing" && (
                 multiPacking.length === 0 ? (
@@ -4228,10 +4286,10 @@ export default function PackagingClient() {
       {/* Batch action bar — slides in from bottom when orders are selected */}
       <BatchActionBar
         selectedCount={selectedIds.size}
-        incompatible={validateCombinable(singleReady.filter(o => selectedIds.has(o.id)))}
+        incompatible={validateCombinable(activeReady.filter(o => selectedIds.has(o.id)))}
         onGenerate={generateCombined}
         onViewDocs={() => {
-          const selected = singleReady.filter(o => selectedIds.has(o.id));
+          const selected = activeReady.filter(o => selectedIds.has(o.id));
           const combineErr = validateCombinable(selected);
           if (combineErr) { setBatchErr(combineErr); return; }
           if (selected.length > 0) setActiveDocsOrders(selected);
