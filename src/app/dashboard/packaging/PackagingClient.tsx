@@ -344,13 +344,13 @@ function ExportInvoiceDoc({ order }: { order: Order }) {
     return { total, unit: item.quantity > 0 ? Math.round(total / item.quantity * 100) / 100 : 0 };
   }
 
-  const td:   React.CSSProperties = { border: "1px solid #000", padding: "3px 5px", verticalAlign: "top", fontSize: "9px" };
-  const tdSm: React.CSSProperties = { ...td, fontSize: "8px" };
+  const td:   React.CSSProperties = { border: "1px solid #000", padding: "5px 7px", verticalAlign: "top", fontSize: "11px" };
+  const tdSm: React.CSSProperties = { ...td, fontSize: "10px" };
   const yw:   React.CSSProperties = { ...td };
   const tbl:  React.CSSProperties = { width: "100%", borderCollapse: "collapse" as const };
 
   return (
-    <div style={{ fontFamily: "Arial,sans-serif", fontSize: "9px", color: "#000", background: "#fff", minWidth: 900 }}>
+    <div style={{ fontFamily: "Arial,sans-serif", fontSize: "11px", color: "#000", background: "#fff", width: "100%", minWidth: 900 }}>
       {/* Title */}
       <table style={tbl}><tbody><tr>
         <td style={{ ...td, textAlign: "center", fontWeight: "bold", fontSize: "14px", padding: "7px", letterSpacing: "0.08em" }}>EXPORT INVOICE</td>
@@ -590,13 +590,13 @@ function ExportInvoiceINRDoc({ order }: { order: Order }) {
     return { total, unit };
   }
 
-  const td:   React.CSSProperties = { border: "1px solid #000", padding: "3px 5px", verticalAlign: "top", fontSize: "9px" };
-  const tdSm: React.CSSProperties = { ...td, fontSize: "8px" };
+  const td:   React.CSSProperties = { border: "1px solid #000", padding: "5px 7px", verticalAlign: "top", fontSize: "11px" };
+  const tdSm: React.CSSProperties = { ...td, fontSize: "10px" };
   const yw:   React.CSSProperties = { ...td };
   const tbl:  React.CSSProperties = { width: "100%", borderCollapse: "collapse" as const };
 
   return (
-    <div style={{ fontFamily: "Arial,sans-serif", fontSize: "9px", color: "#000", background: "#fff", minWidth: 900 }}>
+    <div style={{ fontFamily: "Arial,sans-serif", fontSize: "11px", color: "#000", background: "#fff", width: "100%", minWidth: 900 }}>
       {/* Title */}
       <table style={tbl}><tbody><tr>
         <td style={{ ...td, textAlign: "center", fontWeight: "bold", fontSize: "14px", padding: "7px", letterSpacing: "0.08em" }}>EXPORT INVOICE</td>
@@ -2024,13 +2024,13 @@ function MultiExportInvoiceDoc({ orders }: { orders: Order[] }) {
   const totalQty = allItems.reduce((s, i) => s + i.quantity, 0);
   const invoiceLabel = orders.map(o => o.invoiceNo).filter(Boolean).join(" / ") || "—";
 
-  const td:   React.CSSProperties = { border: "1px solid #000", padding: "3px 5px", verticalAlign: "top", fontSize: "9px" };
-  const tdSm: React.CSSProperties = { ...td, fontSize: "8px" };
+  const td:   React.CSSProperties = { border: "1px solid #000", padding: "5px 7px", verticalAlign: "top", fontSize: "11px" };
+  const tdSm: React.CSSProperties = { ...td, fontSize: "10px" };
   const yw:   React.CSSProperties = { ...td };
   const tbl:  React.CSSProperties = { width: "100%", borderCollapse: "collapse" as const };
 
   return (
-    <div style={{ fontFamily: "Arial,sans-serif", fontSize: "9px", color: "#000", background: "#fff", minWidth: 900 }}>
+    <div style={{ fontFamily: "Arial,sans-serif", fontSize: "11px", color: "#000", background: "#fff", width: "100%", minWidth: 900 }}>
       <table style={tbl}><tbody><tr>
         <td style={{ ...td, textAlign: "center", fontWeight: "bold", fontSize: "14px", padding: "7px", letterSpacing: "0.08em" }}>EXPORT INVOICE</td>
       </tr></tbody></table>
@@ -2242,13 +2242,13 @@ function MultiExportInvoiceINRDoc({ orders }: { orders: Order[] }) {
   const totalQty = allItems.reduce((s, i) => s + i.quantity, 0);
   const invoiceLabel = orders.map(o => o.invoiceNo).filter(Boolean).join(" / ") || "—";
 
-  const td:   React.CSSProperties = { border: "1px solid #000", padding: "3px 5px", verticalAlign: "top", fontSize: "9px" };
-  const tdSm: React.CSSProperties = { ...td, fontSize: "8px" };
+  const td:   React.CSSProperties = { border: "1px solid #000", padding: "5px 7px", verticalAlign: "top", fontSize: "11px" };
+  const tdSm: React.CSSProperties = { ...td, fontSize: "10px" };
   const yw:   React.CSSProperties = { ...td };
   const tbl:  React.CSSProperties = { width: "100%", borderCollapse: "collapse" as const };
 
   return (
-    <div style={{ fontFamily: "Arial,sans-serif", fontSize: "9px", color: "#000", background: "#fff", minWidth: 900 }}>
+    <div style={{ fontFamily: "Arial,sans-serif", fontSize: "11px", color: "#000", background: "#fff", width: "100%", minWidth: 900 }}>
       <table style={tbl}><tbody><tr>
         <td style={{ ...td, textAlign: "center", fontWeight: "bold", fontSize: "14px", padding: "7px", letterSpacing: "0.08em" }}>EXPORT INVOICE</td>
       </tr></tbody></table>
