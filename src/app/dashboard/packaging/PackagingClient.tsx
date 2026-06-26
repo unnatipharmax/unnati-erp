@@ -3432,10 +3432,15 @@ function OrderCard({
   order,
   onInvoiceGenerated,
   onViewDocs,
+  onViewCombinedDocs,
+  combinedSiblings = [],
 }: {
   order: Order;
   onInvoiceGenerated: (id: string, invoiceNo: string, trackingNo: string, licenseNo: string) => void;
   onViewDocs: (order: Order) => void;
+  onViewCombinedDocs?: (orders: Order[]) => void;
+  // All orders that share this order's invoice number (length > 1 ⇒ combined batch).
+  combinedSiblings?: Order[];
 }) {
   const isDHL = order.shipmentMode === "DHL";
   const [generating, setGenerating] = useState(false);
@@ -3536,17 +3541,31 @@ function OrderCard({
 
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
           {hasInvoice ? (
-            <>
-            <button
-              onClick={() => onViewDocs(order)}
-              className="btn btn-primary btn-sm"
-            >
-              📄 View Documents
-            </button>
-            <a href={`/api/packaging/orders/${order.id}/documents`} className="btn btn-secondary btn-sm">
-              Download Documents
-            </a>
-            </>
+            (() => {
+              const isCombined = combinedSiblings.length > 1;
+              const downloadHref = isCombined
+                ? `/api/packaging/multi-documents?invoiceNo=${encodeURIComponent(order.invoiceNo ?? "")}`
+                : `/api/packaging/orders/${order.id}/documents`;
+              return (
+                <>
+                  {isCombined && (
+                    <span title={`Combined with ${combinedSiblings.length - 1} other order${combinedSiblings.length - 1 !== 1 ? "s" : ""} on invoice ${order.invoiceNo}`}
+                      style={{ fontSize: "0.68rem", fontWeight: 700, color: "#2563c9", background: "#2563c918", border: "1px solid #2563c955", borderRadius: 20, padding: "2px 9px", whiteSpace: "nowrap" }}>
+                      🔗 Combined ×{combinedSiblings.length}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => isCombined && onViewCombinedDocs ? onViewCombinedDocs(combinedSiblings) : onViewDocs(order)}
+                    className="btn btn-primary btn-sm"
+                  >
+                    📄 View Documents
+                  </button>
+                  <a href={downloadHref} className="btn btn-secondary btn-sm">
+                    Download Documents
+                  </a>
+                </>
+              );
+            })()
           ) : stockStatus === "unset" ? (
             <>
               <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginRight: 2 }}>Stock status:</span>
@@ -3918,6 +3937,10 @@ export default function PackagingClient() {
     setActiveDocsOrder(order);
   }, []);
 
+  const handleViewCombinedDocs = useCallback((orders: Order[]) => {
+    setActiveDocsOrders(orders);
+  }, []);
+
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -4015,6 +4038,14 @@ export default function PackagingClient() {
 
   // The "ready" list that batch selection currently operates on (depends on the active tab).
   const activeReady = mainMode === "single" ? singleReady : multiReady;
+
+  // Map invoiceNo → all orders sharing it, so a combined batch's cards can offer
+  // combined (not per-order) document view/download.
+  const invoiceGroups = orders.reduce((m, o) => {
+    if (o.invoiceNo) (m[o.invoiceNo] ??= []).push(o);
+    return m;
+  }, {} as Record<string, Order[]>);
+  const siblingsOf = (o: Order) => (o.invoiceNo ? invoiceGroups[o.invoiceNo] ?? [o] : [o]);
 
   // Keep selected IDs in sync when orders refresh (drop IDs that no longer exist
   // in either ready list — selection is cleared on tab switch anyway).
@@ -4132,6 +4163,8 @@ export default function PackagingClient() {
                             order={o}
                             onInvoiceGenerated={handleInvoiceGenerated}
                             onViewDocs={handleViewDocs}
+                            onViewCombinedDocs={handleViewCombinedDocs}
+                            combinedSiblings={siblingsOf(o)}
                           />
                         </div>
 
@@ -4171,7 +4204,7 @@ export default function PackagingClient() {
                     No individual orders in packing yet.
                   </div>
                 ) : singlePacking.map((o) => (
-                  <OrderCard key={o.id} order={o} onInvoiceGenerated={handleInvoiceGenerated} onViewDocs={handleViewDocs} />
+                  <OrderCard key={o.id} order={o} onInvoiceGenerated={handleInvoiceGenerated} onViewDocs={handleViewDocs} onViewCombinedDocs={handleViewCombinedDocs} combinedSiblings={siblingsOf(o)} />
                 ))
               )}
             </>
@@ -4231,6 +4264,8 @@ export default function PackagingClient() {
                             order={o}
                             onInvoiceGenerated={handleInvoiceGenerated}
                             onViewDocs={handleViewDocs}
+                            onViewCombinedDocs={handleViewCombinedDocs}
+                            combinedSiblings={siblingsOf(o)}
                           />
                         </div>
                         {checked && (
@@ -4267,7 +4302,7 @@ export default function PackagingClient() {
                     No account orders in packing yet.
                   </div>
                 ) : multiPacking.map((o) => (
-                  <OrderCard key={o.id} order={o} onInvoiceGenerated={handleInvoiceGenerated} onViewDocs={handleViewDocs} />
+                  <OrderCard key={o.id} order={o} onInvoiceGenerated={handleInvoiceGenerated} onViewDocs={handleViewDocs} onViewCombinedDocs={handleViewCombinedDocs} combinedSiblings={siblingsOf(o)} />
                 ))
               )}
             </>
