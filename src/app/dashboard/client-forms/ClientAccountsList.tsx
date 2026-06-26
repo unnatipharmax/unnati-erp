@@ -68,7 +68,7 @@ export default function ClientAccountsList() {
           <thead>
             <tr>
               <th>Client Name</th>
-              <th>Balance (₹)</th>
+              <th>Balance ($)</th>
               <th>Created</th>
               <th>Order Link</th>
               <th>Excel Ledger</th>
@@ -80,7 +80,7 @@ export default function ClientAccountsList() {
                 <td style={{ fontWeight: 600, color: "var(--text-primary)" }}>{acc.name}</td>
                 <td>
                   <span className="badge badge-green">
-                    ₹{Number(acc.balance).toLocaleString("en-IN")}
+                    ${Number(acc.balance).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </td>
                 <td style={{ color: "var(--text-muted)", fontSize: "0.8125rem" }}>

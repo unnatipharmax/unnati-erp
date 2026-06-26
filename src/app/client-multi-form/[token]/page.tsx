@@ -28,10 +28,13 @@ export default async function ClientMultiFormPage({
   // invalid token OR link disabled OR account disabled
   if (!link || !link.isActive || !link.account?.isActive) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6">
-        <div className="w-full max-w-lg bg-slate-900/70 border border-slate-800 rounded-2xl p-6">
-          <h1 className="text-xl font-semibold">Invalid link</h1>
-          <p className="text-slate-400 mt-2">
+      <div style={{
+        minHeight: "100vh", background: "var(--background)", color: "var(--text-primary)",
+        display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem 1rem",
+      }}>
+        <div className="card" style={{ width: "100%", maxWidth: 520 }}>
+          <h1 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>Invalid link</h1>
+          <p style={{ marginTop: "0.5rem", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
             This multi-order link is not active. Please contact the sales team.
           </p>
         </div>
