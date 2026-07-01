@@ -3,6 +3,7 @@ import CreateClientLinkCard      from "./CreateClientLinkCard";
 import CreateClientMultiLinkCard from "./CreateClientMultiLinkCard";
 import ExcelImportCard           from "./ExcelImportCard";
 import ClientAccountsList        from "./ClientAccountsList";
+import QuickOrderPasteCard       from "./QuickOrderPasteCard";
 
 export default function ClientFormsPage() {
   return (
@@ -13,6 +14,11 @@ export default function ClientFormsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <CreateClientLinkCard />
         <CreateClientMultiLinkCard />
+      </div>
+
+      {/* Quick order — paste WhatsApp/message and auto-create */}
+      <div style={{ marginTop: "1.5rem", display: "grid", gridTemplateColumns: "1fr" }}>
+        <QuickOrderPasteCard />
       </div>
 
       {/* Excel bulk import */}
