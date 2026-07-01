@@ -123,7 +123,7 @@ export default function ExcelImportCard() {
                 <option value="">— Select account —</option>
                 {accounts.map(a => (
                   <option key={a.id} value={a.id}>
-                    {a.name} · ₹{Number(a.balance).toLocaleString("en-IN")}
+                    {a.name} · ${Number(a.balance).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </option>
                 ))}
               </select>
@@ -137,7 +137,7 @@ export default function ExcelImportCard() {
               <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>{selected.name}</span>
               <span>·</span>
               <span>Balance: <strong style={{ color: Number(selected.balance) > 0 ? "#4ade80" : "#dc2626" }}>
-                ₹{Number(selected.balance).toLocaleString("en-IN")}
+                ${Number(selected.balance).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </strong></span>
             </div>
           )}

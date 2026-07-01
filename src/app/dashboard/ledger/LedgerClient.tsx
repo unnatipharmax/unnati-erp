@@ -393,7 +393,7 @@ function MultiOrderTab({ accounts }: { accounts: Account[] }) {
                   <div className="text-sm font-medium text-slate-800 truncate">{a.name}</div>
                   <div className="flex items-center gap-1.5 mt-1">
                     <span className="text-[10px] font-medium text-teal-600">
-                      ₹{a.balance.toLocaleString("en-IN")}
+                      ${a.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                     <span className="text-[10px] text-slate-600">·</span>
                     <span className="text-[10px] text-slate-500">
@@ -433,7 +433,7 @@ function MultiOrderTab({ accounts }: { accounts: Account[] }) {
                 <p className="text-xs text-slate-500 mt-0.5">
                   Balance:{" "}
                   <span className="text-teal-600 font-medium">
-                    ₹{accountInfo?.balance.toLocaleString("en-IN")}
+                    ${accountInfo?.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </p>
               </div>
