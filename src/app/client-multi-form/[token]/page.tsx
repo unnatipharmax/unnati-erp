@@ -51,7 +51,7 @@ export default async function ClientMultiFormPage({
     select: { name: true, logoB64: true },
   });
   const companyName = company?.name || "UNNATI PHARMAX";
-  const companyLogo = company?.logoB64 && company.logoB64.startsWith("data:") ? company.logoB64 : "/logo.png";
+  const companyLogo = company?.logoB64 && company.logoB64.startsWith("data:") ? company.logoB64 : null;
 
   return (
     <ClientMultiForm

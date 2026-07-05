@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, Check, ChevronsUpDown, Settings } from "lucide-react";
+import CompanyLogo from "./CompanyLogo";
 
 type Company = { id: string; name: string; gstin: string; invoicePrefix: string; logoB64: string };
 
@@ -39,8 +40,6 @@ export default function CompanySwitcher({ activeCompanyId, isAdmin }: { activeCo
     }
   }
 
-  const logo = active?.logoB64 && active.logoB64.length > 20 ? active.logoB64 : "/logo.png";
-
   return (
     <div ref={rootRef} style={{ position: "relative", padding: "1.1rem 1rem", borderBottom: "1px solid var(--border)" }}>
       <button
@@ -51,8 +50,7 @@ export default function CompanySwitcher({ activeCompanyId, isAdmin }: { activeCo
         }}
         title="Switch company"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={logo} alt="logo" style={{ width: 34, height: 34, objectFit: "contain", flexShrink: 0, borderRadius: 6 }} />
+        <CompanyLogo name={active?.name ?? "UNNATI PHARMAX"} logoB64={active?.logoB64} size={34} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {active?.name ?? "UNNATI PHARMAX"}
