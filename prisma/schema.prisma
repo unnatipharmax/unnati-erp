@@ -221,6 +221,18 @@ model InvoiceSequence {
   @@index([companyId])
 }
 
+// ── Quotation sequence counter ─────────────────────────────────────────────
+// Per-company running quote number, incremented only when a quote is printed.
+model QuoteSequence {
+  id         String          @id @default(uuid())
+  lastNumber Int             @default(0)
+  companyId  String?
+  company    CompanySetting? @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId])
+  @@index([companyId])
+}
+
 model OrderInitiation {
   id              String      @id @default(uuid())
   source          OrderSource
@@ -538,4 +550,5 @@ model CompanySetting {
   exportReturns    ExportReturn[]
   clientFormLinks  ClientFormLink[]
   invoiceSequences InvoiceSequence[]
+  quoteSequences   QuoteSequence[]
 }

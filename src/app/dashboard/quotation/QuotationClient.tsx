@@ -90,13 +90,6 @@ function newExtra(label = ""): ExtraCharge {
 
 function printQuotation() { window.print(); }
 
-// ── Auto quote number (localStorage counter) ──────────────────────────────────
-function nextQuoteNo(): string {
-  if (typeof window === "undefined") return "Q-001";
-  const n = parseInt(localStorage.getItem("unnati_quote_counter") ?? "0", 10) + 1;
-  localStorage.setItem("unnati_quote_counter", String(n));
-  return `Q-${String(n).padStart(3, "0")}`;
-}
 
 // ── Shipping Calculator ───────────────────────────────────────────────────────
 const SLAB_WEIGHTS_GM = [500, 1000, 1500, 2000];
@@ -301,7 +294,7 @@ function QuotationPreview({ q, totalWeightKg, websites }: { q: QuotationData; to
             <tbody>
               <tr>
                 <td style={{ padding: "3px 10px 3px 0", color: "#666", fontSize: "8pt", fontWeight: 600 }}>Quote No.</td>
-                <td style={{ padding: "3px 0", fontFamily: "monospace", fontWeight: 700, color: accentBlue, fontSize: "10pt" }}>{q.quoteNo || "—"}</td>
+                <td style={{ padding: "3px 0", fontFamily: "monospace", fontWeight: 700, color: accentBlue, fontSize: "10pt" }}>{q.quoteNo && q.quoteNo !== "Q-draft" ? q.quoteNo : "(auto)"}</td>
               </tr>
               <tr>
                 <td style={{ padding: "3px 10px 3px 0", color: "#666", fontSize: "8pt" }}>Date</td>
@@ -605,7 +598,7 @@ export default function QuotationClient() {
     toName:    "",
     toAddress: "",
     toEmail:   "",
-    quoteNo:    "Q-001", // stable placeholder for SSR; real number set client-side below
+    quoteNo:    "Q-draft", // real per-company number assigned on Print (see below)
     quoteDate:  today(),
     validUntil: addDays(today(), 30),
     currency:   "USD",
@@ -619,12 +612,6 @@ export default function QuotationClient() {
     notes: "",
     terms: "We assured you our best services at all times.\nOnly Lab tested and Approved products we sell.\nGoods once sold shall not be returned back or exchanged.\nCustom clearance of destination country is the responsibility of the purchaser.\nProduct shall get dispatched only on the remittance of amount in our account.\n\nSave A Tree. Please do not print this unless you really need to.",
   }));
-
-  // Assign the real auto quote number on the client only (localStorage isn't
-  // available during SSR — computing it in useState causes a hydration mismatch).
-  useEffect(() => {
-    setQ(prev => ({ ...prev, quoteNo: nextQuoteNo() }));
-  }, []);
 
   // Load company settings from API and pre-fill sender fields + bank details
   const [companyWebsites, setCompanyWebsites] = useState({ website: "", indiamart: "", marketing: "" });
@@ -708,6 +695,26 @@ export default function QuotationClient() {
 
   const QUICK_EXTRAS = ["Service Charges", "Local Charges", "Handling Charges", "Insurance", "Documentation Fees", "Courier Charges"];
 
+  // Assign the real per-company quote number (from the DB sequence) right before
+  // printing, so numbers only advance on an actual quote — not on page load.
+  const [printing, setPrinting] = useState(false);
+  async function handlePrint() {
+    setPrinting(true);
+    try {
+      let quoteNo = q.quoteNo;
+      if (!quoteNo || quoteNo === "Q-draft") {
+        try {
+          const res = await fetch("/api/quotation/next-number", { method: "POST" });
+          if (res.ok) { const d = await res.json(); quoteNo = d.quoteNo; setQ(prev => ({ ...prev, quoteNo })); }
+        } catch { /* fall back to whatever is shown */ }
+      }
+      // Let React paint the assigned number before the print dialog opens.
+      setTimeout(() => { printQuotation(); }, 60);
+    } finally {
+      setTimeout(() => setPrinting(false), 400);
+    }
+  }
+
   return (
     <>
       <style>{`
@@ -721,8 +728,8 @@ export default function QuotationClient() {
 
       <div style={{ marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <h2 style={{ margin: 0 }}>Quotation Generator</h2>
-        <button onClick={printQuotation} className="btn btn-primary" style={{ padding: "8px 22px", fontSize: "0.9rem" }}>
-          🖨 Print / Download PDF
+        <button onClick={handlePrint} disabled={printing} className="btn btn-primary" style={{ padding: "8px 22px", fontSize: "0.9rem" }}>
+          {printing ? "Preparing…" : "🖨 Print / Download PDF"}
         </button>
       </div>
 
@@ -782,9 +789,10 @@ export default function QuotationClient() {
               <div>
                 <label style={lS}>
                   Quote Number
-                  <span style={{ marginLeft: 6, color: "var(--text-muted)", fontSize: "0.68rem" }}>(auto-generated)</span>
+                  <span style={{ marginLeft: 6, color: "var(--text-muted)", fontSize: "0.68rem" }}>(auto on print)</span>
                 </label>
-                <input style={{ ...iS, fontFamily: "monospace", fontWeight: 700 }} value={q.quoteNo} onChange={e => set("quoteNo", e.target.value)} />
+                <input style={{ ...iS, fontFamily: "monospace", fontWeight: 700 }} placeholder="Assigned on Print"
+                  value={q.quoteNo === "Q-draft" ? "" : q.quoteNo} onChange={e => set("quoteNo", e.target.value)} />
               </div>
               <div>
                 <label style={lS}>Currency</label>
