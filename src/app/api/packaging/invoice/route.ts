@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { getSession } from "../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../lib/company";
 import { sendShipmentNotification } from "../../../../lib/email";
 
 export const runtime = "nodejs";
@@ -27,9 +28,11 @@ export async function POST(req: Request) {
   if (!orderId)
     return NextResponse.json({ error: "orderId required" }, { status: 400 });
 
-  // Check order exists + is PAYMENT_VERIFIED (fetch all fields needed for email too)
-  const order = await prisma.orderInitiation.findUnique({
-    where: { id: orderId },
+  const companyId = await getActiveCompanyId();
+
+  // Check order exists + belongs to the active company + is PAYMENT_VERIFIED
+  const order = await prisma.orderInitiation.findFirst({
+    where: { id: orderId, companyId },
     select: {
       id: true, status: true, invoiceNo: true,
       fullName: true, email: true, country: true,
@@ -90,11 +93,11 @@ export async function POST(req: Request) {
     );
 
   const fy = getFinancialYear();
-  // Multi-company Stage 1: single company (id="1"). Stage 3 replaces this with
-  // the active company id so each company keeps its own invoice sequence.
-  const companyId = "1";
+  // Per-company invoice prefix (e.g. "E" → E-2627-001). Falls back to "E".
+  const co = await prisma.companySetting.findUnique({ where: { id: companyId }, select: { invoicePrefix: true } });
+  const prefix = (co?.invoicePrefix || "E").trim() || "E";
 
-  // Atomic: upsert sequence + increment in a transaction
+  // Atomic: upsert sequence + increment in a transaction (scoped to this company)
   const invoiceNo = await prisma.$transaction(async (tx) => {
     const seq = await tx.invoiceSequence.upsert({
       where:  { companyId_financialYear: { companyId, financialYear: fy } },
@@ -102,7 +105,7 @@ export async function POST(req: Request) {
       update: { lastNumber: { increment: 1 } },
     });
     const num = seq.lastNumber.toString().padStart(3, "0");
-    return `E-${fy}-${num}`; // e.g. E-2526-001
+    return `${prefix}-${fy}-${num}`; // e.g. E-2526-001
   });
 
   // Assign invoice + move to PACKING

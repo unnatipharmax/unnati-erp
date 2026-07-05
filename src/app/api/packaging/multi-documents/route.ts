@@ -2,6 +2,7 @@
 // Downloads a combined ZIP of all documents for orders sharing the same invoice number
 import { NextResponse } from "next/server";
 import { getSession } from "../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../lib/company";
 import { buildMultiOrderDocumentBundle } from "../../../../lib/orderDocumentBundle";
 import { prisma } from "../../../../lib/prisma";
 
@@ -11,6 +12,7 @@ export async function GET(req: Request) {
   const session = await getSession();
   if (!session || !["ADMIN", "MANAGER", "PACKAGING"].includes(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const companyId = await getActiveCompanyId();
 
   const { searchParams } = new URL(req.url);
   const invoiceNo = searchParams.get("invoiceNo");
@@ -18,7 +20,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "invoiceNo required" }, { status: 400 });
 
   const orders = await prisma.orderInitiation.findMany({
-    where: { invoiceNo },
+    where: { invoiceNo, companyId },
     select: {
       id: true,
       invoiceNo: true,

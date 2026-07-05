@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { getSession } from "../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../lib/company";
 import { deleteExpenseBill } from "../../../../lib/expenseBills";
 
 export const runtime = "nodejs";
@@ -16,13 +17,15 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
+  const companyId = await getActiveCompanyId();
   try {
-    // Remove the attached bill file (if any) before deleting the row.
+    // Remove the attached bill file (if any) before deleting the row — scoped to company.
     const rows = await prisma.$queryRawUnsafe<{ billStoredName: string | null }[]>(
-      `SELECT "billStoredName" FROM "Expense" WHERE id = $1`, id
+      `SELECT "billStoredName" FROM "Expense" WHERE id = $1 AND "companyId" = $2`, id, companyId
     );
+    if (rows.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
     await deleteExpenseBill(rows[0]?.billStoredName);
-    await prisma.$executeRawUnsafe(`DELETE FROM "Expense" WHERE id = $1`, id);
+    await prisma.$executeRawUnsafe(`DELETE FROM "Expense" WHERE id = $1 AND "companyId" = $2`, id, companyId);
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message }, { status: 500 });
@@ -39,14 +42,15 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
+  const companyId = await getActiveCompanyId();
   const { description, amount, expenseDate, paymentMode, notes } = await req.json();
 
   try {
     await prisma.$executeRawUnsafe(
-      `UPDATE "Expense" SET "description"=$1,"amount"=$2,"expenseDate"=$3,"paymentMode"=$4,"notes"=$5 WHERE id=$6`,
+      `UPDATE "Expense" SET "description"=$1,"amount"=$2,"expenseDate"=$3,"paymentMode"=$4,"notes"=$5 WHERE id=$6 AND "companyId"=$7`,
       description, Number(amount),
       expenseDate ? new Date(expenseDate) : new Date(),
-      paymentMode || null, notes || null, id
+      paymentMode || null, notes || null, id, companyId
     );
     return NextResponse.json({ success: true });
   } catch (err: any) {

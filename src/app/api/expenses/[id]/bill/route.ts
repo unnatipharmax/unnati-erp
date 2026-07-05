@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import { prisma } from "../../../../../lib/prisma";
 import { getSession } from "../../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../../lib/company";
 import { getExpenseBillAbsolutePath } from "../../../../../lib/expenseBills";
 
 export const runtime = "nodejs";
@@ -16,10 +17,11 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
+  const companyId = await getActiveCompanyId();
   const rows = await prisma.$queryRawUnsafe<{
     billStoredName: string | null; billMimeType: string | null; billOriginalName: string | null;
   }[]>(
-    `SELECT "billStoredName","billMimeType","billOriginalName" FROM "Expense" WHERE id = $1`, id
+    `SELECT "billStoredName","billMimeType","billOriginalName" FROM "Expense" WHERE id = $1 AND "companyId" = $2`, id, companyId
   );
   const rec = rows[0];
   if (!rec?.billStoredName)

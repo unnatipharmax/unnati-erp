@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { getSession } from "../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../lib/company";
 
 export const runtime = "nodejs";
 
@@ -31,10 +32,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "orders array required" }, { status: 400 });
 
   const orderIds = orderPayloads.map((o) => o.id);
+  const companyId = await getActiveCompanyId();
 
-  // Verify all orders are PAYMENT_VERIFIED and don't already have an invoice
+  // Verify all orders belong to the active company + are PAYMENT_VERIFIED + uninvoiced
   const dbOrders = await prisma.orderInitiation.findMany({
-    where: { id: { in: orderIds } },
+    where: { id: { in: orderIds }, companyId },
     select: { id: true, status: true, invoiceNo: true, currency: true, grsNumber: true },
   });
 
@@ -74,10 +76,10 @@ export async function POST(req: Request) {
   }
 
   const fy = getFinancialYear();
-  // Multi-company Stage 1: single company (id="1"). Stage 3 uses the active company id.
-  const companyId = "1";
+  const co = await prisma.companySetting.findUnique({ where: { id: companyId }, select: { invoicePrefix: true } });
+  const prefix = (co?.invoicePrefix || "E").trim() || "E";
 
-  // Generate ONE invoice number for all selected orders (atomic sequence increment)
+  // Generate ONE invoice number for all selected orders (atomic, scoped to company)
   const invoiceNo = await prisma.$transaction(async (tx) => {
     const seq = await tx.invoiceSequence.upsert({
       where: { companyId_financialYear: { companyId, financialYear: fy } },
@@ -85,12 +87,12 @@ export async function POST(req: Request) {
       update: { lastNumber: { increment: 1 } },
     });
     const num = seq.lastNumber.toString().padStart(3, "0");
-    return `E-${fy}-${num}`;
+    return `${prefix}-${fy}-${num}`;
   });
 
   // Assign the same invoice number to all orders + move them to PACKING
   await prisma.orderInitiation.updateMany({
-    where: { id: { in: orderIds } },
+    where: { id: { in: orderIds }, companyId },
     data: {
       invoiceNo,
       invoiceGeneratedAt: new Date(),

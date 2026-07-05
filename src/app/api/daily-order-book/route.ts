@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
 import { getSession } from "../../../lib/auth";
+import { getActiveCompanyId } from "../../../lib/company";
 
 export const runtime = "nodejs";
 
@@ -49,12 +50,14 @@ export async function GET(req: Request) {
   if (isNaN(from.getTime())) return NextResponse.json({ error: "invalid date" }, { status: 400 });
   const to = new Date(from);
   to.setUTCHours(23, 59, 59, 999);
+  const companyId = await getActiveCompanyId();
 
   // Orders booked that day: prefer invoiceGeneratedAt (booking moment), else createdAt.
   const orders = await prisma.orderInitiation.findMany({
     where: {
       status: { in: ["PACKING", "DISPATCHED"] },
       invoiceNo: { not: null },
+      companyId,
       OR: [
         { invoiceGeneratedAt: { gte: from, lte: to } },
         { AND: [{ invoiceGeneratedAt: null }, { createdAt: { gte: from, lte: to } }] },
