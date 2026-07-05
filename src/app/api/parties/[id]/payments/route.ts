@@ -1,6 +1,7 @@
 import { PurchaseDocumentType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getSession } from "../../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../../lib/company";
 import { getPurchaseBillAmount, roundMoney } from "../../../../../lib/purchaseAccounting";
 import { prisma } from "../../../../../lib/prisma";
 
@@ -16,10 +17,12 @@ export async function GET(
   }
 
   const { id } = await params;
+  const companyId = await getActiveCompanyId();
 
   const bills = await prisma.purchaseBill.findMany({
     where: {
       partyId: id,
+      companyId,
       documentType: PurchaseDocumentType.BILL,
     },
     orderBy: [{ invoiceDate: "asc" }, { createdAt: "asc" }],
@@ -81,6 +84,7 @@ export async function POST(
   }
 
   const { id } = await params;
+  const companyId = await getActiveCompanyId();
   const body = await req.json();
   const { amount, paymentDate, mode, reference, notes, allocations } = body;
 
@@ -108,6 +112,7 @@ export async function POST(
       where: {
         id: { in: normalizedAllocations.map((allocation: { billId: string }) => allocation.billId) },
         partyId: id,
+        companyId,
         documentType: PurchaseDocumentType.BILL,
       },
       select: { id: true },
@@ -121,6 +126,7 @@ export async function POST(
   const payment = await prisma.partyPayment.create({
     data: {
       partyId: id,
+      companyId,
       amount: roundMoney(Number(amount)),
       paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
       mode: mode || null,

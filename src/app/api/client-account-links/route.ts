@@ -1,6 +1,7 @@
 // src/app/api/client-account-links/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
+import { getActiveCompanyId } from "../../../lib/company";
 import { Prisma, LedgerType } from "@prisma/client";
 import crypto from "crypto";
 
@@ -23,13 +24,14 @@ export async function POST(req: Request) {
     if (opening.lessThan(0))
       return NextResponse.json({ error: "Opening balance cannot be negative" }, { status: 400 });
 
+    const companyId = await getActiveCompanyId();
     const baseUrl  = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const token    = makeToken();
     const orderUrl = `${baseUrl}/client-multi-form/${token}`;
 
     const result = await prisma.$transaction(async (tx) => {
       const account = await tx.clientAccount.create({
-        data: { name, balance: opening, isActive: true },
+        data: { name, balance: opening, isActive: true, companyId },
         select: { id: true, balance: true, createdAt: true },
       });
 
@@ -40,6 +42,7 @@ export async function POST(req: Request) {
             type:      LedgerType.CREDIT,
             amount:    opening,
             note:      "Opening balance",
+            companyId,
           },
         });
       }

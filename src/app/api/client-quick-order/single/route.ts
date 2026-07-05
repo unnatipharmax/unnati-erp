@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { Prisma, OrderSource } from "@prisma/client";
 import { prisma } from "../../../../lib/prisma";
 import { getSession } from "../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../lib/company";
 import { sendOrderConfirmation } from "../../../../lib/email";
 
 export const runtime = "nodejs";
@@ -20,6 +21,7 @@ export async function POST(req: Request) {
   if (!session || !["ADMIN", "MANAGER", "SALES", "ACCOUNTS"].includes(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const companyId = await getActiveCompanyId();
   const b: Body = await req.json().catch(() => ({}));
 
   const fullName = (b.fullName ?? "").trim();
@@ -31,6 +33,7 @@ export async function POST(req: Request) {
       data: {
         source: OrderSource.SALES,
         filledByUserId: session.id ?? null,
+        companyId,
         fullName,
         address:      (b.address ?? "").trim(),
         city:         (b.city ?? "").trim(),

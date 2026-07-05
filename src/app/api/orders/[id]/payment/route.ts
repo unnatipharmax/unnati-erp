@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../../lib/prisma";
 import { getSession } from "../../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../../lib/company";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,7 @@ export async function PATCH(
   if (!session || !["ADMIN", "MANAGER", "ACCOUNTS"].includes(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const companyId = await getActiveCompanyId();
   const { id } = await params;
   const body   = await req.json();
 
@@ -36,17 +38,23 @@ export async function PATCH(
                        (data.grsNumber || body.grsNumber);
     if (hasPayment) {
       // Only advance if currently INITIATED or SALES_UPDATED (don't go backward)
-      const current = await prisma.orderInitiation.findUnique({
-        where: { id }, select: { status: true }
+      const current = await prisma.orderInitiation.findFirst({
+        where: { id, companyId }, select: { status: true }
       });
       if (current && ["INITIATED","SALES_UPDATED"].includes(current.status)) {
         data.status = "PAYMENT_VERIFIED";
       }
     }
 
-    const order = await prisma.orderInitiation.update({
-      where: { id },
+    const upd = await prisma.orderInitiation.updateMany({
+      where: { id, companyId },
       data,
+    });
+    if (upd.count === 0)
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+
+    const order = await prisma.orderInitiation.findFirst({
+      where: { id, companyId },
       select: {
         id: true,
         status:             true,
@@ -57,6 +65,8 @@ export async function PATCH(
         paymentDepositDate: true,
       },
     });
+    if (!order)
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
     return NextResponse.json({
       ...order,

@@ -1,6 +1,7 @@
 import { PurchaseDocumentType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getSession } from "../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../lib/company";
 import {
   getCreditNoteAmount,
   getPurchaseBillAmount,
@@ -71,6 +72,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "At least one product is required" }, { status: 400 });
   }
 
+  const companyId = await getActiveCompanyId();
+
   try {
     let partyRecord: Awaited<ReturnType<typeof prisma.party.create>>;
 
@@ -78,6 +81,7 @@ export async function POST(req: Request) {
       partyRecord = await prisma.party.update({
         where: { id: party.id },
         data: {
+          companyId,
           name: party.name.trim(),
           address: party.address || null,
           gstNumber: party.gstNumber || null,
@@ -86,7 +90,7 @@ export async function POST(req: Request) {
       });
     } else {
       const existing = await prisma.party.findFirst({
-        where: { name: { equals: party.name.trim(), mode: "insensitive" } },
+        where: { name: { equals: party.name.trim(), mode: "insensitive" }, companyId },
       });
 
       if (existing) {
@@ -101,6 +105,7 @@ export async function POST(req: Request) {
       } else {
         partyRecord = await prisma.party.create({
           data: {
+            companyId,
             name: party.name.trim(),
             address: party.address || null,
             gstNumber: party.gstNumber || null,
@@ -196,6 +201,7 @@ export async function POST(req: Request) {
         invoiceNo: bill.invoiceNo || null,
         invoiceDate: bill.invoiceDate ? new Date(bill.invoiceDate) : null,
         partyId: partyRecord.id,
+        companyId,
         documentType,
         totalAmount: computedDocumentAmount,
       },
@@ -205,6 +211,7 @@ export async function POST(req: Request) {
       data: products.map((product, index) => ({
         productId: resolvedIds[index],
         purchaseId: purchaseBill.id,
+        companyId,
         batch: product.batchNo || null,
         expiry: product.expDate || null,
         quantity: product.quantity || 1,
@@ -230,6 +237,7 @@ export async function POST(req: Request) {
       const openCreditNotes = await prisma.purchaseBill.findMany({
         where: {
           partyId: partyRecord.id,
+          companyId,
           documentType: PurchaseDocumentType.CREDIT_NOTE,
           createdAt: { lte: purchaseBill.createdAt },
         },

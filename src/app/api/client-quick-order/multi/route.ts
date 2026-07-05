@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import { Prisma, OrderSource } from "@prisma/client";
 import { prisma } from "../../../../lib/prisma";
 import { getSession } from "../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../lib/company";
 import { sendOrderConfirmation } from "../../../../lib/email";
 
 export const runtime = "nodejs";
@@ -22,6 +23,7 @@ export async function POST(req: Request) {
   if (!session || !["ADMIN", "MANAGER", "SALES", "ACCOUNTS"].includes(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const companyId = await getActiveCompanyId();
   const b: Body = await req.json().catch(() => ({}));
 
   const accountId = (b.accountId ?? "").trim();
@@ -30,8 +32,8 @@ export async function POST(req: Request) {
   if (!accountId) return NextResponse.json({ error: "Client account is required" }, { status: 400 });
   if (!fullName)  return NextResponse.json({ error: "Customer name is required" }, { status: 400 });
 
-  const account = await prisma.clientAccount.findUnique({
-    where: { id: accountId },
+  const account = await prisma.clientAccount.findFirst({
+    where: { id: accountId, companyId },
     select: { id: true, name: true, isActive: true, balance: true },
   });
   if (!account || !account.isActive)
@@ -42,6 +44,7 @@ export async function POST(req: Request) {
       data: {
         source: OrderSource.SALES,
         filledByUserId: session.id ?? null,
+        companyId,
         accountId: account.id,
         fullName,
         address:      (b.address ?? "").trim(),

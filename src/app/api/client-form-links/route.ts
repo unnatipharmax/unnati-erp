@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "../../../lib/prisma";
+import { getActiveCompanyId } from "../../../lib/company";
 
 export const runtime = "nodejs"; // IMPORTANT (Prisma + crypto)
 
 export async function POST() {
+  const companyId = await getActiveCompanyId();
   const token = crypto.randomBytes(24).toString("hex"); // 48 chars
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
 
@@ -13,6 +15,7 @@ export async function POST() {
       token,
       expiresAt,
       isUsed: false,
+      companyId,
     },
     select: { token: true, expiresAt: true },
   });

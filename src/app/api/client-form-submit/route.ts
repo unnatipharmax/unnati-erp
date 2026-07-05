@@ -63,6 +63,13 @@ export async function POST(req: Request) {
       },
     });
 
+    // Derive companyId from the link (public route — no session/cookie).
+    const linkRecord = await prisma.clientFormLink.findUnique({
+      where: { token },
+      select: { companyId: true },
+    });
+    const companyId = linkRecord?.companyId ?? "1";
+
     if (lock.count === 0) {
       const existing = await prisma.clientFormLink.findUnique({
         where: { token },
@@ -93,6 +100,7 @@ export async function POST(req: Request) {
         data: {
           source: OrderSource.CLIENT,
           clientFormToken: token,
+          companyId,
           fullName,
           address,
           city,

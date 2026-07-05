@@ -5,6 +5,7 @@ import { Prisma, OrderSource } from "@prisma/client";
 import ExcelJS from "exceljs";
 import { prisma } from "../../../../../lib/prisma";
 import { getSession } from "../../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../../lib/company";
 
 export const runtime = "nodejs";
 
@@ -43,11 +44,12 @@ export async function POST(
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const companyId = await getActiveCompanyId();
   const { id: accountId } = await params;
 
   // ── Validate account + get token ───────────────────────────────────────────
-  const account = await prisma.clientAccount.findUnique({
-    where: { id: accountId },
+  const account = await prisma.clientAccount.findFirst({
+    where: { id: accountId, companyId },
     include: { links: { where: { isActive: true }, take: 1 } },
   });
   if (!account || !account.isActive)
@@ -122,6 +124,7 @@ export async function POST(
           source:          OrderSource.CLIENT,
           clientFormToken: token,
           accountId,
+          companyId,
           fullName:        r.fullName.trim(),
           email:           r.email.trim(),
           phone:           r.phone.trim(),
