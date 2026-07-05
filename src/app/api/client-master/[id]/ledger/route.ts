@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../../lib/prisma";
 import { getSession } from "../../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../../lib/company";
 
 export const runtime = "nodejs";
 
@@ -12,9 +13,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
+  const companyId = await getActiveCompanyId();
 
-  const account = await prisma.clientAccount.findUnique({
-    where:   { id },
+  const account = await prisma.clientAccount.findFirst({
+    where:   { id, companyId },
     include: { phones: true, emails: true },
   });
 
@@ -22,13 +24,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   // Fetch all ledger entries (balance credits/debits)
   const ledgerEntries = await prisma.accountLedger.findMany({
-    where:   { accountId: id },
+    where:   { accountId: id, companyId },
     orderBy: { createdAt: "asc" },
   });
 
   // Fetch all orders linked to this account
   const orders = await prisma.orderInitiation.findMany({
-    where:   { accountId: id },
+    where:   { accountId: id, companyId },
     orderBy: { createdAt: "asc" },
     include: {
       orderEntry: {

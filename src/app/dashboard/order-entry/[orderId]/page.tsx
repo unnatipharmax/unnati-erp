@@ -1,4 +1,5 @@
 import { prisma } from "../../../../lib/prisma";
+import { getActiveCompanyId } from "../../../../lib/company";
 import OrderEntryForm from "./OrderEntryForm";
 
 export default async function OrderEntryPage({
@@ -7,10 +8,11 @@ export default async function OrderEntryPage({
   params: Promise<{ orderId: string }>;
 }) {
   const { orderId } = await params;
+  const companyId = await getActiveCompanyId();
 
   const [order, products] = await Promise.all([
-    prisma.orderInitiation.findUnique({
-      where: { id: orderId },
+    prisma.orderInitiation.findFirst({
+      where: { id: orderId, companyId },
       include: {
         orderEntry: {
           include: {
@@ -24,7 +26,7 @@ export default async function OrderEntryPage({
       },
     }),
     prisma.product.findMany({
-      where: { isActive: true },
+      where: { isActive: true, companyId },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
@@ -38,6 +40,7 @@ export default async function OrderEntryPage({
       where: {
         email: order.email,
         id: { not: orderId },
+        companyId,
         orderEntry: { isNot: null },
       },
       orderBy: { createdAt: "desc" },
