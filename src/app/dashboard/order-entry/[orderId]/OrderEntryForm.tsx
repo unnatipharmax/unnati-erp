@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 
 type ProductOption = { id: string; name: string };
 type ExistingEntry = null | {
@@ -50,6 +50,108 @@ const selectCls = [
   "border-slate-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30",
   "hover:border-slate-300",
 ].join(" ");
+
+// ── Searchable product dropdown with sticky "Add New Product" ─────────────────
+function ProductSelect({
+  value, products, onChange, onAddNew,
+}: {
+  value: string;
+  products: ProductOption[];
+  onChange: (id: string) => void;
+  onAddNew: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const selected = products.find(p => p.id === value) ?? null;
+  const filtered = query.trim()
+    ? products.filter(p => (p.name ?? "").toLowerCase().includes(query.trim().toLowerCase()))
+    : products;
+
+  // Close on outside click / Escape
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
+  }, [open]);
+
+  // Focus the search box when the menu opens (no setState here to avoid cascading renders).
+  useEffect(() => { if (open) searchRef.current?.focus(); }, [open]);
+
+  function toggle() { setOpen(o => { const next = !o; if (next) setQuery(""); return next; }); }
+
+  return (
+    <div ref={rootRef} className="relative">
+      {/* Trigger — looks like the native select */}
+      <button
+        type="button"
+        onClick={toggle}
+        className={selectCls + " mt-1 flex items-center justify-between text-left"}
+      >
+        <span className={selected ? "text-slate-900" : "text-slate-600"} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {selected ? (selected.name ?? "").toUpperCase() : "Select product…"}
+        </span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-slate-500 shrink-0 ml-2">
+          <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {open && (
+        <div
+          className="absolute z-30 mt-1 w-full rounded-xl border border-slate-300 bg-white shadow-xl overflow-hidden"
+          style={{ maxHeight: 320, display: "flex", flexDirection: "column" }}
+        >
+          {/* Sticky top: search + Add New Product */}
+          <div className="sticky top-0 bg-white border-b border-slate-200 p-2 space-y-2" style={{ flexShrink: 0 }}>
+            <input
+              ref={searchRef}
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search products…"
+              className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm text-slate-900 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30 placeholder:text-slate-500"
+            />
+            <button
+              type="button"
+              onClick={() => { setOpen(false); onAddNew(); }}
+              className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-700 text-sm font-semibold hover:bg-amber-500/20 transition-colors cursor-pointer"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" strokeLinecap="round" /></svg>
+              Add New Product
+            </button>
+          </div>
+
+          {/* Scrollable product list */}
+          <div style={{ overflowY: "auto" }}>
+            {filtered.length === 0 ? (
+              <div className="px-3 py-4 text-sm text-slate-500 text-center">No products match “{query}”.</div>
+            ) : (
+              filtered.map(p => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => { onChange(p.id); setOpen(false); }}
+                  className={
+                    "w-full text-left px-3 py-2 text-sm hover:bg-amber-50 transition-colors cursor-pointer " +
+                    (p.id === value ? "bg-amber-100 text-amber-800 font-semibold" : "text-slate-800")
+                  }
+                >
+                  {(p.name ?? "").toUpperCase()}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Add Product Modal ─────────────────────────────────────────────────────────
 function AddProductModal({ onClose, onAdded }: { onClose: () => void; onAdded: (p: ProductOption) => void }) {
@@ -247,11 +349,8 @@ export default function OrderEntryForm({
   function updateRow(idx: number, p: Partial<Row>) { setRows(r => r.map((row, i) => i === idx ? { ...row, ...p } : row)); }
 
   function handleProductChange(idx: number, val: string) {
-    if (val === "__add_new__") { setPendingRowIdx(idx); setShowModal(true); }
-    else {
-      const lastPrice = lastPrices[val];
-      updateRow(idx, { productId: val, ...(lastPrice ? { sellingPrice: lastPrice } : {}) });
-    }
+    const lastPrice = lastPrices[val];
+    updateRow(idx, { productId: val, ...(lastPrice ? { sellingPrice: lastPrice } : {}) });
   }
 
   function handleProductAdded(p: ProductOption) {
@@ -360,16 +459,12 @@ export default function OrderEntryForm({
                   {/* Product */}
                   <div className="col-span-12 md:col-span-6">
                     <label className="text-xs font-medium text-slate-500">Product</label>
-                    <select
+                    <ProductSelect
                       value={r.productId}
-                      onChange={e => handleProductChange(idx, e.target.value)}
-                      className={selectCls + " mt-1"}
-                    >
-                      <option value="">Select product…</option>
-                      <option value="__add_new__">✦ Add New Product</option>
-                      <option disabled>──────────────</option>
-                      {products.map(p => <option key={p.id} value={p.id}>{(p.name ?? "").toUpperCase()}</option>)}
-                    </select>
+                      products={products}
+                      onChange={val => handleProductChange(idx, val)}
+                      onAddNew={() => { setPendingRowIdx(idx); setShowModal(true); }}
+                    />
                   </div>
 
                   {/* Qty */}
