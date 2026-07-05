@@ -6,6 +6,7 @@ import {
   BookOpen, Box, ClipboardList, Wallet, Tag,
   Bell, RotateCcw, ShoppingCart, BarChart2, Building2, PenLine, Truck, FileSpreadsheet, BookText,
 } from "lucide-react";
+import CompanySwitcher from "./CompanySwitcher";
 
 type Role = "ADMIN" | "MANAGER" | "SALES" | "ACCOUNTS" | "PACKAGING";
 
@@ -74,6 +75,7 @@ const GROUPS: Group[] = [
   {
     label: "Admin",
     items: [
+      { name: "Companies",        path: "/dashboard/companies", icon: Building2,    roles: ["ADMIN"] },
       { name: "Reports & Backup", path: "/dashboard/reports", icon: ClipboardList, roles: ["ADMIN","MANAGER","ACCOUNTS"] },
       { name: "Setup",            path: "/dashboard/setup",   icon: Settings,      roles: ["ADMIN"] },
     ],
@@ -88,7 +90,7 @@ const ROLE_BADGE: Record<Role, { bg: string; color: string }> = {
   PACKAGING: { bg: "rgba(168,85,247,0.15)",  color: "#7c3aed" },
 };
 
-export default function Sidebar({ userName, userRole }: { userName: string; userRole: Role }) {
+export default function Sidebar({ userName, userRole, activeCompanyId }: { userName: string; userRole: Role; activeCompanyId: string }) {
   const pathname    = usePathname();
   const router      = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
@@ -111,17 +113,8 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
       background: "var(--surface-1)", borderRight: "1px solid var(--border)",
       display: "flex", flexDirection: "column",
     }}>
-      {/* Logo */}
-      <div style={{ padding: "1.1rem 1rem", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10 }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="Unnati Pharmax" style={{ width: 34, height: 34, objectFit: "contain", flexShrink: 0 }} />
-        <div>
-          <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em", lineHeight: 1.1 }}>
-            UNNATI PHARMAX
-          </div>
-          <div style={{ fontSize: "0.66rem", color: "var(--text-muted)", marginTop: 2 }}>ERP System</div>
-        </div>
-      </div>
+      {/* Company switcher (replaces the static logo header) */}
+      <CompanySwitcher activeCompanyId={activeCompanyId} isAdmin={userRole === "ADMIN"} />
 
       {/* Nav */}
       <nav style={{ flex: 1, padding: "0.5rem 0.6rem", overflowY: "auto", display: "flex", flexDirection: "column", gap: 0 }}>
