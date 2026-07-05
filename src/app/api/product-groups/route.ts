@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
 import { getSession } from "../../../lib/auth";
+import { getActiveCompanyId } from "../../../lib/company";
 
 export const runtime = "nodejs";
 
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const companyId = await getActiveCompanyId();
 
   const groups = await prisma.productGroup.findMany({
+    where: { companyId },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
@@ -25,9 +28,11 @@ export async function POST(req: Request) {
   if (!name?.trim())
     return NextResponse.json({ error: "Group name is required" }, { status: 400 });
 
+  const companyId = await getActiveCompanyId();
+
   try {
     const group = await prisma.productGroup.create({
-      data: { name: name.trim() },
+      data: { name: name.trim(), companyId },
     });
     return NextResponse.json({ group }, { status: 201 });
   } catch (e: any) {

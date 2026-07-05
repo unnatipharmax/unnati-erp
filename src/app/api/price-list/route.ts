@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
 import { getSession } from "../../../lib/auth";
+import { getActiveCompanyId } from "../../../lib/company";
 
 export const runtime = "nodejs";
 
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const companyId = await getActiveCompanyId();
 
   const products = await prisma.product.findMany({
-    where: { isActive: true },
+    where: { isActive: true, companyId },
     orderBy: { name: "asc" },
     select: {
       id: true,
