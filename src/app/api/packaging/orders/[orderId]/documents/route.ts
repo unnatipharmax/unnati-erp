@@ -17,6 +17,9 @@ export async function GET(
 
   const { orderId } = await params;
   const companyId = await getActiveCompanyId();
+  const company = await prisma.companySetting.findUnique({
+    where: { id: companyId },
+  });
 
   const order = await prisma.orderInitiation.findFirst({
     where: { id: orderId, companyId },
@@ -134,7 +137,7 @@ export async function GET(
     netWeight,
     grossWeight,
     items,
-  });
+  }, company ?? undefined);
 
   return new NextResponse(new Uint8Array(buffer), {
     status: 200,

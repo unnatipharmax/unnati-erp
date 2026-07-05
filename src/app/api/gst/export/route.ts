@@ -17,7 +17,7 @@ import ExcelJS from "exceljs";
 
 export const runtime = "nodejs";
 
-// Company GSTIN (from the export invoices) — used to label the filing.
+// Fallback company identity (used only if the active company row is missing).
 const COMPANY_GSTIN = "27FNXPP3883B1ZA";
 const COMPANY_NAME = "UNNATI PHARMAX";
 
@@ -32,6 +32,9 @@ export async function GET(req: Request) {
   if (!session || !["ADMIN", "MANAGER", "ACCOUNTS"].includes(session.role))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const companyId = await getActiveCompanyId();
+  const co = await prisma.companySetting.findUnique({ where: { id: companyId }, select: { name: true, gstin: true } });
+  const companyName = co?.name || COMPANY_NAME;
+  const companyGstin = co?.gstin || COMPANY_GSTIN;
 
   const { searchParams } = new URL(req.url);
   // Default period: current month
@@ -211,8 +214,8 @@ export async function GET(req: Request) {
     ws.columns = [{ width: 28 }, { width: 50 }];
     const rows: [string, string][] = [
       ["GST FILING WORKBOOK", ""],
-      ["Company", COMPANY_NAME],
-      ["GSTIN", COMPANY_GSTIN],
+      ["Company", companyName],
+      ["GSTIN", companyGstin],
       ["Period", periodLabel],
       ["Generated", new Date().toLocaleString("en-IN")],
       ["", ""],

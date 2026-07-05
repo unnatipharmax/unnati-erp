@@ -36,11 +36,8 @@
   <tr>
     <td class="bold">Exporter<br>Name &amp; Address</td>
     <td rowspan="6" class="bold">
-      From: UNNATI PHARMAX<br>
-      SHOP NO 181 GURUKRUPA APARTMENT<br>
-      CENTRAL AVE<br>
-      LAKADGANJ NAGPUR<br>
-      MAHARSHTRA 440008
+      From: {{co_name}}<br>
+      {{co_address}}
     </td>
     <td class="bold">Invoice No.</td>
     <td class="yellow bold">{{invoice_no}}</td>
@@ -268,12 +265,12 @@
   </colgroup>
   <tr>
     <td class="sm" style="line-height:1.7">
-      <span class="bold">DL NO. MH-NG2-526036, MH-NAG-526037</span><br>
-      IEC Code / PAN &nbsp;<span class="bold">FNXPP3883B</span><br>
-      Bank A/C No.: <span class="bold">146305501090</span><br>
-      Bank Name : <span class="bold">ICICI BANK</span><br>
-      Swift Code : <span class="bold">ICICINBBXXX</span><br>
-      GSTIN No : <span class="bold">27FNXPP3883B1ZA</span><br>
+      <span class="bold">DL NO. {{co_drugLic}}</span><br>
+      IEC Code / PAN &nbsp;<span class="bold">{{co_iec}}</span><br>
+      Bank A/C No.: <span class="bold">{{co_bankAccount}}</span><br>
+      Bank Name : <span class="bold">{{co_bankName}}</span><br>
+      Swift Code : <span class="bold">{{co_bankSwift}}</span><br>
+      GSTIN No : <span class="bold">{{co_gstin}}</span><br>
       1. Supply meant for export on payment of integrated tax<br>
       2. Supply meant for export under bond or LUT without payment of integrated tax.
     </td>
@@ -285,7 +282,7 @@
     <td class="center" style="vertical-align:bottom;padding-bottom:6px">
       <br><br><br><br>
       <span class="bold">Authorised Signatory</span><br>
-      <span class="bold">UNNATI PHARMAX</span>
+      <span class="bold">{{co_name}}</span>
     </td>
   </tr>
 </table>

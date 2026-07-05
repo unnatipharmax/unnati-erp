@@ -110,7 +110,9 @@ function StatusBadge({ s }: { s: string }) {
 }
 
 // ── DOC 1: Export Invoice ─────────────────────────────────────────────────────
-function GSTInvoiceDoc({ order, stampB64, sigB64 }: { order: Order; stampB64?: string; sigB64?: string }) {
+function GSTInvoiceDoc({ order, stampB64, sigB64, branding }: { order: Order; stampB64?: string; sigB64?: string; branding?: DocSettings }) {
+  const b = branding ?? DOC_SETTINGS_DEFAULT;
+  const logoSrc = b.logoB64 && b.logoB64.startsWith("data:") ? b.logoB64 : "/logo.png";
   const invDate  = getInvoiceDate(order);
   const dateStr  = invDate.toLocaleDateString("en-GB");
   const exchRate = order.exchangeRate || 84;
@@ -161,13 +163,13 @@ function GSTInvoiceDoc({ order, stampB64, sigB64 }: { order: Order; stampB64?: s
             <td style={{ width: "55%", padding: "8px 10px", verticalAlign: "middle" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="Unnati" style={{ height: 56, width: "auto", objectFit: "contain" }} />
+                <img src={logoSrc} alt="Unnati" style={{ height: 56, width: "auto", objectFit: "contain" }} />
                 <div>
-                  <div style={{ fontWeight: 900, fontSize: "13pt", letterSpacing: "0.04em" }}>UNNATI PHARMAX</div>
+                  <div style={{ fontWeight: 900, fontSize: "13pt", letterSpacing: "0.04em" }}>{b.companyName}</div>
                   <div style={{ fontSize: "7.5pt", lineHeight: 1.6, marginTop: 3 }}>
                     GROUND FLOOR, HOUSE NO 307/4, GURU VANDANA APARTMENT,<br />
                     KAKASAHEB CHOLKAR MARG, LAKADGANJ, NAGPUR – 440008, MAHARASHTRA<br />
-                    GSTIN: 27FNXPP3883B1ZA &nbsp;|&nbsp; IEC: FNXPP3883B &nbsp;|&nbsp; Drug Lic: MH-NB-152878
+                    GSTIN: {b.gstin} &nbsp;|&nbsp; IEC: {b.iec} &nbsp;|&nbsp; Drug Lic: {b.drugLic}
                   </div>
                 </div>
               </div>
@@ -186,7 +188,7 @@ function GSTInvoiceDoc({ order, stampB64, sigB64 }: { order: Order; stampB64?: s
                   <tr><td>Exchange Rate</td><td>1 USD = ₹{exchRate}</td></tr>
                   <tr><td>Port of Loading</td><td>Mumbai, India</td></tr>
                   <tr><td>Port of Discharge</td><td>{order.country}</td></tr>
-                  <tr><td>IEC Code</td><td>FNXPP3883B</td></tr>
+                  <tr><td>IEC Code</td><td>{b.iec}</td></tr>
                   <tr><td>LUT No.</td><td>AD271023037544C</td></tr>
                 </tbody>
               </table>
@@ -310,7 +312,7 @@ function GSTInvoiceDoc({ order, stampB64, sigB64 }: { order: Order; stampB64?: s
                 : <div style={{ height: 36 }} />
               }
               <div className="sig-line">Authorised Signatory</div>
-              <div style={{ fontSize: "8pt", fontWeight: 700, marginTop: 2 }}>For UNNATI PHARMAX</div>
+              <div style={{ fontSize: "8pt", fontWeight: 700, marginTop: 2 }}>For {b.companyName}</div>
             </td>
           </tr>
         </tbody>
@@ -320,7 +322,8 @@ function GSTInvoiceDoc({ order, stampB64, sigB64 }: { order: Order; stampB64?: s
 }
 
 // ── DOC 1b: New Export Invoice (matches HTML template format) ─────────────────
-function ExportInvoiceDoc({ order }: { order: Order }) {
+function ExportInvoiceDoc({ order, branding }: { order: Order; branding?: DocSettings }) {
+  const b = branding ?? DOC_SETTINGS_DEFAULT;
   const invDate    = getInvoiceDate(order);
   const exchRate   = order.exchangeRate || 84;
   const expCnfUsd  = order.dollarAmount ?? 0;
@@ -363,7 +366,7 @@ function ExportInvoiceDoc({ order }: { order: Order }) {
           <tr>
             <td style={td} rowSpan={6}><strong>Exporter<br/>Name &amp; Address</strong></td>
             <td style={{ ...td, fontWeight: "bold" }} rowSpan={6}>
-              From: UNNATI PHARMAX<br/>SHOP NO 181 GURUKRUPA APARTMENT<br/>CENTRAL AVE<br/>LAKADGANJ NAGPUR<br/>MAHARSHTRA 440008
+              From: {b.companyName}<br/>SHOP NO 181 GURUKRUPA APARTMENT<br/>CENTRAL AVE<br/>LAKADGANJ NAGPUR<br/>MAHARSHTRA 440008
             </td>
             <td style={td}><strong>Invoice No.</strong></td>
             <td style={{ ...yw, fontWeight: "bold" }}>{order.invoiceNo ?? "—"}</td>
@@ -534,11 +537,11 @@ function ExportInvoiceDoc({ order }: { order: Order }) {
           <tr>
             <td style={{ ...tdSm, lineHeight: "1.7" }}>
               <strong>DL NO. MH-NG2-526036, MH-NAG-526037</strong><br/>
-              IEC Code / PAN &nbsp;<strong>FNXPP3883B</strong><br/>
-              Bank A/C No.: <strong>146305501090</strong><br/>
-              Bank Name : <strong>ICICI BANK</strong><br/>
-              Swift Code : <strong>ICICINBBXXX</strong><br/>
-              GSTIN No : <strong>27FNXPP3883B1ZA</strong><br/>
+              IEC Code / PAN &nbsp;<strong>{b.iec}</strong><br/>
+              Bank A/C No.: <strong>{b.bankAccount}</strong><br/>
+              Bank Name : <strong>{b.bankName}</strong><br/>
+              Swift Code : <strong>{b.bankSwift}</strong><br/>
+              GSTIN No : <strong>{b.gstin}</strong><br/>
               1. Supply meant for export on payment of integrated tax<br/>
               2. Supply meant for export under bond or LUT without payment of integrated tax.
             </td>
@@ -550,7 +553,7 @@ function ExportInvoiceDoc({ order }: { order: Order }) {
             <td style={{ ...td, textAlign: "center", verticalAlign: "bottom", paddingBottom: "6px" }}>
               <br/><br/><br/>
               <strong>Authorised Signatory</strong><br/>
-              <strong>UNNATI PHARMAX</strong>
+              <strong>{b.companyName}</strong>
             </td>
           </tr>
         </tbody>
@@ -560,7 +563,8 @@ function ExportInvoiceDoc({ order }: { order: Order }) {
 }
 
 // ── DOC 1c: Export Invoice — INR format ──────────────────────────────────────
-function ExportInvoiceINRDoc({ order }: { order: Order }) {
+function ExportInvoiceINRDoc({ order, branding }: { order: Order; branding?: DocSettings }) {
+  const b = branding ?? DOC_SETTINGS_DEFAULT;
   const invDate    = getInvoiceDate(order);
   const exchRate   = order.exchangeRate || 84;
   const dateStr    = invDate.toLocaleDateString("en-GB").replaceAll("/", ".");
@@ -609,7 +613,7 @@ function ExportInvoiceINRDoc({ order }: { order: Order }) {
           <tr>
             <td style={td} rowSpan={6}><strong>Exporter<br/>Name &amp; Address</strong></td>
             <td style={{ ...td, fontWeight: "bold" }} rowSpan={6}>
-              From: UNNATI PHARMAX<br/>SHOP NO 181 GURUKRUPA APARTMENT<br/>CENTRAL AVE<br/>LAKADGANJ NAGPUR<br/>MAHARSHTRA 440008
+              From: {b.companyName}<br/>SHOP NO 181 GURUKRUPA APARTMENT<br/>CENTRAL AVE<br/>LAKADGANJ NAGPUR<br/>MAHARSHTRA 440008
             </td>
             <td style={td}><strong>Invoice No.</strong></td>
             <td style={{ ...yw, fontWeight: "bold" }}>{order.invoiceNo ?? "—"}</td>
@@ -786,11 +790,11 @@ function ExportInvoiceINRDoc({ order }: { order: Order }) {
           <tr>
             <td style={{ ...tdSm, lineHeight: "1.7" }}>
               <strong>DL NO. MH-NG2-526036, MH-NAG-526037</strong><br/>
-              IEC Code / PAN &nbsp;<strong>FNXPP3883B</strong><br/>
-              Bank A/C No.: <strong>146305501090</strong><br/>
-              Bank Name : <strong>ICICI BANK</strong><br/>
-              Swift Code : <strong>ICICINBBXXX</strong><br/>
-              GSTIN No : <strong>27FNXPP3883B1ZA</strong><br/>
+              IEC Code / PAN &nbsp;<strong>{b.iec}</strong><br/>
+              Bank A/C No.: <strong>{b.bankAccount}</strong><br/>
+              Bank Name : <strong>{b.bankName}</strong><br/>
+              Swift Code : <strong>{b.bankSwift}</strong><br/>
+              GSTIN No : <strong>{b.gstin}</strong><br/>
               1. Supply meant for export on payment of integrated tax<br/>
               2. Supply meant for export under bond or LUT without payment of integrated tax.
             </td>
@@ -802,7 +806,7 @@ function ExportInvoiceINRDoc({ order }: { order: Order }) {
             <td style={{ ...td, textAlign: "center", verticalAlign: "bottom", paddingBottom: "6px" }}>
               <br/><br/><br/>
               <strong>Authorised Signatory</strong><br/>
-              <strong>UNNATI PHARMAX</strong>
+              <strong>{b.companyName}</strong>
             </td>
           </tr>
         </tbody>
@@ -812,7 +816,8 @@ function ExportInvoiceINRDoc({ order }: { order: Order }) {
 }
 
 // ── DOC 2: Packing List ──────────────────────────────────────────────────────
-function PackingListDoc({ order }: { order: Order }) {
+function PackingListDoc({ order, branding }: { order: Order; branding?: DocSettings }) {
+  const b = branding ?? DOC_SETTINGS_DEFAULT;
   const invDate        = getInvoiceDate(order);
   const dateStr        = invDate.toLocaleDateString("en-GB").replaceAll("/", ".");
   const totalWeightGms = order.netWeight != null ? Math.round(order.netWeight * 1000) : null;
@@ -837,7 +842,7 @@ function PackingListDoc({ order }: { order: Order }) {
       <table style={tbl}><tbody>
         <tr>
           <td style={{ ...hdr, textAlign: "center", fontSize: "17pt", padding: "6px 8px", letterSpacing: "0.04em" }}>
-            UNNATI PHARMAX
+            {b.companyName}
           </td>
         </tr>
         <tr>
@@ -855,10 +860,10 @@ function PackingListDoc({ order }: { order: Order }) {
         </colgroup>
         <tbody>
           {[
-            ["IEC No :",    "FNXPP3883B"],
+            ["IEC No :",    b.iec],
             ["Invoice No:", order.invoiceNo ?? "—"],
             ["Date:",       dateStr],
-            ["GST NO :",    "27FNXPP3883B1ZA"],
+            ["GST NO :",    b.gstin],
           ].map(([label, value]) => (
             <tr key={label}>
               <td style={hdr}>{label}</td>
@@ -932,7 +937,8 @@ function PackingListDoc({ order }: { order: Order }) {
 }
 
 // ── DOC 4: Covering Letter ───────────────────────────────────────────────────
-function CoveringLetterDoc({ order, chaName, chaNo }: { order: Order; chaName?: string; chaNo?: string }) {
+function CoveringLetterDoc({ order, chaName, chaNo, branding }: { order: Order; chaName?: string; chaNo?: string; branding?: DocSettings }) {
+  const b = branding ?? DOC_SETTINGS_DEFAULT;
   const invDate = getInvoiceDate(order);
   const dateStr = invDate.toLocaleDateString("en-GB"); // DD/MM/YYYY
   const invNo   = order.invoiceNo ?? "—";
@@ -983,7 +989,7 @@ function CoveringLetterDoc({ order, chaName, chaNo }: { order: Order; chaName?: 
       </div>
 
       <div style={{ marginBottom: 8 }}>
-        The payment is received through our ICICI Bank account. 146305501090 No export
+        The payment is received through our {b.bankName} account. {b.bankAccount} No export
         incentive, benefits or drawback is claimed by us. The following documents are enclosed for
         your kind perusal:-
       </div>
@@ -1008,7 +1014,7 @@ function CoveringLetterDoc({ order, chaName, chaNo }: { order: Order; chaName?: 
       </div>
 
       <div style={{ marginBottom: 8 }}>
-        We had authorized to <b>{chaName ?? "AARPEE CLEARING & LOGISTICS"} (CHA NO: {chaNo ?? "11/2623"})</b>. We
+        We had authorized to <b>{chaName ?? b.chaName} (CHA NO: {chaNo ?? b.chaNo})</b>. We
         undertake that we are responsible for the acts related to above if found violating any Law in
         force.
       </div>
@@ -1017,7 +1023,7 @@ function CoveringLetterDoc({ order, chaName, chaNo }: { order: Order; chaName?: 
       <div style={{ marginBottom: 20 }}>Yours sincerely,</div>
 
       <div>
-        <b>For UNNATI PHARMAX</b><br /><br />
+        <b>For {b.companyName}</b><br /><br />
         <b>Authorized Signatory</b>
       </div>
     </div>
@@ -1346,7 +1352,8 @@ function CN22LabelDoc({ order, companyName, companyAddress, customDesc, customVa
 }
 
 // ── DOC 3: Form-II (template) ────────────────────────────────────────────────
-function Form2Doc({ order, orders }: { order: Order; orders?: Order[] }) {
+function Form2Doc({ order, orders, branding }: { order: Order; orders?: Order[]; branding?: DocSettings }) {
+  const bd = branding ?? DOC_SETTINGS_DEFAULT;
   const allOrders = orders && orders.length ? orders : [order];
   const isMulti   = allOrders.length > 1;
 
@@ -1417,11 +1424,11 @@ function Form2Doc({ order, orders }: { order: Order; orders?: Order[] }) {
           <tr>
             <td style={{ ...td, ...ctr }}>{invoiceLabel}<br/>{dateStr}</td>
             <td style={{ ...td, ...ctr }}>INBOM5</td>
-            <td style={{ ...td, fontWeight: "bold" }}>UNNATI PHARMAX</td>
+            <td style={{ ...td, fontWeight: "bold" }}>{bd.companyName}</td>
             <td style={td}>SHOP NO 181 GURUKRUPA APARTMENT, CENTRAL AVE, LAKADGANJ NAGPUR MAHARSHTRA 440008</td>
-            <td style={{ ...td, ...ctr }}>FNXPP3883B</td>
+            <td style={{ ...td, ...ctr }}>{bd.iec}</td>
             <td style={{ ...td, ...ctr }}>27</td>
-            <td style={td}>27FNXPP3883B1ZA</td>
+            <td style={td}>{bd.gstin}</td>
             <td style={td}>0180387-6400009</td>
             <td style={{ ...td, ...ctr }}>CHA:11/2440<br/>PAN- AMHP370BE</td>
             <td style={td}>CROSSWATER LOGISTICS</td>
@@ -1468,7 +1475,7 @@ function Form2Doc({ order, orders }: { order: Order; orders?: Order[] }) {
           <tr>
             <td style={{ ...td, height: 60, verticalAlign: "bottom" }}>
               (Signature of the Exporter/ Authorised agent)<br/>
-              <strong>For UNNATI PHARMAX</strong>
+              <strong>For {bd.companyName}</strong>
             </td>
           </tr>
           <tr>
@@ -1662,7 +1669,8 @@ function Form2Doc({ order, orders }: { order: Order; orders?: Order[] }) {
 }
 
 // ── DOC 4: EDF ────────────────────────────────────────────────────────────────
-function EdfDoc({ order }: { order: Order }) {
+function EdfDoc({ order, branding }: { order: Order; branding?: DocSettings }) {
+  const bd = branding ?? DOC_SETTINGS_DEFAULT;
   const invDate  = getInvoiceDate(order);
   const dateDot  = invDate.toLocaleDateString("en-GB").replaceAll("/", ".");  // DD.MM.YYYY
   const dateFull = invDate.toLocaleDateString("en-GB");                        // DD/MM/YYYY
@@ -1727,7 +1735,7 @@ function EdfDoc({ order }: { order: Order }) {
             <td style={td}>Category of Exporter: [ ] Custom (DTA units) [ ] SEZ [ ] Status holder exporters [ ] 100% EOU [ ] Warehouse export [ ] others (Specify).......</td>
           </tr>
           <tr>
-            <td style={td}>IE Code: <strong>FNXPP3883B</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; AD code: <strong>0180387-6400009</strong></td>
+            <td style={td}>IE Code: <strong>{bd.iec}</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; AD code: <strong>0180387-6400009</strong></td>
           </tr>
         </tbody></table>
 
@@ -1739,7 +1747,7 @@ function EdfDoc({ order }: { order: Order }) {
               <td style={{ ...td, fontWeight: "bold" }}>AD Name &amp; Address:</td>
             </tr>
             <tr>
-              <td style={{ ...td, fontWeight: "bold" }}>UNNATI PHARMAX</td>
+              <td style={{ ...td, fontWeight: "bold" }}>{bd.companyName}</td>
               <td style={{ ...td, fontWeight: "bold" }}>KOTAK MAHINDRA BANK</td>
             </tr>
             <tr>
@@ -1993,7 +2001,8 @@ function EdfDoc({ order }: { order: Order }) {
 }
 
 // ── Multi-order: Export Invoice (USD) ────────────────────────────────────────
-function MultiExportInvoiceDoc({ orders }: { orders: Order[] }) {
+function MultiExportInvoiceDoc({ orders, branding }: { orders: Order[]; branding?: DocSettings }) {
+  const b = branding ?? DOC_SETTINGS_DEFAULT;
   const first     = orders[0];
   const exchRate  = first.exchangeRate || 84;
   const invDate   = getInvoiceDate(first);
@@ -2041,7 +2050,7 @@ function MultiExportInvoiceDoc({ orders }: { orders: Order[] }) {
           <tr>
             <td style={td} rowSpan={6}><strong>Exporter<br/>Name &amp; Address</strong></td>
             <td style={{ ...td, fontWeight: "bold" }} rowSpan={6}>
-              From: UNNATI PHARMAX<br/>SHOP NO 181 GURUKRUPA APARTMENT<br/>CENTRAL AVE<br/>LAKADGANJ NAGPUR<br/>MAHARSHTRA 440008
+              From: {b.companyName}<br/>SHOP NO 181 GURUKRUPA APARTMENT<br/>CENTRAL AVE<br/>LAKADGANJ NAGPUR<br/>MAHARSHTRA 440008
             </td>
             <td style={td}><strong>Invoice No.</strong></td>
             <td style={{ ...yw, fontWeight: "bold" }}>{invoiceLabel}</td>
@@ -2191,11 +2200,11 @@ function MultiExportInvoiceDoc({ orders }: { orders: Order[] }) {
           <tr>
             <td style={{ ...tdSm, lineHeight: "1.7" }}>
               <strong>DL NO. MH-NG2-526036, MH-NAG-526037</strong><br/>
-              IEC Code / PAN &nbsp;<strong>FNXPP3883B</strong><br/>
-              Bank A/C No.: <strong>146305501090</strong><br/>
-              Bank Name : <strong>ICICI BANK</strong><br/>
-              Swift Code : <strong>ICICINBBXXX</strong><br/>
-              GSTIN No : <strong>27FNXPP3883B1ZA</strong><br/>
+              IEC Code / PAN &nbsp;<strong>{b.iec}</strong><br/>
+              Bank A/C No.: <strong>{b.bankAccount}</strong><br/>
+              Bank Name : <strong>{b.bankName}</strong><br/>
+              Swift Code : <strong>{b.bankSwift}</strong><br/>
+              GSTIN No : <strong>{b.gstin}</strong><br/>
               1. Supply meant for export on payment of integrated tax<br/>
               2. Supply meant for export under bond or LUT without payment of integrated tax.
             </td>
@@ -2207,7 +2216,7 @@ function MultiExportInvoiceDoc({ orders }: { orders: Order[] }) {
             <td style={{ ...td, textAlign: "center", verticalAlign: "bottom", paddingBottom: "6px" }}>
               <br/><br/><br/>
               <strong>Authorised Signatory</strong><br/>
-              <strong>UNNATI PHARMAX</strong>
+              <strong>{b.companyName}</strong>
             </td>
           </tr>
         </tbody>
@@ -2217,7 +2226,8 @@ function MultiExportInvoiceDoc({ orders }: { orders: Order[] }) {
 }
 
 // ── Multi-order: Export Invoice (INR) ────────────────────────────────────────
-function MultiExportInvoiceINRDoc({ orders }: { orders: Order[] }) {
+function MultiExportInvoiceINRDoc({ orders, branding }: { orders: Order[]; branding?: DocSettings }) {
+  const b = branding ?? DOC_SETTINGS_DEFAULT;
   const first    = orders[0];
   const exchRate = first.exchangeRate || 84;
   const invDate  = getInvoiceDate(first);
@@ -2259,7 +2269,7 @@ function MultiExportInvoiceINRDoc({ orders }: { orders: Order[] }) {
           <tr>
             <td style={td} rowSpan={6}><strong>Exporter<br/>Name &amp; Address</strong></td>
             <td style={{ ...td, fontWeight: "bold" }} rowSpan={6}>
-              From: UNNATI PHARMAX<br/>SHOP NO 181 GURUKRUPA APARTMENT<br/>CENTRAL AVE<br/>LAKADGANJ NAGPUR<br/>MAHARSHTRA 440008
+              From: {b.companyName}<br/>SHOP NO 181 GURUKRUPA APARTMENT<br/>CENTRAL AVE<br/>LAKADGANJ NAGPUR<br/>MAHARSHTRA 440008
             </td>
             <td style={td}><strong>Invoice No.</strong></td>
             <td style={{ ...yw, fontWeight: "bold" }}>{invoiceLabel}</td>
@@ -2409,11 +2419,11 @@ function MultiExportInvoiceINRDoc({ orders }: { orders: Order[] }) {
           <tr>
             <td style={{ ...tdSm, lineHeight: "1.7" }}>
               <strong>DL NO. MH-NG2-526036, MH-NAG-526037</strong><br/>
-              IEC Code / PAN &nbsp;<strong>FNXPP3883B</strong><br/>
-              Bank A/C No.: <strong>146305501090</strong><br/>
-              Bank Name : <strong>ICICI BANK</strong><br/>
-              Swift Code : <strong>ICICINBBXXX</strong><br/>
-              GSTIN No : <strong>27FNXPP3883B1ZA</strong>
+              IEC Code / PAN &nbsp;<strong>{b.iec}</strong><br/>
+              Bank A/C No.: <strong>{b.bankAccount}</strong><br/>
+              Bank Name : <strong>{b.bankName}</strong><br/>
+              Swift Code : <strong>{b.bankSwift}</strong><br/>
+              GSTIN No : <strong>{b.gstin}</strong>
             </td>
             <td style={{ ...tdSm, lineHeight: "1.6" }}>
               <strong>Declaration:</strong><br/>
@@ -2422,7 +2432,7 @@ function MultiExportInvoiceINRDoc({ orders }: { orders: Order[] }) {
             <td style={{ ...td, textAlign: "center", verticalAlign: "bottom", paddingBottom: "6px" }}>
               <br/><br/><br/>
               <strong>Authorised Signatory</strong><br/>
-              <strong>UNNATI PHARMAX</strong>
+              <strong>{b.companyName}</strong>
             </td>
           </tr>
         </tbody>
@@ -2432,7 +2442,8 @@ function MultiExportInvoiceINRDoc({ orders }: { orders: Order[] }) {
 }
 
 // ── Multi-order: Packing List ─────────────────────────────────────────────────
-function MultiPackingListDoc({ orders }: { orders: Order[] }) {
+function MultiPackingListDoc({ orders, branding }: { orders: Order[]; branding?: DocSettings }) {
+  const b = branding ?? DOC_SETTINGS_DEFAULT;
   const first   = orders[0];
   const invDate = getInvoiceDate(first);
   const dateStr = invDate.toLocaleDateString("en-GB").replaceAll("/", ".");
@@ -2453,7 +2464,7 @@ function MultiPackingListDoc({ orders }: { orders: Order[] }) {
   return (
     <div style={{ fontFamily: "Arial, sans-serif", fontSize: "9pt", color: BLK, background: WHT }}>
       <table style={tbl}><tbody>
-        <tr><td style={{ ...hdr, textAlign: "center", fontSize: "17pt", padding: "6px 8px" }}>UNNATI PHARMAX</td></tr>
+        <tr><td style={{ ...hdr, textAlign: "center", fontSize: "17pt", padding: "6px 8px" }}>{b.companyName}</td></tr>
         <tr><td style={{ ...hdr, textAlign: "center", fontSize: "13pt", padding: "4px 8px" }}>PACKING LIST (Annexure)</td></tr>
       </tbody></table>
 
@@ -2464,10 +2475,10 @@ function MultiPackingListDoc({ orders }: { orders: Order[] }) {
         </colgroup>
         <tbody>
           {[
-            ["IEC No :",    "FNXPP3883B"],
+            ["IEC No :",    b.iec],
             ["Invoice No:", invoiceLabel],
             ["Date:",       dateStr],
-            ["GST NO :",    "27FNXPP3883B1ZA"],
+            ["GST NO :",    b.gstin],
           ].map(([label, value]) => (
             <tr key={label}>
               <td style={hdr}>{label}</td>
@@ -2546,8 +2557,19 @@ function MultiDocumentsOverlay({ orders, onClose }: { orders: Order[]; onClose: 
       chaNo:   s.chaNo   || DOC_SETTINGS_DEFAULT.chaNo,
       stampB64: s.stampB64 || "",
       sigB64:   s.sigB64   || "",
+      logoB64:  s.logoB64  || "",
       companyName:    s.name    || DOC_SETTINGS_DEFAULT.companyName,
       companyAddress: s.address || DOC_SETTINGS_DEFAULT.companyAddress,
+      email:   s.email   || DOC_SETTINGS_DEFAULT.email,
+      phone:   s.phone   || DOC_SETTINGS_DEFAULT.phone,
+      gstin:   s.gstin   || DOC_SETTINGS_DEFAULT.gstin,
+      iec:     s.iec     || DOC_SETTINGS_DEFAULT.iec,
+      drugLic: s.drugLic || DOC_SETTINGS_DEFAULT.drugLic,
+      bankName:    s.bankName    || DOC_SETTINGS_DEFAULT.bankName,
+      bankAccount: s.bankAccount || DOC_SETTINGS_DEFAULT.bankAccount,
+      bankIfsc:    s.bankIfsc    || DOC_SETTINGS_DEFAULT.bankIfsc,
+      bankBranch:  s.bankBranch  || DOC_SETTINGS_DEFAULT.bankBranch,
+      bankSwift:   s.bankSwift   || DOC_SETTINGS_DEFAULT.bankSwift,
     })).catch(() => {});
   }, []);
 
@@ -2558,11 +2580,11 @@ function MultiDocumentsOverlay({ orders, onClose }: { orders: Order[]; onClose: 
   const first = effectiveOrders[0];
 
   const docs = [
-    { label: "Export Invoice",     landscape: true,  multiPage: true,  comp: <MultiExportInvoiceDoc    orders={effectiveOrders} /> },
-    { label: "Export Invoice INR", landscape: true,  multiPage: true,  comp: <MultiExportInvoiceINRDoc orders={effectiveOrders} /> },
-    { label: "Packing List",       landscape: true,  multiPage: true,  comp: <MultiPackingListDoc      orders={effectiveOrders} /> },
-    { label: "Form II",           landscape: true,  multiPage: true,  comp: <Form2Doc          order={first} orders={effectiveOrders} /> },
-    { label: "EDF",               landscape: true,  multiPage: false, comp: <EdfDoc            order={first} /> },
+    { label: "Export Invoice",     landscape: true,  multiPage: true,  comp: <MultiExportInvoiceDoc    orders={effectiveOrders} branding={ds} /> },
+    { label: "Export Invoice INR", landscape: true,  multiPage: true,  comp: <MultiExportInvoiceINRDoc orders={effectiveOrders} branding={ds} /> },
+    { label: "Packing List",       landscape: true,  multiPage: true,  comp: <MultiPackingListDoc      orders={effectiveOrders} branding={ds} /> },
+    { label: "Form II",           landscape: true,  multiPage: true,  comp: <Form2Doc          order={first} orders={effectiveOrders} branding={ds} /> },
+    { label: "EDF",               landscape: true,  multiPage: false, comp: <EdfDoc            order={first} branding={ds} /> },
     // CN22 is a per-parcel customs label → one label per selected order.
     ...effectiveOrders.map((o, i) => ({
       label: `CN22 Label${effectiveOrders.length > 1 ? ` (${i + 1}/${effectiveOrders.length}) — ${o.fullName}` : ""}`,
@@ -2804,8 +2826,20 @@ function WeightCaptureBar({
 }
 
 // ── Documents overlay — all docs stacked, single print/download ───────────────
-type DocSettings = { chaName: string; chaNo: string; stampB64: string; sigB64: string; companyName: string; companyAddress: string; };
-const DOC_SETTINGS_DEFAULT: DocSettings = { chaName: "AARPEE CLEARING & LOGISTICS", chaNo: "11/2623", stampB64: "", sigB64: "", companyName: "UNNATI PHARMAX", companyAddress: "1/04 Guruvanada Appartment, Central Ave, Lakadganj, Nagpur 440008" };
+type DocSettings = {
+  chaName: string; chaNo: string; stampB64: string; sigB64: string; logoB64: string;
+  companyName: string; companyAddress: string; email: string; phone: string;
+  gstin: string; iec: string; drugLic: string;
+  bankName: string; bankAccount: string; bankIfsc: string; bankBranch: string; bankSwift: string;
+};
+const DOC_SETTINGS_DEFAULT: DocSettings = {
+  chaName: "AARPEE CLEARING & LOGISTICS", chaNo: "11/2623", stampB64: "", sigB64: "", logoB64: "",
+  companyName: "UNNATI PHARMAX",
+  companyAddress: "1/04 Guruvanada Appartment, Central Ave, Lakadganj, Nagpur 440008",
+  email: "", phone: "",
+  gstin: "27FNXPP3883B1ZA", iec: "FNXPP3883B", drugLic: "MH-NB-152878",
+  bankName: "ICICI BANK", bankAccount: "146305501090", bankIfsc: "", bankBranch: "", bankSwift: "ICICINBBXXX",
+};
 
 function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => void }) {
   const isDHL        = order.shipmentMode === "DHL";
@@ -2826,19 +2860,30 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
       chaNo:   s.chaNo   || DOC_SETTINGS_DEFAULT.chaNo,
       stampB64: s.stampB64 || "",
       sigB64:   s.sigB64   || "",
+      logoB64:  s.logoB64  || "",
       companyName:    s.name    || DOC_SETTINGS_DEFAULT.companyName,
       companyAddress: s.address || DOC_SETTINGS_DEFAULT.companyAddress,
+      email:   s.email   || DOC_SETTINGS_DEFAULT.email,
+      phone:   s.phone   || DOC_SETTINGS_DEFAULT.phone,
+      gstin:   s.gstin   || DOC_SETTINGS_DEFAULT.gstin,
+      iec:     s.iec     || DOC_SETTINGS_DEFAULT.iec,
+      drugLic: s.drugLic || DOC_SETTINGS_DEFAULT.drugLic,
+      bankName:    s.bankName    || DOC_SETTINGS_DEFAULT.bankName,
+      bankAccount: s.bankAccount || DOC_SETTINGS_DEFAULT.bankAccount,
+      bankIfsc:    s.bankIfsc    || DOC_SETTINGS_DEFAULT.bankIfsc,
+      bankBranch:  s.bankBranch  || DOC_SETTINGS_DEFAULT.bankBranch,
+      bankSwift:   s.bankSwift   || DOC_SETTINGS_DEFAULT.bankSwift,
     })).catch(() => {});
   }, []);
 
   // landscape: print in A4 landscape (297×210mm) — for wide tables
   // multiPage: allow content to flow to a second page instead of being clipped
   const nonDHLDocs = [
-    { label: "Export Invoice",     landscape: true,  multiPage: false, comp: <ExportInvoiceDoc    order={o} /> },
-    { label: "Export Invoice INR", landscape: true,  multiPage: false, comp: <ExportInvoiceINRDoc order={o} /> },
-    { label: "Packing List",       landscape: true,  multiPage: false, comp: <PackingListDoc      order={o} /> },
-    { label: "Form II",           landscape: true,  multiPage: false, comp: <Form2Doc          order={o} /> },
-    { label: "EDF",               landscape: true,  multiPage: false, comp: <EdfDoc            order={o} /> },
+    { label: "Export Invoice",     landscape: true,  multiPage: false, comp: <ExportInvoiceDoc    order={o} branding={ds} /> },
+    { label: "Export Invoice INR", landscape: true,  multiPage: false, comp: <ExportInvoiceINRDoc order={o} branding={ds} /> },
+    { label: "Packing List",       landscape: true,  multiPage: false, comp: <PackingListDoc      order={o} branding={ds} /> },
+    { label: "Form II",           landscape: true,  multiPage: false, comp: <Form2Doc          order={o} branding={ds} /> },
+    { label: "EDF",               landscape: true,  multiPage: false, comp: <EdfDoc            order={o} branding={ds} /> },
     { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={o} companyName={ds.companyName} companyAddress={ds.companyAddress} customDesc={lblDesc || undefined} customValue={lblValue ? Number(lblValue) : undefined} customCurrency={lblCurrency || undefined} customHsn={lblHsn || undefined} /> },
   ];
 

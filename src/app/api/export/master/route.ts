@@ -10,6 +10,8 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const companyId = await getActiveCompanyId();
+  const activeCompany = await db.companySetting.findUnique({ where: { id: companyId }, select: { name: true } });
+  const companyName = activeCompany?.name || "UNNATI PHARMAX";
 
   // ── Fetch all data in parallel ────────────────────────────────────────────
   const [
@@ -138,7 +140,7 @@ export async function GET() {
   {
     const ws = wb.addWorksheet("Summary");
     ws.mergeCells("A1:B1");
-    ws.getCell("A1").value = "UNNATI PHARMAX — ERP Data Export";
+    ws.getCell("A1").value = `${companyName} — ERP Data Export`;
     ws.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF7A5C00" } };
     ws.getCell("A1").alignment = { horizontal: "center" };
     ws.getRow(1).height = 28;

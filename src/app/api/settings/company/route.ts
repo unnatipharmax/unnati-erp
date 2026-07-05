@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "../../../../lib/auth";
 import { prisma } from "../../../../lib/prisma";
+import { getActiveCompanyId } from "../../../../lib/company";
 import fs from "fs";
 import path from "path";
 
@@ -103,9 +104,11 @@ function seedDb(settings: CompanySettings) {
 }
 
 export async function GET() {
-  // 1. Try DB (primary source after migration)
+  // 1. Try DB (primary source after migration) — resolve the ACTIVE company so
+  //    documents render with the currently-selected company's branding.
   try {
-    const row = await prisma.companySetting.findUnique({ where: { id: "1" } });
+    const activeId = await getActiveCompanyId();
+    const row = await prisma.companySetting.findUnique({ where: { id: activeId } });
     if (row) {
       return NextResponse.json(toSettings(row as Record<string, unknown>));
     }

@@ -13,6 +13,9 @@ export async function GET(req: Request) {
   if (!session || !["ADMIN", "MANAGER", "PACKAGING"].includes(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const companyId = await getActiveCompanyId();
+  const company = await prisma.companySetting.findUnique({
+    where: { id: companyId },
+  });
 
   const { searchParams } = new URL(req.url);
   const invoiceNo = searchParams.get("invoiceNo");
@@ -135,7 +138,7 @@ export async function GET(req: Request) {
     };
   });
 
-  const { buffer, fileName } = await buildMultiOrderDocumentBundle(bundleOrders);
+  const { buffer, fileName } = await buildMultiOrderDocumentBundle(bundleOrders, company ?? undefined);
 
   return new NextResponse(new Uint8Array(buffer), {
     status: 200,

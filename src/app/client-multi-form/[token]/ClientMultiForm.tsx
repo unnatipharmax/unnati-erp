@@ -6,11 +6,15 @@ export default function ClientMultiForm({
   token,
   accountName,
   balance,
+  companyName = "UNNATI PHARMAX",
+  companyLogo = "/logo.png",
 }: {
   token: string;
   accountId: string;
   accountName: string;
   balance: number;
+  companyName?: string;
+  companyLogo?: string;
 }) {
   const formRef                     = useRef<HTMLFormElement>(null);
   const [loading, setLoading]       = useState(false);
@@ -74,9 +78,9 @@ export default function ClientMultiForm({
         {/* Brand header */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.25rem" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Unnati Pharmax" style={{ width: 40, height: 40, objectFit: "contain" }} />
+          <img src={companyLogo} alt={companyName} style={{ width: 40, height: 40, objectFit: "contain" }} />
           <div>
-            <div style={{ fontSize: "1.1rem", fontWeight: 700 }}>UNNATI PHARMAX</div>
+            <div style={{ fontSize: "1.1rem", fontWeight: 700 }}>{companyName}</div>
             <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Multi Order Form</div>
           </div>
         </div>

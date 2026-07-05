@@ -55,6 +55,98 @@ const TEMPLATE_DIR = path.join(
   "invoice"
 );
 
+// ── Company branding ──────────────────────────────────────────────────────────
+// All fields optional/nullable so a Prisma `CompanySetting` row can be passed
+// directly. Missing values fall back to FALLBACK_COMPANY (current UNNATI values)
+// per-field, so a company that hasn't filled a field still renders something.
+export type CompanyBranding = {
+  name?: string | null;
+  address?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  indiamart?: string | null;
+  marketing?: string | null;
+  gstin?: string | null;
+  iec?: string | null;
+  drugLic?: string | null;
+  chaName?: string | null;
+  chaNo?: string | null;
+  stampB64?: string | null;
+  sigB64?: string | null;
+  logoB64?: string | null;
+  invoicePrefix?: string | null;
+  bankName?: string | null;
+  bankAccount?: string | null;
+  bankIfsc?: string | null;
+  bankBranch?: string | null;
+  bankSwift?: string | null;
+};
+
+// Current hardcoded UNNATI PHARMAX values. Passing no `company` keeps behavior
+// identical to before this change.
+const FALLBACK_COMPANY = {
+  name: "UNNATI PHARMAX",
+  address:
+    "Ground Floor House No 307/4, Guru Vandana Apartment, Kakasaheb Cholkar Marg, Lakadganj, Nagpur, NAGPUR, MAHARASHTRA, 440008",
+  gstin: "27FNXPP3883B1ZA",
+  iec: "FNXPP3883B",
+  pan: "FNXPP3883B",
+  drugLic: "MH-NG2-526036, MH-NAG-526037",
+  bankName: "ICICI BANK",
+  bankAccount: "146305501090",
+  bankIfsc: "",
+  bankBranch: "NEW ITWARI ROAD, GANDHI PUTLA, ITWARI",
+  bankSwift: "ICICINBBXXX",
+  chaName: "KAUSHIK PATEL",
+  chaNo: "M/S KAUSHIK PATEL",
+} as const;
+
+// Resolve a branding object (per-field fallback to FALLBACK_COMPANY) into plain
+// strings ready for templates. `iec`/`pan` share the CompanySetting.iec field.
+function resolveCompany(company?: CompanyBranding) {
+  const f = FALLBACK_COMPANY;
+  const nz = (v: string | null | undefined, fb: string) =>
+    v != null && v !== "" ? v : fb;
+  const iec = nz(company?.iec, f.iec);
+  return {
+    name: nz(company?.name, f.name),
+    address: nz(company?.address, f.address),
+    gstin: nz(company?.gstin, f.gstin),
+    iec,
+    pan: iec, // CompanySetting has no separate PAN; IEC == PAN for UNNATI
+    drugLic: nz(company?.drugLic, f.drugLic),
+    bankName: nz(company?.bankName, f.bankName),
+    bankAccount: nz(company?.bankAccount, f.bankAccount),
+    bankIfsc: nz(company?.bankIfsc, f.bankIfsc),
+    bankBranch: nz(company?.bankBranch, f.bankBranch),
+    bankSwift: nz(company?.bankSwift, f.bankSwift),
+    chaName: nz(company?.chaName, f.chaName),
+    chaNo: nz(company?.chaNo, f.chaNo),
+    logoB64: company?.logoB64 ?? null,
+  };
+}
+
+// Company branding placeholders shared by the HTML templates. Address newlines
+// become <br /> so multi-line addresses keep their layout.
+function companyTemplateValues(co: ReturnType<typeof resolveCompany>) {
+  return {
+    co_name: escapeHtml(co.name),
+    co_address: escapeHtml(co.address).replaceAll("\n", "<br />"),
+    co_gstin: escapeHtml(co.gstin),
+    co_iec: escapeHtml(co.iec),
+    co_pan: escapeHtml(co.pan),
+    co_drugLic: escapeHtml(co.drugLic),
+    co_bankName: escapeHtml(co.bankName),
+    co_bankAccount: escapeHtml(co.bankAccount),
+    co_bankIfsc: escapeHtml(co.bankIfsc),
+    co_bankBranch: escapeHtml(co.bankBranch),
+    co_bankSwift: escapeHtml(co.bankSwift),
+    co_chaName: escapeHtml(co.chaName),
+    co_chaNo: escapeHtml(co.chaNo),
+  };
+}
+
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -228,10 +320,15 @@ async function htmlsToPdfs(
   }
 }
 
-export async function buildOrderDocumentBundle(order: DocumentBundleOrder) {
+export async function buildOrderDocumentBundle(
+  order: DocumentBundleOrder,
+  company?: CompanyBranding
+) {
   if (order.shipmentMode === "DHL") {
-    return buildDHLDocumentBundle(order);
+    return buildDHLDocumentBundle(order, company);
   }
+  const co = resolveCompany(company);
+  const coValues = companyTemplateValues(co);
   const [gstTemplate, packingTemplate, form2Template, edfTemplate, exportTemplate] =
     await Promise.all([
       loadTemplate("gst-invoice.html"),
@@ -252,6 +349,7 @@ export async function buildOrderDocumentBundle(order: DocumentBundleOrder) {
   const cityLine = `${addressLine2} ${order.postalCode}`.trim();
 
   const values = {
+    ...coValues,
     invoice_no: escapeHtml(order.invoiceNo ?? order.id),
     invoice_date: escapeHtml(formatDateLongIN(invoiceDate)),
     invoice_date_short: escapeHtml(formatDateShort(invoiceDate)),
@@ -275,7 +373,7 @@ export async function buildOrderDocumentBundle(order: DocumentBundleOrder) {
     amount_words: escapeHtml(dollarsToWords(totalUsd)),
     shipping_country: escapeHtml(order.country),
     foreign_post_office_code: "INBOM5",
-    iec: "FNXPP3883B",
+    iec: escapeHtml(co.iec),
     state_code: "27",
     currency: escapeHtml(order.currency),
     exchange_rate: formatMoney(exchangeRate),
@@ -339,6 +437,7 @@ export async function buildOrderDocumentBundle(order: DocumentBundleOrder) {
   });
 
   const exportValues = {
+    ...coValues,
     invoice_no:            escapeHtml(order.invoiceNo ?? order.id),
     invoice_date:          escapeHtml(formatDateDot(invoiceDate)),
     buyer_reference:       escapeHtml(order.remitterName),
@@ -402,7 +501,13 @@ export async function buildOrderDocumentBundle(order: DocumentBundleOrder) {
 }
 
 // ── DHL Document Bundle ────────────────────────────────────────────────────────
-async function buildDHLDocumentBundle(order: DocumentBundleOrder) {
+async function buildDHLDocumentBundle(
+  order: DocumentBundleOrder,
+  company?: CompanyBranding
+) {
+  const co = resolveCompany(company);
+  const coNameHtml = escapeHtml(co.name);
+  const coAddressHtml = escapeHtml(co.address).replaceAll("\n", "<br>");
   const invoiceDate = order.invoiceGeneratedAt ?? order.createdAt;
   const dateSlash   = formatDateSlash(invoiceDate);        // DD/MM/YYYY
   const dateShort   = formatDateShort(invoiceDate);        // DD-Mon-YY
@@ -421,9 +526,9 @@ async function buildDHLDocumentBundle(order: DocumentBundleOrder) {
   ].filter(Boolean).join("\n");
 
   const awb = order.trackingNo ?? "";
-  const iec = "FNXPP3883B";
-  const gstin = "27FNXPP3883B1ZA";
-  const pan = "FNXPP3883B";
+  const iec = escapeHtml(co.iec);
+  const gstin = escapeHtml(co.gstin);
+  const pan = escapeHtml(co.pan);
 
   // ── 1. EXPORTS INVOICE ────────────────────────────────────────────────────
   const itemRows = order.items.map((item, i) => {
@@ -456,10 +561,8 @@ async function buildDHLDocumentBundle(order: DocumentBundleOrder) {
 <table style="margin-bottom:8px;font-size:8pt">
   <tr>
     <td style="width:50%;vertical-align:top">
-      <strong>UNNATI PHARMAX</strong><br>
-      Ground Floor House No 307/4,<br>
-      Guru Vandana Apartment, Kakasaheb Cholkar Marg,<br>
-      Lakadganj, Nagpur, MAHARASHTRA, 440008<br>
+      <strong>${coNameHtml}</strong><br>
+      ${coAddressHtml}<br>
       IEC NO: ${iec} &nbsp;|&nbsp; GSTIN: ${gstin}
     </td>
     <td style="width:50%;vertical-align:top;text-align:right">
@@ -480,7 +583,7 @@ async function buildDHLDocumentBundle(order: DocumentBundleOrder) {
       <strong>DESTINATION COUNTRY:</strong> ${escapeHtml(order.country)}<br>
       <strong>DELIVERY TERMS:</strong> C&amp;F &nbsp;|&nbsp; <strong>PAYMENT TERM:</strong> AD<br>
       <strong>LUT ARN NO.:</strong> AD271023037544C<br>
-      <strong>DL NO.:</strong> MH-NG2-526038, MH-NG2-526039
+      <strong>DL NO.:</strong> ${escapeHtml(co.drugLic)}
     </td>
   </tr>
 </table>
@@ -520,7 +623,7 @@ async function buildDHLDocumentBundle(order: DocumentBundleOrder) {
 <p style="font-size:7.5pt">Net Weight: <strong>${netWt} kg</strong> &nbsp;|&nbsp; Gross Weight: <strong>${grossWt} kg</strong></p>
 <p style="font-size:7.5pt">Declaration: We Intend To Claim Rewards Under Merchandise Export From India Scheme (MEIS)<br>
 I/WE UNDERTAKE TO ABIDE BY THE PROVISIONS OF EXCHANGE MANAGEMENT ACT, 1999.</p>
-<p style="font-size:8pt;text-align:right;margin-top:20px"><strong>AUTHORISED SIGNATORY FOR UNNATI PHARMAX</strong></p>
+<p style="font-size:8pt;text-align:right;margin-top:20px"><strong>AUTHORISED SIGNATORY FOR ${coNameHtml}</strong></p>
 </body></html>`;
 
   // ── 2. DHL PACKING LIST ───────────────────────────────────────────────────
@@ -599,7 +702,7 @@ International Air Cargo Complex, Sahar Village, Andheri, Mumbai - 400 099.</p>
   <tr>
     <td style="width:20%;vertical-align:top"><strong>Port of Loading</strong><br>AIR CARGO SHARA MUMBAI</td>
     <td style="width:40%;vertical-align:top"><strong>Name &amp; Address of Exporter:</strong><br>
-      UNNATI PHARMAX<br>Ground Floor House No 307/4,<br>Guru Vandana Apartment, Kakasaheb Cholkar Marg,<br>Lakadganj, Nagpur, NAGPUR, MAHARASHTRA, 440008
+      ${coNameHtml}<br>${coAddressHtml}
     </td>
     <td style="width:40%;vertical-align:top;border:1px solid #000;padding:4px"><strong>Name &amp; Address of Consignee:</strong><br>${escapeHtml(consigneeBlock).replace(/\n/g,"<br>")}</td>
   </tr>
@@ -626,7 +729,7 @@ International Air Cargo Complex, Sahar Village, Andheri, Mumbai - 400 099.</p>
   <tr>
     <td style="width:50%;vertical-align:top">
       <strong>Enclosures</strong><br>
-      M/S KAUSHIK PATEL<br>
+      ${escapeHtml(co.chaNo)}<br>
       1. Shipping Bill :<br>2. Invoice :<br>3. Packing List :<br>
       4. Certificate of Analysis :<br>5. Sample :<br>6. Drug Licence :
     </td>
@@ -645,7 +748,7 @@ International Air Cargo Complex, Sahar Village, Andheri, Mumbai - 400 099.</p>
 </head><body>
 <h3 style="text-align:center;background:#ffff00;padding:4px;margin:0 0 6px">SHIPPER'S LETTER OF INSTRUCTIONS</h3>
 <table style="margin-bottom:6px">
-  <tr><td style="width:30%"><strong>Shipper Name:</strong></td><td class="hl">UNNATI PHARMAX</td><td style="width:20%"><strong>Invoice No.:</strong></td><td class="hl">${invoiceNo}</td></tr>
+  <tr><td style="width:30%"><strong>Shipper Name:</strong></td><td class="hl">${coNameHtml}</td><td style="width:20%"><strong>Invoice No.:</strong></td><td class="hl">${invoiceNo}</td></tr>
   <tr><td><strong>Consignee Name:</strong></td><td class="hl">${escapeHtml(order.fullName)}</td><td><strong>Invoice Date:</strong></td><td class="hl">${dateSlash}</td></tr>
 </table>
 <table style="margin-bottom:6px">
@@ -690,8 +793,8 @@ I/We enclose herewith copies of the following documents*.</p>
   <li>Others (Specify)</li>
 </ol>
 <table>
-  <tr><td>Name of the Exporter:</td><td><strong>UNNATI PHARMAX</strong></td><td>Name of Customs Broker:</td><td></td></tr>
-  <tr><td>Designation</td><td><strong>KAUSHIK PATEL</strong></td><td>Designation</td><td></td></tr>
+  <tr><td>Name of the Exporter:</td><td><strong>${coNameHtml}</strong></td><td>Name of Customs Broker:</td><td></td></tr>
+  <tr><td>Designation</td><td><strong>${escapeHtml(co.chaName)}</strong></td><td>Designation</td><td></td></tr>
   <tr><td colspan="2"></td><td>Identity Card Number</td><td></td></tr>
 </table>
 <p>I/We undertake to abide by the provisions of Foreign Exchange Management Act, 1999, as amended from time to time, including realisation or repatriation of foreign exchange to or from India.</p>
@@ -720,8 +823,8 @@ Materials, Equipment and Technologies).</p>
 <p>Above mentioned details are true &amp; checked by technical expert.</p>
 <p>You are request to allow the same for export.</p>
 <br><br>
-<p>UNNATI PHARMAX</p>
-<p>( Owner : Kaushik Patel )</p>
+<p>${coNameHtml}</p>
+<p>( Owner : ${escapeHtml(co.chaName)} )</p>
 <p>(Company Seal, Signing Authority Name &amp; Designation)</p>
 </body></html>`;
 
@@ -753,7 +856,7 @@ remain valid, subsisting and continues until revoked in writing.</p>
 <p>Thanking you,<br>Yours sincerely,</p>
 <br><br>
 <p>Signature:<br>Designation:<br>Authorised Signatory</p>
-<p><strong>Company Name:</strong> UNNATI PHARMAX &nbsp;&nbsp;&nbsp; Company Stamp:</p>
+<p><strong>Company Name:</strong> ${coNameHtml} &nbsp;&nbsp;&nbsp; Company Stamp:</p>
 <p><strong>Stamp:</strong> IEC No / GSTIN / KYC document number</p>
 <p class="hl">Date: ${dateSlash}</p>
 </body></html>`;
@@ -793,18 +896,15 @@ passenger carrying aircraft (DGR, 8.1.23.) of International Air Transport Associ
   <tr>
     <td style="width:50%;vertical-align:top">
       <strong>Shipper:</strong><br>
-      UNNATI PHARMAX<br>
-      GROUND FLOOR HOUSE NO 307/04<br>
-      GURU VANDANA APARTMENT KAKASAHEB<br>
-      CHOLKAR MARG, LAKADGANJ NAGPUR<br>
-      NAGPUR MAHARASHTRA 440008<br><br>
+      ${coNameHtml}<br>
+      ${coAddressHtml}<br><br>
       <strong>TOTAL NUMBER OF PACKAGES: 1</strong>
     </td>
     <td style="width:50%;vertical-align:top">
       <strong>NET WEIGHT:</strong> ${netWt} KGS<br>
       <strong>GROSS WEIGHT:</strong> ${grossWt} KGS<br><br>
       <strong>Consignee:</strong><br>${escapeHtml(consigneeBlock).replace(/\n/g,"<br>")}<br><br>
-      <strong>NAME:</strong> KAUSHIK<br>
+      <strong>NAME:</strong> ${escapeHtml(co.chaName)}<br>
       <strong>DESIGNATION:</strong> OWNER<br>
       <strong>SIGNATURE &amp; COMPANY STAMP</strong>
     </td>
@@ -850,8 +950,16 @@ passenger carrying aircraft (DGR, 8.1.23.) of International Air Transport Associ
 // ── Multi-Order Combined Document Bundle ──────────────────────────────────────
 // Generates a single combined invoice + packing list for multiple orders that
 // share the same invoice number (batch dispatch on the same day).
-export async function buildMultiOrderDocumentBundle(orders: DocumentBundleOrder[]) {
+export async function buildMultiOrderDocumentBundle(
+  orders: DocumentBundleOrder[],
+  company?: CompanyBranding
+) {
   if (orders.length === 0) throw new Error("No orders provided");
+
+  const co = resolveCompany(company);
+  const coNameHtml = escapeHtml(co.name);
+  // Compact single-line address for the header strip.
+  const coAddressHtml = escapeHtml(co.address).replaceAll("\n", "<br>");
 
   const invoiceNo   = orders[0].invoiceNo ?? "MULTI";
   const invoiceDate = orders[0].invoiceGeneratedAt ?? orders[0].createdAt;
@@ -911,11 +1019,10 @@ export async function buildMultiOrderDocumentBundle(orders: DocumentBundleOrder[
 
   <!-- Header -->
   <div style="background:#fef9e7;border-bottom:2px solid #c8960c;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
-    <div style="font-size:15pt;font-weight:800;color:#7a5c00;letter-spacing:0.04em">UNNATI PHARMAX</div>
+    <div style="font-size:15pt;font-weight:800;color:#7a5c00;letter-spacing:0.04em">${coNameHtml}</div>
     <div style="text-align:right;font-size:7pt;color:#555;line-height:1.5">
-      Ground Floor, House No 307/4, Guru Vandana Apartment,<br>
-      Kakasaheb Cholkar Marg, Lakadganj, Nagpur – 440008, Maharashtra<br>
-      GST: 27FNXPP3883B1ZA &nbsp;|&nbsp; PAN: FNXPP3883B
+      ${coAddressHtml}<br>
+      GST: ${escapeHtml(co.gstin)} &nbsp;|&nbsp; PAN: ${escapeHtml(co.pan)}
     </div>
   </div>
 
@@ -974,11 +1081,11 @@ export async function buildMultiOrderDocumentBundle(orders: DocumentBundleOrder[
   <!-- Footer -->
   <div style="background:#fef9e7;padding:8px 14px;display:flex;justify-content:space-between;align-items:flex-end;border-top:2px solid #c8960c">
     <div style="font-size:7pt;color:#333;line-height:1.7">
-      IEC: FNXPP3883B &nbsp;|&nbsp; GSTIN: 27FNXPP3883B1ZA<br>
-      Drug Lic: MH-NB-152878 &nbsp;|&nbsp; D.L. No.: MH/NB/152877
+      IEC: ${escapeHtml(co.iec)} &nbsp;|&nbsp; GSTIN: ${escapeHtml(co.gstin)}<br>
+      Drug Lic: ${escapeHtml(co.drugLic)}
     </div>
     <div style="text-align:right;font-size:7.5pt;color:#7a5c00;font-weight:700">
-      For UNNATI PHARMAX<br><br><br>Authorised Signatory
+      For ${coNameHtml}<br><br><br>Authorised Signatory
     </div>
   </div>
 
@@ -1013,7 +1120,7 @@ export async function buildMultiOrderDocumentBundle(orders: DocumentBundleOrder[
 <div style="border:2px solid #c8960c;border-radius:4px;overflow:hidden">
 
   <div style="background:#fef9e7;border-bottom:2px solid #c8960c;padding:10px 14px">
-    <div style="font-size:14pt;font-weight:800;color:#7a5c00">UNNATI PHARMAX — COMBINED PACKING LIST</div>
+    <div style="font-size:14pt;font-weight:800;color:#7a5c00">${coNameHtml} — COMBINED PACKING LIST</div>
     <div style="font-size:8pt;margin-top:4px;color:#333">
       <b>Invoice No:</b> ${escapeHtml(invoiceNo)} &nbsp;|&nbsp;
       <b>Date:</b> ${escapeHtml(dateStr)} &nbsp;|&nbsp;
@@ -1045,7 +1152,7 @@ export async function buildMultiOrderDocumentBundle(orders: DocumentBundleOrder[
 
   <div style="background:#fef9e7;padding:8px 14px;display:flex;justify-content:flex-end;border-top:2px solid #c8960c">
     <div style="text-align:right;font-size:7.5pt;color:#7a5c00;font-weight:700">
-      For UNNATI PHARMAX<br><br><br>Authorised Signatory
+      For ${coNameHtml}<br><br><br>Authorised Signatory
     </div>
   </div>
 
