@@ -84,8 +84,11 @@ function AddProductModal({ onClose, onAdded }: { onClose: () => void; onAdded: (
       }),
     });
     const data = await res.json();
-    if (!res.ok) { setErr(data?.error || "Failed to add product"); setLoading(false); }
-    else onAdded({ id: data.id, name: data.name });
+    if (!res.ok) { setErr(data?.error || "Failed to add product"); setLoading(false); return; }
+    // API returns { product: { id, name, ... } }
+    const created = data?.product ?? data;
+    if (!created?.id || !created?.name) { setErr("Product saved but response was invalid — refresh and retry."); setLoading(false); return; }
+    onAdded({ id: created.id, name: created.name });
   }
 
   return (
@@ -363,9 +366,9 @@ export default function OrderEntryForm({
                       className={selectCls + " mt-1"}
                     >
                       <option value="">Select product…</option>
-                      {products.map(p => <option key={p.id} value={p.id}>{p.name.toUpperCase()}</option>)}
-                      <option disabled>──────────────</option>
                       <option value="__add_new__">✦ Add New Product</option>
+                      <option disabled>──────────────</option>
+                      {products.map(p => <option key={p.id} value={p.id}>{(p.name ?? "").toUpperCase()}</option>)}
                     </select>
                   </div>
 
