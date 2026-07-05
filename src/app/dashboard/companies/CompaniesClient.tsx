@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
+import CompanyLogo from "../../../components/CompanyLogo";
 
 type Company = {
   id: string; name: string; address: string; email: string; phone: string;
@@ -122,8 +123,7 @@ export default function CompaniesClient() {
           {list.map(c => (
             <div key={c.id} className="card" style={{ padding: "0.875rem 1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={c.logoB64 && c.logoB64.length > 20 ? c.logoB64 : "/logo.png"} alt="" style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 6 }} />
+                <CompanyLogo name={c.name} logoB64={c.logoB64} size={34} />
                 <div>
                   <div style={{ fontWeight: 700 }}>{c.name}</div>
                   <div style={{ fontSize: "0.74rem", color: "var(--text-muted)", fontFamily: "monospace" }}>
