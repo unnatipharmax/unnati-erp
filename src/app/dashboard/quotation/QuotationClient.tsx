@@ -1,5 +1,6 @@
 "use client";
 import { useState, useCallback, useEffect, useMemo } from "react";
+import CompanyLogo from "../../../components/CompanyLogo";
 import {
   getAllCountries, getItpsRate, getEmsRate, getCmRate,
   calcItps, calcEmsOrCm,
@@ -46,6 +47,7 @@ type QuotationData = {
   fromAddress: string;
   fromEmail: string;
   fromPhone: string;
+  fromLogo: string | null;
   toName: string;
   toAddress: string;
   toEmail: string;
@@ -280,8 +282,7 @@ function QuotationPreview({ q, totalWeightKg, websites }: { q: QuotationData; to
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, borderBottom: `3px solid ${accentBlue}`, paddingBottom: 16 }}>
         {/* Left: Logo + Company */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Unnati Pharmax" style={{ height: 70, width: "auto", objectFit: "contain" }} />
+          <CompanyLogo name={q.fromName || "Company"} logoB64={q.fromLogo} size={70} radius={10} />
           <div>
             <div style={{ fontWeight: 700, fontSize: "13pt", color: accentBlue, letterSpacing: "-0.01em" }}>{q.fromName}</div>
             <div style={{ whiteSpace: "pre-line", color: "#555", fontSize: "8pt", marginTop: 2, lineHeight: 1.5 }}>{q.fromAddress}</div>
@@ -596,14 +597,15 @@ export default function QuotationClient() {
   }
 
   const [q, setQ] = useState<QuotationData>(() => ({
-    fromName:    "UNNATI PHARMAX",
-    fromAddress: "1/04 Guruvanada Appartment, Central Ave, Lakadganj, Nagpur 440008",
-    fromEmail:   "unnatipharmax@gmail.com",
+    fromName:    "",
+    fromAddress: "",
+    fromEmail:   "",
     fromPhone:   "",
+    fromLogo:    null,
     toName:    "",
     toAddress: "",
     toEmail:   "",
-    quoteNo:    nextQuoteNo(),
+    quoteNo:    "Q-001", // stable placeholder for SSR; real number set client-side below
     quoteDate:  today(),
     validUntil: addDays(today(), 30),
     currency:   "USD",
@@ -614,9 +616,15 @@ export default function QuotationClient() {
     bankIfsc:    "",
     bankBranch:  "",
     bankSwift:   "",
-    notes: "Email: Unnatipharmax@gmail.com",
-    terms: "From Unnati Pharmax, India. We assured you our best services at all times.\nOnly Lab tested and Approved products we sell.\nGoods once sold shall not be returned back or exchanged.\nCustom clearance of destination country is the responsibility of the purchaser.\nProduct shall get dispatched only on the remittance of amount in our account.\n\nSave A Tree. Please do not print this unless you really need to.",
+    notes: "",
+    terms: "We assured you our best services at all times.\nOnly Lab tested and Approved products we sell.\nGoods once sold shall not be returned back or exchanged.\nCustom clearance of destination country is the responsibility of the purchaser.\nProduct shall get dispatched only on the remittance of amount in our account.\n\nSave A Tree. Please do not print this unless you really need to.",
   }));
+
+  // Assign the real auto quote number on the client only (localStorage isn't
+  // available during SSR — computing it in useState causes a hydration mismatch).
+  useEffect(() => {
+    setQ(prev => ({ ...prev, quoteNo: nextQuoteNo() }));
+  }, []);
 
   // Load company settings from API and pre-fill sender fields + bank details
   const [companyWebsites, setCompanyWebsites] = useState({ website: "", indiamart: "", marketing: "" });
@@ -626,15 +634,18 @@ export default function QuotationClient() {
       .then(s => {
         setQ(prev => ({
           ...prev,
-          fromName:    s.name    || prev.fromName,
-          fromAddress: s.address || prev.fromAddress,
-          fromEmail:   s.email   || prev.fromEmail,
-          fromPhone:   s.phone   || prev.fromPhone,
-          bankName:    s.bankName    || prev.bankName,
-          bankAccount: s.bankAccount || prev.bankAccount,
-          bankIfsc:    s.bankIfsc    || prev.bankIfsc,
-          bankBranch:  s.bankBranch  || prev.bankBranch,
-          bankSwift:   s.bankSwift   || prev.bankSwift,
+          // Use the active company's own values (blank if it hasn't set a field —
+          // no UNNATI fallback, so a new company never shows UNNATI's details).
+          fromName:    s.name    ?? prev.fromName,
+          fromAddress: s.address ?? prev.fromAddress,
+          fromEmail:   s.email   ?? prev.fromEmail,
+          fromPhone:   s.phone   ?? prev.fromPhone,
+          fromLogo:    (s.logoB64 && String(s.logoB64).startsWith("data:")) ? s.logoB64 : null,
+          bankName:    s.bankName    ?? prev.bankName,
+          bankAccount: s.bankAccount ?? prev.bankAccount,
+          bankIfsc:    s.bankIfsc    ?? prev.bankIfsc,
+          bankBranch:  s.bankBranch  ?? prev.bankBranch,
+          bankSwift:   s.bankSwift   ?? prev.bankSwift,
         }));
         setCompanyWebsites({ website: s.website || "", indiamart: s.indiamart || "", marketing: s.marketing || "" });
       })
