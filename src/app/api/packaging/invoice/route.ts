@@ -90,12 +90,15 @@ export async function POST(req: Request) {
     );
 
   const fy = getFinancialYear();
+  // Multi-company Stage 1: single company (id="1"). Stage 3 replaces this with
+  // the active company id so each company keeps its own invoice sequence.
+  const companyId = "1";
 
   // Atomic: upsert sequence + increment in a transaction
   const invoiceNo = await prisma.$transaction(async (tx) => {
     const seq = await tx.invoiceSequence.upsert({
-      where:  { financialYear: fy },
-      create: { financialYear: fy, lastNumber: 1 },
+      where:  { companyId_financialYear: { companyId, financialYear: fy } },
+      create: { companyId, financialYear: fy, lastNumber: 1 },
       update: { lastNumber: { increment: 1 } },
     });
     const num = seq.lastNumber.toString().padStart(3, "0");

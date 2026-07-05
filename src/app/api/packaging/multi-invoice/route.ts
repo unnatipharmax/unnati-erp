@@ -74,12 +74,14 @@ export async function POST(req: Request) {
   }
 
   const fy = getFinancialYear();
+  // Multi-company Stage 1: single company (id="1"). Stage 3 uses the active company id.
+  const companyId = "1";
 
   // Generate ONE invoice number for all selected orders (atomic sequence increment)
   const invoiceNo = await prisma.$transaction(async (tx) => {
     const seq = await tx.invoiceSequence.upsert({
-      where: { financialYear: fy },
-      create: { financialYear: fy, lastNumber: 1 },
+      where: { companyId_financialYear: { companyId, financialYear: fy } },
+      create: { companyId, financialYear: fy, lastNumber: 1 },
       update: { lastNumber: { increment: 1 } },
     });
     const num = seq.lastNumber.toString().padStart(3, "0");

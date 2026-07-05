@@ -134,12 +134,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "newShippingMode required for REORDER" }, { status: 400 });
 
     const fy = getFinancialYear();
+    // Multi-company Stage 1: single company (id="1"). Stage 3 uses the active company id.
+    const companyId = "1";
 
     const result = await prisma.$transaction(async (tx) => {
       // 1. Generate new invoice number
       const seq = await tx.invoiceSequence.upsert({
-        where:  { financialYear: fy },
-        create: { financialYear: fy, lastNumber: 1 },
+        where:  { companyId_financialYear: { companyId, financialYear: fy } },
+        create: { companyId, financialYear: fy, lastNumber: 1 },
         update: { lastNumber: { increment: 1 } },
       });
       const newInvoiceNo = `E-${fy}-${seq.lastNumber.toString().padStart(3, "0")}`;
