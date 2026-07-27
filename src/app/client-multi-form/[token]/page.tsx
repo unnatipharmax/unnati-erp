@@ -20,6 +20,7 @@ export default async function ClientMultiFormPage({
           name: true,
           balance: true,
           isActive: true,
+          companyId: true,
         },
       },
     },
@@ -44,12 +45,22 @@ export default async function ClientMultiFormPage({
 
   const balanceNum = Number(link.account.balance);
 
+  // Brand the form with the account's company (falls back to the primary company).
+  const company = await prisma.companySetting.findUnique({
+    where: { id: link.account.companyId ?? "1" },
+    select: { name: true, logoB64: true },
+  });
+  const companyName = company?.name || "UNNATI PHARMAX";
+  const companyLogo = company?.logoB64 && company.logoB64.startsWith("data:") ? company.logoB64 : null;
+
   return (
     <ClientMultiForm
       token={token}
       accountId={link.account.id}
       accountName={link.account.name}
       balance={balanceNum}
+      companyName={companyName}
+      companyLogo={companyLogo}
     />
   );
 }

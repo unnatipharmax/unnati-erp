@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "../../../lib/prisma";
+import { getActiveCompanyId } from "../../../lib/company";
 
 const PAGE_SIZE = 9;
 
@@ -12,10 +13,11 @@ export default async function OrderEntryHomePage({
   const page       = Math.max(1, parseInt(params?.page || "1", 10));
   const notFound   = params?.error === "not-found";
   const searchedQ  = params?.q ?? "";
+  const companyId  = await getActiveCompanyId();
 
   // Left panel: only INITIATED orders, desc
   const initiatedOrders = await prisma.orderInitiation.findMany({
-    where: { status: "INITIATED" },
+    where: { status: "INITIATED", companyId },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -31,6 +33,7 @@ export default async function OrderEntryHomePage({
   // Right panel: all orders paginated
   const [allOrders, totalCount] = await Promise.all([
     prisma.orderInitiation.findMany({
+      where: { companyId },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
@@ -44,13 +47,14 @@ export default async function OrderEntryHomePage({
         orderEntry: { select: { id: true } },
       },
     }),
-    prisma.orderInitiation.count(),
+    prisma.orderInitiation.count({ where: { companyId } }),
   ]);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   // All orders for datalist
   const allOrdersForDatalist = await prisma.orderInitiation.findMany({
+    where: { companyId },
     orderBy: { createdAt: "desc" },
     take: 200,
     select: { id: true, fullName: true, status: true, orderEntry: { select: { id: true } } },

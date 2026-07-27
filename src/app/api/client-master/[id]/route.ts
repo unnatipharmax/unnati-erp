@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { getSession } from "../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../lib/company";
 
 export const runtime = "nodejs";
 
@@ -12,9 +13,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!session || !["ADMIN", "MANAGER"].includes(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const companyId = await getActiveCompanyId();
   const { id } = await params;
   const { name, address, gstNumber, drugLicenseNumber, notes, phone, email } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: "Name required" }, { status: 400 });
+
+  // Ownership guard — ensure the account belongs to the active company
+  const owned = await prisma.clientAccount.findFirst({
+    where: { id, companyId }, select: { id: true },
+  });
+  if (!owned) return NextResponse.json({ error: "Client not found" }, { status: 404 });
 
   // Update phone: delete existing then create new if provided
   await prisma.clientPhone.deleteMany({ where: { accountId: id } });
@@ -42,11 +50,14 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (!session || !["ADMIN", "MANAGER"].includes(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const companyId = await getActiveCompanyId();
   const { id } = await params;
-  await prisma.clientAccount.update({
-    where: { id },
+  const del = await prisma.clientAccount.updateMany({
+    where: { id, companyId },
     data:  { isActive: false },
   });
+  if (del.count === 0)
+    return NextResponse.json({ error: "Client not found" }, { status: 404 });
 
   return NextResponse.json({ ok: true });
 }

@@ -6,6 +6,7 @@ import {
   roundMoney,
 } from "../../../../../lib/purchaseAccounting";
 import { prisma } from "../../../../../lib/prisma";
+import { getActiveCompanyId } from "../../../../../lib/company";
 
 export const runtime = "nodejs";
 
@@ -19,6 +20,7 @@ export async function GET(
   }
 
   const { id } = await params;
+  const companyId = await getActiveCompanyId();
   const url = new URL(req.url);
 
   const now = new Date();
@@ -32,8 +34,8 @@ export async function GET(
   const from = fromParam ? new Date(fromParam) : fyStart;
   const to = toParam ? new Date(`${toParam}T23:59:59`) : fyEnd;
 
-  const product = await prisma.product.findUnique({
-    where: { id },
+  const product = await prisma.product.findFirst({
+    where: { id, companyId },
     select: {
       id: true,
       name: true,

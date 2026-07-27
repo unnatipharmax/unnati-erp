@@ -10,13 +10,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { getSession } from "../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../lib/company";
 import { getPurchaseBillAmount, roundMoney } from "../../../../lib/purchaseAccounting";
 import { PurchaseDocumentType } from "@prisma/client";
 import ExcelJS from "exceljs";
 
 export const runtime = "nodejs";
 
-// Company GSTIN (from the export invoices) — used to label the filing.
+// Fallback company identity (used only if the active company row is missing).
 const COMPANY_GSTIN = "27FNXPP3883B1ZA";
 const COMPANY_NAME = "UNNATI PHARMAX";
 
@@ -30,6 +31,10 @@ export async function GET(req: Request) {
   const session = await getSession();
   if (!session || !["ADMIN", "MANAGER", "ACCOUNTS"].includes(session.role))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const companyId = await getActiveCompanyId();
+  const co = await prisma.companySetting.findUnique({ where: { id: companyId }, select: { name: true, gstin: true } });
+  const companyName = co?.name || COMPANY_NAME;
+  const companyGstin = co?.gstin || COMPANY_GSTIN;
 
   const { searchParams } = new URL(req.url);
   // Default period: current month
@@ -48,6 +53,7 @@ export async function GET(req: Request) {
   const purchaseBills = await prisma.purchaseBill.findMany({
     where: {
       documentType: PurchaseDocumentType.BILL,
+      companyId,
       OR: [
         { invoiceDate: { gte: from, lte: to } },
         { AND: [{ invoiceDate: null }, { createdAt: { gte: from, lte: to } }] },
@@ -113,6 +119,7 @@ export async function GET(req: Request) {
     where: {
       status: { in: ["DISPATCHED", "PACKING"] },
       invoiceNo: { not: null },
+      companyId,
       OR: [
         { invoiceGeneratedAt: { gte: from, lte: to } },
         { AND: [{ invoiceGeneratedAt: null }, { createdAt: { gte: from, lte: to } }] },
@@ -166,6 +173,7 @@ export async function GET(req: Request) {
            "gstPercent", "gstAmount", "itcEligible"
     FROM "Expense"
     WHERE "expenseDate" >= ${from} AND "expenseDate" <= ${to}
+      AND "companyId" = ${companyId}
     ORDER BY "expenseDate" ASC
   `;
   const expTotal = roundMoney(expenses.reduce((s, e) => s + Number(e.amount), 0));
@@ -206,8 +214,8 @@ export async function GET(req: Request) {
     ws.columns = [{ width: 28 }, { width: 50 }];
     const rows: [string, string][] = [
       ["GST FILING WORKBOOK", ""],
-      ["Company", COMPANY_NAME],
-      ["GSTIN", COMPANY_GSTIN],
+      ["Company", companyName],
+      ["GSTIN", companyGstin],
       ["Period", periodLabel],
       ["Generated", new Date().toLocaleString("en-IN")],
       ["", ""],

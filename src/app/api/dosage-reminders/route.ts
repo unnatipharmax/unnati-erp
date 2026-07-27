@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
 import { getSession } from "../../../lib/auth";
+import { getActiveCompanyId } from "../../../lib/company";
 import { sendDosageReminder } from "../../../lib/email";
 
 export const runtime = "nodejs";
@@ -13,9 +14,10 @@ export async function GET() {
   const session = await getSession();
   if (!session || !["ADMIN", "MANAGER"].includes(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const companyId = await getActiveCompanyId();
 
   const orders = await prisma.orderInitiation.findMany({
-    where: { dosageReminderDate: { not: null } },
+    where: { dosageReminderDate: { not: null }, companyId },
     orderBy: { dosageReminderDate: "asc" },
     select: {
       id:                  true,
@@ -78,10 +80,13 @@ export async function POST(req: Request) {
   const cronSecret = req.headers.get("x-cron-secret");
   const isCron     = cronSecret === process.env.CRON_SECRET;
 
+  // Cron processes every company; a manual admin trigger is scoped to their active company.
+  let manualCompanyId: string | null = null;
   if (!isCron) {
     const session = await getSession();
     if (!session || !["ADMIN", "MANAGER"].includes(session.role))
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    manualCompanyId = await getActiveCompanyId();
   }
 
   const today = new Date();
@@ -94,6 +99,7 @@ export async function POST(req: Request) {
       dosageReminderSent:  false,
       dosagePerDay:        { not: null },
       totalDosages:        { not: null },
+      ...(manualCompanyId ? { companyId: manualCompanyId } : {}),
     },
     select: {
       id:                  true,

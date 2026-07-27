@@ -74,6 +74,7 @@ export async function POST(req: Request) {
           source: OrderSource.CLIENT,
           clientFormToken: token,
           accountId: link.accountId,
+          companyId: link.account.companyId ?? "1",
           fullName,
           address,
           city,

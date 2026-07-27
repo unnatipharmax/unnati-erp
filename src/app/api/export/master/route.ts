@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../lib/company";
 import { prisma as db } from "../../../../lib/prisma";
 import ExcelJS from "exceljs";
 
@@ -8,6 +9,9 @@ export async function GET() {
   if (!session || !["ADMIN", "MANAGER", "ACCOUNTS"].includes(session.role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const companyId = await getActiveCompanyId();
+  const activeCompany = await db.companySetting.findUnique({ where: { id: companyId }, select: { name: true } });
+  const companyName = activeCompany?.name || "UNNATI PHARMAX";
 
   // ── Fetch all data in parallel ────────────────────────────────────────────
   const [
@@ -24,6 +28,7 @@ export async function GET() {
     partyPayments,
   ] = await Promise.all([
     db.orderInitiation.findMany({
+      where: { companyId },
       orderBy: { createdAt: "desc" },
       include: {
         orderEntry: { include: { items: { include: { product: { select: { name: true } } } } } },
@@ -31,38 +36,44 @@ export async function GET() {
       },
     }),
     db.orderEntryItem.findMany({
+      where: { orderEntry: { order: { companyId } } },
       include: {
         orderEntry: { include: { order: true } },
         product: { select: { name: true, hsn: true } },
       },
       orderBy: { createdAt: "desc" },
     }),
-    db.product.findMany({ orderBy: { name: "asc" }, include: { group: true } }),
+    db.product.findMany({ where: { companyId }, orderBy: { name: "asc" }, include: { group: true } }),
     db.purchaseBill.findMany({
+      where: { companyId },
       orderBy: { createdAt: "desc" },
       include: { party: { select: { name: true } } },
     }),
     db.purchaseItem.findMany({
+      where: { companyId },
       include: {
         product: { select: { name: true } },
         purchase: { select: { invoiceNo: true, party: { select: { name: true } } } },
       },
     }),
-    db.clientAccount.findMany({ orderBy: { name: "asc" } }),
+    db.clientAccount.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
     db.accountLedger.findMany({
+      where: { companyId },
       orderBy: { createdAt: "desc" },
       include: { account: { select: { name: true } } },
     }),
-    db.expense.findMany({ orderBy: { expenseDate: "desc" } }),
+    db.expense.findMany({ where: { companyId }, orderBy: { expenseDate: "desc" } }),
     db.exportReturn.findMany({
+      where: { companyId },
       orderBy: { createdAt: "desc" },
       include: {
         originalOrder: { select: { invoiceNo: true, fullName: true } },
         items: true,
       },
     }),
-    db.party.findMany({ orderBy: { name: "asc" } }),
+    db.party.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
     db.partyPayment.findMany({
+      where: { companyId },
       orderBy: { paymentDate: "desc" },
       include: { party: { select: { name: true } } },
     }),
@@ -129,7 +140,7 @@ export async function GET() {
   {
     const ws = wb.addWorksheet("Summary");
     ws.mergeCells("A1:B1");
-    ws.getCell("A1").value = "UNNATI PHARMAX — ERP Data Export";
+    ws.getCell("A1").value = `${companyName} — ERP Data Export`;
     ws.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF7A5C00" } };
     ws.getCell("A1").alignment = { horizontal: "center" };
     ws.getRow(1).height = 28;

@@ -2,13 +2,15 @@
 // GET /api/client-accounts — returns all ClientAccounts with their active link token
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
+import { getActiveCompanyId } from "../../../lib/company";
 
 export const runtime = "nodejs";
 
 export async function GET() {
   try {
+    const companyId = await getActiveCompanyId();
     const accounts = await prisma.clientAccount.findMany({
-      where:   { isActive: true },
+      where:   { isActive: true, companyId },
       orderBy: { createdAt: "desc" },
       select: {
         id:        true,

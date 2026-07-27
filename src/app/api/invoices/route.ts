@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
 import { getSession } from "../../../lib/auth";
+import { getActiveCompanyId } from "../../../lib/company";
 
 export const runtime = "nodejs";
 
@@ -9,6 +10,7 @@ export async function GET(req: Request) {
   const session = await getSession();
   if (!session || !["ADMIN", "MANAGER"].includes(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const companyId = await getActiveCompanyId();
 
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("search") ?? "";
@@ -16,6 +18,7 @@ export async function GET(req: Request) {
   const orders = await prisma.orderInitiation.findMany({
     where: {
       invoiceNo: { not: null },
+      companyId,
       ...(search ? {
         OR: [
           { invoiceNo:  { contains: search, mode: "insensitive" } },

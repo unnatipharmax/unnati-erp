@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { prisma }       from "../../../lib/prisma";
 import { getSession }   from "../../../lib/auth";
+import { getActiveCompanyId } from "../../../lib/company";
 
 export const runtime = "nodejs";
 
@@ -25,17 +26,21 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("search") ?? "";
+  const companyId = await getActiveCompanyId();
 
   const returns = await prisma.exportReturn.findMany({
     orderBy: { createdAt: "desc" },
-    where: search ? {
-      OR: [
-        { originalOrder: { invoiceNo: { contains: search, mode: "insensitive" } } },
-        { originalOrder: { fullName:  { contains: search, mode: "insensitive" } } },
-        { newInvoiceNo:  { contains: search, mode: "insensitive" } },
-        { trackingReturned: { contains: search, mode: "insensitive" } },
-      ],
-    } : undefined,
+    where: {
+      companyId,
+      ...(search ? {
+        OR: [
+          { originalOrder: { invoiceNo: { contains: search, mode: "insensitive" } } },
+          { originalOrder: { fullName:  { contains: search, mode: "insensitive" } } },
+          { newInvoiceNo:  { contains: search, mode: "insensitive" } },
+          { trackingReturned: { contains: search, mode: "insensitive" } },
+        ],
+      } : {}),
+    },
     include: {
       originalOrder: {
         select: {
@@ -94,6 +99,7 @@ export async function POST(req: Request) {
   const session = await getSession();
   if (!session || !["ADMIN", "MANAGER"].includes(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const companyId = await getActiveCompanyId();
 
   const body = await req.json();
   const {
@@ -112,9 +118,9 @@ export async function POST(req: Request) {
   if (!returnType)      return NextResponse.json({ error: "returnType required" },      { status: 400 });
   if (!items?.length)   return NextResponse.json({ error: "items required" },           { status: 400 });
 
-  // ── Load original order ──────────────────────────────────────────────────────
-  const original = await prisma.orderInitiation.findUnique({
-    where: { id: originalOrderId },
+  // ── Load original order (scoped to the active company) ───────────────────────
+  const original = await prisma.orderInitiation.findFirst({
+    where: { id: originalOrderId, companyId },
     include: {
       orderEntry: {
         include: { items: { include: { product: true } } },
@@ -134,21 +140,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "newShippingMode required for REORDER" }, { status: 400 });
 
     const fy = getFinancialYear();
+    const coRow = await prisma.companySetting.findUnique({ where: { id: companyId }, select: { invoicePrefix: true } });
+    const prefix = (coRow?.invoicePrefix || "E").trim() || "E";
 
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Generate new invoice number
+      // 1. Generate new invoice number (scoped to the active company)
       const seq = await tx.invoiceSequence.upsert({
-        where:  { financialYear: fy },
-        create: { financialYear: fy, lastNumber: 1 },
+        where:  { companyId_financialYear: { companyId, financialYear: fy } },
+        create: { companyId, financialYear: fy, lastNumber: 1 },
         update: { lastNumber: { increment: 1 } },
       });
-      const newInvoiceNo = `E-${fy}-${seq.lastNumber.toString().padStart(3, "0")}`;
+      const newInvoiceNo = `${prefix}-${fy}-${seq.lastNumber.toString().padStart(3, "0")}`;
 
       // 2. Create new OrderInitiation (clone client details, shipping cost only as amount)
       const newOrder = await tx.orderInitiation.create({
         data: {
           source:         "SALES",
           filledByUserId: session.id,
+          companyId,
           fullName:       original.fullName,
           address:        original.address,
           city:           original.city,
@@ -214,6 +223,7 @@ export async function POST(req: Request) {
       const exportReturn = await tx.exportReturn.create({
         data: {
           originalOrderId,
+          companyId,
           returnDate:      returnDate ? new Date(returnDate) : new Date(),
           reason:          reason ?? null,
           trackingReturned: trackingReturned ?? null,
@@ -244,6 +254,7 @@ export async function POST(req: Request) {
   const exportReturn = await prisma.exportReturn.create({
     data: {
       originalOrderId,
+      companyId,
       returnDate:      returnDate ? new Date(returnDate) : new Date(),
       reason:          reason ?? null,
       trackingReturned: trackingReturned ?? null,

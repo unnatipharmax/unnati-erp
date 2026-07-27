@@ -5,6 +5,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../../lib/prisma";
 import { getSession } from "../../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../../lib/company";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,7 @@ export async function PATCH(
   if (!session || !["ADMIN", "MANAGER", "PACKAGING"].includes(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const companyId = await getActiveCompanyId();
   const { id } = await params;
   const { dosagePerDay, totalDosages, dosageStartDate } = await req.json();
 
@@ -24,8 +26,8 @@ export async function PATCH(
   if (!totalDosages || totalDosages <= 0)
     return NextResponse.json({ error: "totalDosages must be > 0" }, { status: 400 });
 
-  const order = await prisma.orderInitiation.findUnique({
-    where: { id },
+  const order = await prisma.orderInitiation.findFirst({
+    where: { id, companyId },
     select: { id: true, prescriptionOriginalName: true },
   });
   if (!order)
@@ -41,8 +43,8 @@ export async function PATCH(
   const dosageReminderDate = new Date(startDate);
   dosageReminderDate.setDate(dosageReminderDate.getDate() + reminderOffset);
 
-  const updated = await prisma.orderInitiation.update({
-    where: { id },
+  await prisma.orderInitiation.updateMany({
+    where: { id, companyId },
     data: {
       dosagePerDay,
       totalDosages,
@@ -50,6 +52,10 @@ export async function PATCH(
       dosageReminderDate,
       dosageReminderSent: false, // reset if updated
     },
+  });
+
+  const updated = await prisma.orderInitiation.findFirst({
+    where: { id, companyId },
     select: {
       id:                 true,
       dosagePerDay:       true,
@@ -59,6 +65,8 @@ export async function PATCH(
       dosageReminderSent: true,
     },
   });
+  if (!updated)
+    return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
   return NextResponse.json({
     ...updated,

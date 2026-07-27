@@ -1,6 +1,7 @@
 import { PurchaseDocumentType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getSession } from "../../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../../lib/company";
 import {
   getCreditNoteAmount,
   getPurchaseBillAmount,
@@ -20,9 +21,10 @@ export async function GET(
   }
 
   const { id } = await params;
+  const companyId = await getActiveCompanyId();
 
-  const party = await prisma.party.findUnique({
-    where: { id },
+  const party = await prisma.party.findFirst({
+    where: { id, companyId },
     select: {
       id: true,
       name: true,
@@ -39,7 +41,7 @@ export async function GET(
   }
 
   const documents = await prisma.purchaseBill.findMany({
-    where: { partyId: id },
+    where: { partyId: id, companyId },
     orderBy: [{ invoiceDate: "asc" }, { createdAt: "asc" }],
     select: {
       id: true,
@@ -86,7 +88,7 @@ export async function GET(
   });
 
   const payments = await prisma.partyPayment.findMany({
-    where: { partyId: id },
+    where: { partyId: id, companyId },
     orderBy: [{ paymentDate: "asc" }, { createdAt: "asc" }],
     select: {
       id: true,

@@ -2,15 +2,17 @@
 import { getSession } from "../../../lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "../../../lib/prisma";
+import { getActiveCompanyId } from "../../../lib/company";
 import LedgerClient from "./LedgerClient";
 
 export default async function LedgerPage() {
   const session = await getSession();
   if (!session || !["ADMIN","MANAGER","ACCOUNTS"].includes(session.role))
     redirect("/dashboard");
+  const companyId = await getActiveCompanyId();
 
   const accounts = await prisma.clientAccount.findMany({
-    where:   { isActive: true },
+    where:   { isActive: true, companyId },
     orderBy: { name: "asc" },
     select: {
       id: true, name: true, balance: true, createdAt: true,

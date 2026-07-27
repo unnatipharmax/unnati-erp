@@ -98,9 +98,15 @@ export default function SupplierSuggestions({
     });
   }
 
-  function printOrderList() {
+  async function printOrderList() {
     const rows = buildOrderRows();
     const dateStr = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+    // Brand the sheet with the active company (falls back to UNNATI PHARMAX).
+    let companyName = "UNNATI PHARMAX";
+    try {
+      const s = await fetch("/api/settings/company").then(r => r.json());
+      if (s?.name) companyName = s.name;
+    } catch { /* keep fallback */ }
     const bodyRows = rows.map((r, i) => `
       <tr>
         <td style="text-align:center">${i + 1}</td>
@@ -126,7 +132,7 @@ export default function SupplierSuggestions({
         @media print { body { padding: 0; } @page { margin: 14mm; } }
       </style></head>
       <body>
-        <h1>UNNATI PHARMAX — REORDER LIST</h1>
+        <h1>${escapeHtml(companyName)} — REORDER LIST</h1>
         <div class="sub">Items to be procured &nbsp;·&nbsp; Generated ${dateStr}</div>
         <table>
           <thead>

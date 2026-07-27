@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { PurchaseDocumentType } from "@prisma/client";
 import { prisma } from "../../../lib/prisma";
 import { getSession } from "../../../lib/auth";
+import { getActiveCompanyId } from "../../../lib/company";
 import { getPurchaseBillAmount, roundMoney } from "../../../lib/purchaseAccounting";
 
 export const runtime = "nodejs";
@@ -32,9 +33,12 @@ export async function GET(req: Request) {
       }
     : {};
 
+  const companyId = await getActiveCompanyId();
+
   const bills = await prisma.purchaseBill.findMany({
     where: {
       documentType: docType,
+      companyId,
       party: { isActive: true },
       ...dateFilter,
     },

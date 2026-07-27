@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "../../../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../../../lib/company";
 import { buildOrderDocumentBundle } from "../../../../../../lib/orderDocumentBundle";
 import { prisma } from "../../../../../../lib/prisma";
 
@@ -15,9 +16,13 @@ export async function GET(
   }
 
   const { orderId } = await params;
+  const companyId = await getActiveCompanyId();
+  const company = await prisma.companySetting.findUnique({
+    where: { id: companyId },
+  });
 
-  const order = await prisma.orderInitiation.findUnique({
-    where: { id: orderId },
+  const order = await prisma.orderInitiation.findFirst({
+    where: { id: orderId, companyId },
     select: {
       id: true,
       invoiceNo: true,
@@ -132,7 +137,7 @@ export async function GET(
     netWeight,
     grossWeight,
     items,
-  });
+  }, company ?? undefined);
 
   return new NextResponse(new Uint8Array(buffer), {
     status: 200,

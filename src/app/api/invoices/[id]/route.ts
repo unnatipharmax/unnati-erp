@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { getSession } from "../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../lib/company";
 import { Prisma, ShipmentMode } from "@prisma/client";
 
 export const runtime = "nodejs";
@@ -15,10 +16,11 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
+  const companyId = await getActiveCompanyId();
   const body    = await req.json();
 
-  const order = await prisma.orderInitiation.findUnique({
-    where: { id },
+  const order = await prisma.orderInitiation.findFirst({
+    where: { id, companyId },
     select: { id: true, invoiceNo: true },
   });
   if (!order || !order.invoiceNo)

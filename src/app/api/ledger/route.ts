@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
 import { getSession } from "../../../lib/auth";
+import { getActiveCompanyId } from "../../../lib/company";
 
 export const runtime = "nodejs";
 
@@ -9,9 +10,10 @@ export async function GET() {
   const session = await getSession();
   if (!session || !["ADMIN", "MANAGER", "ACCOUNTS"].includes(session.role))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const companyId = await getActiveCompanyId();
 
   const accounts = await prisma.clientAccount.findMany({
-    where:   { isActive: true },
+    where:   { isActive: true, companyId },
     orderBy: { name: "asc" },
     select: {
       id: true, name: true, balance: true, createdAt: true,

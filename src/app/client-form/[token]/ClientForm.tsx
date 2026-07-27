@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import CompanyLogo from "../../../components/CompanyLogo";
 
 const CURRENCIES = ["USD", "INR", "EUR", "GBP", "AUD", "CAD", "AED", "SGD", "JPY"];
 
-export default function ClientForm({ token }: { token: string }) {
+export default function ClientForm({ token, companyName = "UNNATI PHARMAX", companyLogo = null }: { token: string; companyName?: string; companyLogo?: string | null }) {
   const [loading, setLoading] = useState(false);
   const [ok, setOk] = useState<{ orderId: string } | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -50,10 +51,9 @@ export default function ClientForm({ token }: { token: string }) {
       <div style={{ width: "100%", maxWidth: 820 }}>
         {/* Brand header */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.25rem" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Unnati Pharmax" style={{ width: 40, height: 40, objectFit: "contain" }} />
+          <CompanyLogo name={companyName} logoB64={companyLogo} size={40} radius={8} />
           <div>
-            <div style={{ fontSize: "1.1rem", fontWeight: 700 }}>UNNATI PHARMAX</div>
+            <div style={{ fontSize: "1.1rem", fontWeight: 700 }}>{companyName}</div>
             <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Export Order Form</div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "../../../../lib/auth";
 import { prisma } from "../../../../lib/prisma";
+import { getActiveCompanyId } from "../../../../lib/company";
 import fs from "fs";
 import path from "path";
 
@@ -26,6 +27,9 @@ export type CompanySettings = {
   bankIfsc: string;
   bankBranch: string;
   bankSwift: string;
+  // ── Multi-company fields (Stage 1) ──
+  logoB64: string;
+  invoicePrefix: string;
 };
 
 // These are the real defaults for this company — used only if DB is empty and file is missing
@@ -49,6 +53,8 @@ const DEFAULTS: CompanySettings = {
   bankIfsc:   "",
   bankBranch: "Pushpak Plaza, New Itwari Road, Near Gandhi Putla, Nagpur - 440018",
   bankSwift:  "ICICINBBXXX",
+  logoB64:       "",
+  invoicePrefix: "E",
 };
 
 const FILE_PATH = path.join(process.cwd(), "data", "company-settings.json");
@@ -83,6 +89,8 @@ function toSettings(row: Record<string, unknown>): CompanySettings {
     bankIfsc:    String(row.bankIfsc    ?? DEFAULTS.bankIfsc),
     bankBranch:  String(row.bankBranch  ?? DEFAULTS.bankBranch),
     bankSwift:   String(row.bankSwift   ?? DEFAULTS.bankSwift),
+    logoB64:       String(row.logoB64       ?? ""),
+    invoicePrefix: String(row.invoicePrefix ?? DEFAULTS.invoicePrefix),
   };
 }
 
@@ -96,9 +104,11 @@ function seedDb(settings: CompanySettings) {
 }
 
 export async function GET() {
-  // 1. Try DB (primary source after migration)
+  // 1. Try DB (primary source after migration) — resolve the ACTIVE company so
+  //    documents render with the currently-selected company's branding.
   try {
-    const row = await prisma.companySetting.findUnique({ where: { id: "1" } });
+    const activeId = await getActiveCompanyId();
+    const row = await prisma.companySetting.findUnique({ where: { id: activeId } });
     if (row) {
       return NextResponse.json(toSettings(row as Record<string, unknown>));
     }
@@ -154,6 +164,8 @@ export async function PUT(req: Request) {
     bankIfsc:    String(body.bankIfsc    ?? current.bankIfsc).trim(),
     bankBranch:  String(body.bankBranch  ?? current.bankBranch).trim(),
     bankSwift:   String(body.bankSwift   ?? current.bankSwift).trim(),
+    logoB64:       body.logoB64 !== undefined ? String(body.logoB64) : current.logoB64,
+    invoicePrefix: String(body.invoicePrefix ?? current.invoicePrefix).trim() || "E",
   };
 
   try {

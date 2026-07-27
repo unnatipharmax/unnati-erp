@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
 import { getSession } from "../../../lib/auth";
+import { getActiveCompanyId } from "../../../lib/company";
 import { saveExpenseBill, deleteExpenseBill } from "../../../lib/expenseBills";
 
 export const runtime = "nodejs";
@@ -16,10 +17,11 @@ export async function GET(req: Request) {
   const category = searchParams.get("category"); // PERSONAL | STATIONARY | MONTHLY | YEARLY
   const year     = searchParams.get("year");
   const month    = searchParams.get("month");
+  const companyId = await getActiveCompanyId();
 
-  let where = `WHERE 1=1`;
-  const args: (string | number)[] = [];
-  let idx = 1;
+  let where = `WHERE "companyId" = $1`;
+  const args: (string | number)[] = [companyId];
+  let idx = 2;
 
   if (category) { where += ` AND "category" = $${idx++}`; args.push(category); }
   if (year)     { where += ` AND EXTRACT(YEAR  FROM "expenseDate") = $${idx++}`; args.push(Number(year)); }
@@ -61,6 +63,7 @@ export async function POST(req: Request) {
 
   const id = crypto.randomUUID();
   const date = expenseDate ? new Date(expenseDate) : new Date();
+  const companyId = await getActiveCompanyId();
 
   // Derive GST split from gross amount + gstPercent when not explicitly provided.
   const gross = Number(amount);
@@ -86,13 +89,14 @@ export async function POST(req: Request) {
       `INSERT INTO "Expense"
         ("id","category","description","amount","expenseDate","paymentMode","notes",
          "vendorName","vendorGstin","billNo","taxableAmount","gstPercent","gstAmount","itcEligible",
-         "billOriginalName","billStoredName","billMimeType","createdAt")
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,NOW())`,
+         "billOriginalName","billStoredName","billMimeType","companyId","createdAt")
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,NOW())`,
       id, category, description, gross, date,
       paymentMode || null, notes || null,
       vendorName || null, vendorGstin || null, billNo || null,
       taxable, pct, gst, Boolean(itcEligible),
-      savedBill?.originalName ?? null, savedBill?.storedName ?? null, savedBill?.mimeType ?? null
+      savedBill?.originalName ?? null, savedBill?.storedName ?? null, savedBill?.mimeType ?? null,
+      companyId
     );
     return NextResponse.json({ success: true, id });
   } catch (err: any) {

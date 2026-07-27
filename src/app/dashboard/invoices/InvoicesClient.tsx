@@ -81,6 +81,25 @@ function InvoiceInlineEditor({ invoice, onClose, onSaved }: {
   const [err,     setErr]     = useState("");
   const [success, setSuccess] = useState("");
 
+  // Active company branding for the invoice preview (falls back to UNNATI).
+  const [co, setCo] = useState({
+    name: "UNNATI PHARMAX",
+    address: "SHOP NO 181 GURUKRUPA APARTMENT\nCENTRAL AVE\nLAKADGANJ NAGPUR\nMAHARSHTRA 440008",
+    gstin: "27FNXPP3883B1ZA", iec: "FNXPP3883B",
+    bankName: "ICICI BANK", bankAccount: "146305501090", bankSwift: "ICICINBBXXX",
+  });
+  useEffect(() => {
+    fetch("/api/settings/company").then(r => r.json()).then(s => setCo(prev => ({
+      name:        s.name        || prev.name,
+      address:     s.address     || prev.address,
+      gstin:       s.gstin       || prev.gstin,
+      iec:         s.iec         || prev.iec,
+      bankName:    s.bankName    || prev.bankName,
+      bankAccount: s.bankAccount || prev.bankAccount,
+      bankSwift:   s.bankSwift   || prev.bankSwift,
+    }))).catch(() => {});
+  }, []);
+
   // Client
   const [fullName,     setFullName]     = useState(invoice.fullName);
   const [address,      setAddress]      = useState(invoice.address);
@@ -270,7 +289,7 @@ function InvoiceInlineEditor({ invoice, onClose, onSaved }: {
               <tr>
                 <td style={td} rowSpan={6}><strong>Exporter<br/>Name &amp; Address</strong></td>
                 <td style={{ ...td, fontWeight: "bold" }} rowSpan={6}>
-                  From: UNNATI PHARMAX<br/>SHOP NO 181 GURUKRUPA APARTMENT<br/>CENTRAL AVE<br/>LAKADGANJ NAGPUR<br/>MAHARSHTRA 440008
+                  From: {co.name}<br/>{co.address.split("\n").map((line, i) => <span key={i}>{line}<br/></span>)}
                 </td>
                 <td style={td}><strong>Invoice No.</strong></td>
                 <td style={{ ...td, fontWeight: "bold" }}>{invoice.invoiceNo}</td>
@@ -507,11 +526,11 @@ function InvoiceInlineEditor({ invoice, onClose, onSaved }: {
               <tr>
                 <td style={{ ...tdSm, lineHeight: "1.7" }}>
                   <strong>DL NO. MH-NG2-526036, MH-NAG-526037</strong><br/>
-                  IEC Code / PAN &nbsp;<strong>FNXPP3883B</strong><br/>
-                  Bank A/C No.: <strong>146305501090</strong><br/>
-                  Bank Name : <strong>ICICI BANK</strong><br/>
-                  Swift Code : <strong>ICICINBBXXX</strong><br/>
-                  GSTIN No : <strong>27FNXPP3883B1ZA</strong><br/>
+                  IEC Code / PAN &nbsp;<strong>{co.iec}</strong><br/>
+                  Bank A/C No.: <strong>{co.bankAccount}</strong><br/>
+                  Bank Name : <strong>{co.bankName}</strong><br/>
+                  Swift Code : <strong>{co.bankSwift}</strong><br/>
+                  GSTIN No : <strong>{co.gstin}</strong><br/>
                   1. Supply meant for export on payment of integrated tax<br/>
                   2. Supply meant for export under bond or LUT without payment of integrated tax.
                 </td>
@@ -523,7 +542,7 @@ function InvoiceInlineEditor({ invoice, onClose, onSaved }: {
                 <td style={{ ...td, textAlign: "center", verticalAlign: "bottom", paddingBottom: 6 }}>
                   <br/><br/><br/>
                   <strong>Authorised Signatory</strong><br/>
-                  <strong>UNNATI PHARMAX</strong>
+                  <strong>{co.name}</strong>
                 </td>
               </tr>
             </tbody>

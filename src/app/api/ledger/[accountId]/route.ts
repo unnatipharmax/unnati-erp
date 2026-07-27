@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { getSession } from "../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../lib/company";
 
 export const runtime = "nodejs";
 
@@ -14,14 +15,15 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { accountId } = await params;
+  const companyId = await getActiveCompanyId();
 
   const [account, orders] = await Promise.all([
-    prisma.clientAccount.findUnique({
-      where:  { id: accountId },
+    prisma.clientAccount.findFirst({
+      where:  { id: accountId, companyId },
       select: { id: true, name: true, balance: true },
     }),
     prisma.orderInitiation.findMany({
-      where:   { accountId },
+      where:   { accountId, companyId },
       orderBy: { createdAt: "asc" },
       select: {
         id: true, fullName: true, status: true, createdAt: true,

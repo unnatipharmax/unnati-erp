@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { getSession } from "../../../../lib/auth";
+import { getActiveCompanyId } from "../../../../lib/company";
 import { getPurchaseBillAmount, roundMoney } from "../../../../lib/purchaseAccounting";
 import { PurchaseDocumentType } from "@prisma/client";
 
@@ -11,16 +12,17 @@ export const runtime = "nodejs";
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const companyId = await getActiveCompanyId();
 
   // ── 1. Summary KPIs ──────────────────────────────────────────────────────────
   const [totalOrders, dispatchedOrders, totalProducts, totalParties] = await Promise.all([
-    prisma.orderInitiation.count(),
+    prisma.orderInitiation.count({ where: { companyId } }),
     prisma.orderInitiation.findMany({
-      where: { status: "DISPATCHED" },
+      where: { status: "DISPATCHED", companyId },
       select: { dollarAmount: true, amountPaid: true, currency: true },
     }),
-    prisma.product.count({ where: { isActive: true } }),
-    prisma.party.count({ where: { isActive: true } }),
+    prisma.product.count({ where: { isActive: true, companyId } }),
+    prisma.party.count({ where: { isActive: true, companyId } }),
   ]);
 
   const totalRevenue = dispatchedOrders.reduce((s, o) => {
@@ -32,13 +34,14 @@ export async function GET() {
   const topProductsRaw = await prisma.orderEntryItem.groupBy({
     by: ["productId"],
     _sum: { quantity: true },
+    where: { orderEntry: { order: { companyId } } },
     orderBy: { _sum: { quantity: "desc" } },
     take: 10,
   });
 
   const topProductIds = topProductsRaw.map(r => r.productId);
   const topProductInfo = await prisma.product.findMany({
-    where: { id: { in: topProductIds } },
+    where: { id: { in: topProductIds }, companyId },
     select: { id: true, name: true, manufacturer: true },
   });
   const productMap = Object.fromEntries(topProductInfo.map(p => [p.id, p]));
@@ -47,15 +50,18 @@ export async function GET() {
   const topProductRevRaw = await prisma.orderEntryItem.groupBy({
     by: ["productId"],
     _sum: { quantity: true },
-    where: { productId: { in: topProductIds } },
+    where: { productId: { in: topProductIds }, orderEntry: { order: { companyId } } },
     orderBy: { _sum: { quantity: "desc" } },
   });
 
   // Also get revenue
   const revRows = await prisma.$queryRaw<{ productId: string; revenue: number }[]>`
-    SELECT "productId", SUM(quantity * "sellingPrice") AS revenue
-    FROM "OrderEntryItem"
-    GROUP BY "productId"
+    SELECT oi."productId", SUM(oi.quantity * oi."sellingPrice") AS revenue
+    FROM "OrderEntryItem" oi
+    JOIN "OrderEntry" oe ON oe.id = oi."orderEntryId"
+    JOIN "OrderInitiation" o ON o.id = oe."orderId"
+    WHERE o."companyId" = ${companyId}
+    GROUP BY oi."productId"
     ORDER BY revenue DESC
     LIMIT 10
   `;
@@ -71,18 +77,21 @@ export async function GET() {
 
   // ── 3. Best Sellers by Revenue ───────────────────────────────────────────────
   const bestSellersRaw = await prisma.$queryRaw<{ productId: string; revenue: number; qty: number }[]>`
-    SELECT "productId",
-           SUM(quantity * "sellingPrice") AS revenue,
-           SUM(quantity) AS qty
-    FROM "OrderEntryItem"
-    GROUP BY "productId"
+    SELECT oi."productId",
+           SUM(oi.quantity * oi."sellingPrice") AS revenue,
+           SUM(oi.quantity) AS qty
+    FROM "OrderEntryItem" oi
+    JOIN "OrderEntry" oe ON oe.id = oi."orderEntryId"
+    JOIN "OrderInitiation" o ON o.id = oe."orderId"
+    WHERE o."companyId" = ${companyId}
+    GROUP BY oi."productId"
     ORDER BY revenue DESC
     LIMIT 10
   `;
 
   const bsIds = bestSellersRaw.map(r => r.productId);
   const bsInfo = await prisma.product.findMany({
-    where: { id: { in: bsIds } },
+    where: { id: { in: bsIds }, companyId },
     select: { id: true, name: true, manufacturer: true },
   });
   const bsMap = Object.fromEntries(bsInfo.map(p => [p.id, p]));
@@ -102,6 +111,7 @@ export async function GET() {
            SUM(COALESCE("dollarAmount", "amountPaid"))::float AS "totalAmt"
     FROM "OrderInitiation"
     WHERE country IS NOT NULL AND country <> ''
+      AND "companyId" = ${companyId}
     GROUP BY country
     ORDER BY "orderCount" DESC
     LIMIT 15
@@ -120,6 +130,7 @@ export async function GET() {
            SUM(COALESCE("dollarAmount", "amountPaid"))::float AS "totalAmt"
     FROM "OrderInitiation"
     WHERE "createdAt" >= NOW() - INTERVAL '12 months'
+      AND "companyId" = ${companyId}
     GROUP BY month
     ORDER BY month ASC
   `;
@@ -132,7 +143,7 @@ export async function GET() {
 
   // ── 6. Pending Payments (purchase bills outstanding) ─────────────────────────
   const pendingBillsRaw = await prisma.purchaseBill.findMany({
-    where: { documentType: PurchaseDocumentType.BILL, party: { isActive: true } },
+    where: { documentType: PurchaseDocumentType.BILL, party: { isActive: true }, companyId },
     select: {
       id: true,
       invoiceNo: true,
@@ -168,7 +179,7 @@ export async function GET() {
 
   // ── 7. Returned Shipments (Credit Notes) ────────────────────────────────────
   const creditNotes = await prisma.purchaseBill.findMany({
-    where: { documentType: PurchaseDocumentType.CREDIT_NOTE },
+    where: { documentType: PurchaseDocumentType.CREDIT_NOTE, companyId },
     orderBy: { createdAt: "desc" },
     take: 10,
     select: {
@@ -193,14 +204,14 @@ export async function GET() {
   // ── 8. Top Purchase Parties ──────────────────────────────────────────────────
   const topPartiesRaw = await prisma.purchaseBill.groupBy({
     by: ["partyId"],
-    where: { documentType: PurchaseDocumentType.BILL },
+    where: { documentType: PurchaseDocumentType.BILL, companyId },
     _count: { id: true },
     orderBy: { _count: { id: "desc" } },
     take: 10,
   });
 
   const tpIds   = topPartiesRaw.map(r => r.partyId);
-  const tpInfo  = await prisma.party.findMany({ where: { id: { in: tpIds } }, select: { id: true, name: true } });
+  const tpInfo  = await prisma.party.findMany({ where: { id: { in: tpIds }, companyId }, select: { id: true, name: true } });
   const tpMap   = Object.fromEntries(tpInfo.map(p => [p.id, p.name]));
 
   // Get total amounts per party
@@ -208,6 +219,7 @@ export async function GET() {
     SELECT "partyId", SUM(COALESCE("totalAmount", 0))::float AS "totalAmt"
     FROM "PurchaseBill"
     WHERE "documentType" = 'BILL'
+      AND "companyId" = ${companyId}
     GROUP BY "partyId"
     ORDER BY "totalAmt" DESC
     LIMIT 10
@@ -224,7 +236,7 @@ export async function GET() {
   // ── 9. Top Team Workers (by orders generated) ────────────────────────────────
   const workerRaw = await prisma.orderInitiation.groupBy({
     by: ["filledByUserId"],
-    where: { filledByUserId: { not: null }, source: "SALES" },
+    where: { filledByUserId: { not: null }, source: "SALES", companyId },
     _count: { id: true },
     orderBy: { _count: { id: "desc" } },
     take: 10,
