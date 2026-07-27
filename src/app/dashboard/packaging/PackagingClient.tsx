@@ -3490,11 +3490,14 @@ function OrderCard({
   const isDHL = order.shipmentMode === "DHL";
   const [generating, setGenerating] = useState(false);
   const [err, setErr] = useState("");
-  const [stockStatus, setStockStatus] = useState<"unset" | "in_stock" | "not_in_stock">("unset");
   const [showBillPanel, setShowBillPanel] = useState(false);
   const [trackingNo, setTrackingNo]   = useState("");
   const [netWeight,  setNetWeight]    = useState("");
   const [grossWeight, setGrossWeight] = useState("");
+
+  // Stock status is derived automatically from Product Master quantities — no
+  // manual toggle. In stock when every item has enough qty to cover the order.
+  const hasEnoughStock = order.items.every(i => i.stockQty != null && i.stockQty >= i.quantity);
 
   async function generateInvoice() {
     if (!trackingNo.trim()) { setErr("Please enter a tracking number first."); return; }
@@ -3611,18 +3614,11 @@ function OrderCard({
                 </>
               );
             })()
-          ) : stockStatus === "unset" ? (
+          ) : hasEnoughStock ? (
             <>
-              <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginRight: 2 }}>Stock status:</span>
-              <button onClick={() => setStockStatus("in_stock")} className="btn btn-primary btn-sm">
-                In Stock
-              </button>
-              <button onClick={() => setStockStatus("not_in_stock")} className="btn btn-secondary btn-sm">
-                Not In Stock
-              </button>
-            </>
-          ) : stockStatus === "in_stock" ? (
-            <>
+              <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#047857", background: "#04785718", border: "1px solid #04785755", borderRadius: 20, padding: "2px 9px" }}>
+                ✓ In Stock
+              </span>
               <input
                 type="text"
                 value={trackingNo}
@@ -3653,15 +3649,11 @@ function OrderCard({
               >
                 {generating ? "Generating…" : "Generate Invoice"}
               </button>
-              <button onClick={() => setStockStatus("unset")} className="btn btn-secondary btn-sm" style={{ fontSize: "0.75rem" }}>
-                ← Change
-              </button>
             </>
           ) : (
-            /* not_in_stock — show only a reset option; supplier suggestions are below */
-            <button onClick={() => { setStockStatus("unset"); setShowBillPanel(false); }} className="btn btn-secondary btn-sm" style={{ fontSize: "0.75rem" }}>
-              ← Change Status
-            </button>
+            <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#dc2626", background: "#dc262618", border: "1px solid #dc262655", borderRadius: 20, padding: "2px 9px", whiteSpace: "nowrap" }}>
+              ✕ Order Required — see below
+            </span>
           )}
         </div>
       </div>
@@ -3672,8 +3664,8 @@ function OrderCard({
         </div>
       )}
 
-      {/* Not-in-stock: supplier suggestions + optional bill upload */}
-      {!hasInvoice && stockStatus === "not_in_stock" && (() => {
+      {/* Short stock: supplier suggestions + optional bill upload (auto-shown) */}
+      {!hasInvoice && !hasEnoughStock && (() => {
         const outItems = order.items
           .filter((i) => i.stockQty == null || i.stockQty < i.quantity)
           .map((i) => ({
@@ -3689,14 +3681,14 @@ function OrderCard({
               onProceedToUpload={() => setShowBillPanel(true)}
             />
             {showBillPanel && (
-              <PurchaseBillPanel onSaved={() => { setShowBillPanel(false); setStockStatus("in_stock"); }} />
+              <PurchaseBillPanel onSaved={() => { setShowBillPanel(false); window.location.reload(); }} />
             )}
           </>
         );
       })()}
 
       {/* Package photos + AI weight extraction */}
-      {!hasInvoice && stockStatus === "in_stock" && (
+      {!hasInvoice && hasEnoughStock && (
         <PackagePhotos
           onWeightExtracted={w => {
             setNetWeight(String(w));
