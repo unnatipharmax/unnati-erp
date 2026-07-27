@@ -78,6 +78,11 @@ export async function POST(req: Request) {
     let partyRecord: Awaited<ReturnType<typeof prisma.party.create>>;
 
     if (party.id) {
+      // Only reuse a party that belongs to the active company; else treat as new.
+      const ownedParty = await prisma.party.findFirst({ where: { id: party.id, companyId }, select: { id: true } });
+      if (!ownedParty) party.id = undefined;
+    }
+    if (party.id) {
       partyRecord = await prisma.party.update({
         where: { id: party.id },
         data: {
@@ -135,6 +140,12 @@ export async function POST(req: Request) {
       let productRecord: Awaited<ReturnType<typeof prisma.product.create>>;
 
       if (product.id) {
+        // Only update a product that belongs to the active company; otherwise
+        // treat it as new (falls through to create below).
+        const owned = await prisma.product.findFirst({ where: { id: product.id, companyId }, select: { id: true } });
+        if (!owned) { product.id = undefined; }
+      }
+      if (product.id) {
         productRecord = await prisma.product.update({
           where: { id: product.id },
           data: {
@@ -155,6 +166,7 @@ export async function POST(req: Request) {
           where: {
             name: { equals: product.name.trim(), mode: "insensitive" },
             isActive: true,
+            companyId,
           },
         });
 
@@ -177,6 +189,7 @@ export async function POST(req: Request) {
         } else {
           productRecord = await prisma.product.create({
             data: {
+              companyId,
               name: product.name.trim(),
               composition: product.composition || null,
               manufacturer: product.manufacturer || null,

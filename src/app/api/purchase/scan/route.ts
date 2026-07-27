@@ -15,12 +15,12 @@ No explanation, no markdown, no code blocks — raw JSON only.
 Return exactly this structure:
 {
   "party": {
-    "name": "supplier COMPANY/BUSINESS NAME ONLY — do NOT include shop number, room number, floor, street, area, city, or any location words. Extract only the registered trade/company name e.g. 'SHRIRAM HEALTHCARE' not 'SHRIRAM HEALTHCARE ROOM NO 1 HASHMI T'. If city or location is appended to the name with a dash or comma, strip it.",
-    "address": "full address including shop/room/building/street/area/city/state/pincode",
-    "gstNumber": "GST number if visible",
-    "drugLicenseNumber": "drug license number if visible",
-    "phone": "phone number if visible",
-    "email": "email if visible"
+    "name": "the SELLER / SUPPLIER who ISSUED this bill — the business at the TOP of the invoice that the goods are billed FROM, NOT the buyer/consignee the goods are billed TO. On a purchase bill the seller's name is usually the largest heading at the very top-left. Return the registered trade/company NAME ONLY — do NOT include shop number, room number, floor, street, area, city, or any location words (e.g. 'KT AGENCIES' not 'KT AGENCIES SHOP NO 412 4TH FLOOR'). If a city/location is appended with a dash or comma, strip it.",
+    "address": "the SELLER's full address including shop/room/building/street/area/city/state/pincode",
+    "gstNumber": "the SELLER's GST number (the one next to the seller's name/address at the top, NOT the buyer's)",
+    "drugLicenseNumber": "the SELLER's drug license number if visible",
+    "phone": "the SELLER's phone number if visible",
+    "email": "the SELLER's email if visible"
   },
   "bill": {
     "invoiceNo": "invoice/bill number",
@@ -54,6 +54,7 @@ Return exactly this structure:
 
 Rules:
 - If a field is not visible, use null
+- CRITICAL — SELLER vs BUYER: "party" is ALWAYS the SELLER/SUPPLIER who issued and signed the bill (billed FROM / "For <seller>"), never the buyer/consignee (billed TO). A purchase bill has TWO businesses: the seller (top, with its GSTIN and bank details, and a "For <name>" signature at the bottom-right) and the buyer/recipient (labelled "To", "Consignee", "Bill To", "M/s", "Buyer", or "Ship To"). Extract ONLY the seller. If two GSTINs appear, the party.gstNumber is the seller's (top), NOT the buyer's. Ignore the buyer entirely.
 - party.name: ONLY the registered company/business name. Never include shop numbers, room numbers, building names, street names, area, city, state or pincode in the name. Those belong in party.address. If you see "ABC MEDICALS - NAGPUR" use "ABC MEDICALS". If you see "XYZ PHARMA SHOP NO 5 MAIN ROAD" use "XYZ PHARMA".
 - product name should be the brand/trade name only
 - do NOT extract composition — leave it out entirely
