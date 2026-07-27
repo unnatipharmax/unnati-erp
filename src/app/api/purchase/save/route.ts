@@ -242,6 +242,21 @@ export async function POST(req: Request) {
       })),
     });
 
+    // Update stock on hand: a BILL adds the purchased quantity to each product's
+    // stock; a CREDIT_NOTE (purchase return) subtracts it.
+    {
+      const sign = documentType === PurchaseDocumentType.CREDIT_NOTE ? -1 : 1;
+      for (let i = 0; i < products.length; i++) {
+        const qty = Number(products[i].quantity) || 0;
+        if (qty <= 0) continue;
+        const productId = resolvedIds[i];
+        // Read current qty (null → 0), then set new value clamped at 0.
+        const current = await prisma.product.findUnique({ where: { id: productId }, select: { qty: true } });
+        const newQty = Math.max(0, (current?.qty ?? 0) + sign * qty);
+        await prisma.product.update({ where: { id: productId }, data: { qty: newQty } });
+      }
+    }
+
     let creditNoteAdjustedAmount = 0;
     let netPayableAmount = computedDocumentAmount;
     let creditNotesUsed: Array<{ id: string; invoiceNo: string | null; appliedAmount: number }> = [];
