@@ -326,24 +326,23 @@ function ExportInvoiceDoc({ order, branding }: { order: Order; branding?: DocSet
   const b = branding ?? DOC_SETTINGS_DEFAULT;
   const invDate    = getInvoiceDate(order);
   const exchRate   = order.exchangeRate || 84;
-  const expCnfUsd  = order.dollarAmount ?? 0;
-  const expShipUsd = order.shippingPrice;
-  const expFobUsd  = Math.max(0, expCnfUsd - expShipUsd);
-  const totalItemInr = order.items.reduce((s, i) => s + (i.amount ?? 0), 0);
+  // Goods are priced at purchase rate + 15% (item.inrUnit, in INR). The customer's
+  // paid total (C&F) is fixed; shipping absorbs the difference between the two so
+  // the invoice total still equals what the customer paid.
+  const expCnfUsd  = order.dollarAmount ?? 0;                                   // total paid (C&F)
+  const goodsInr   = order.items.reduce((s, i) => s + (i.amount ?? (i.inrUnit != null ? i.inrUnit * i.quantity : 0)), 0);
+  const expFobUsd  = Math.round((goodsInr / exchRate) * 100) / 100;            // goods value in USD (purchase+15%)
+  const expShipUsd = Math.round((expCnfUsd - expFobUsd) * 100) / 100;          // shipping = paid − goods
   const totalQty     = order.items.reduce((s, i) => s + i.quantity, 0);
-  const expFobInr    = Math.round(expFobUsd * exchRate * 100) / 100;
+  const expFobInr    = Math.round(goodsInr * 100) / 100;
   const expCnfInr    = Math.round(expCnfUsd * exchRate * 100) / 100;
   const dateStr      = invDate.toLocaleDateString("en-GB").replaceAll("/", ".");
   const cityLine     = [order.city, order.state].filter(Boolean).join(", ") + " " + order.postalCode;
 
   function itemUsd(item: Item) {
-    // Priority: proportional from INR totals → inrUnit/rate → sellingPrice (which is in USD) → 0
-    const rawTotal = totalItemInr > 0 && expFobUsd > 0
-      ? (item.amount ?? 0) / totalItemInr * expFobUsd
-      : item.inrUnit != null
-        ? item.inrUnit * item.quantity / exchRate
-        : item.sellingPrice * item.quantity;  // sellingPrice stored in order currency (USD)
-    const total = Math.round(rawTotal * 100) / 100;
+    // Unit price = purchase rate + 15% (item.inrUnit), converted to USD.
+    const unitInr = item.inrUnit ?? 0;
+    const total = Math.round((unitInr * item.quantity / exchRate) * 100) / 100;
     return { total, unit: item.quantity > 0 ? Math.round(total / item.quantity * 100) / 100 : 0 };
   }
 
@@ -570,26 +569,18 @@ function ExportInvoiceINRDoc({ order, branding }: { order: Order; branding?: Doc
   const dateStr    = invDate.toLocaleDateString("en-GB").replaceAll("/", ".");
   const cityLine   = [order.city, order.state].filter(Boolean).join(", ") + " " + order.postalCode;
 
-  // C&F total in INR — prefer recorded inrAmount, fall back to dollarAmount × rate
+  // Goods priced at purchase rate + 15% (item.inrUnit). Paid total (C&F) is fixed;
+  // shipping absorbs the difference so the invoice total equals what was paid.
   const expCnfInr  = (order.inrAmount != null && order.inrAmount > 0)
     ? order.inrAmount
-    : Math.round((order.dollarAmount ?? 0) * exchRate * 100) / 100;
-  // Shipping in INR (shippingPrice stored in USD)
-  const expShipInr = Math.round(order.shippingPrice * exchRate * 100) / 100;
-  const expFobInr  = Math.max(0, expCnfInr - expShipInr);
+    : Math.round((order.dollarAmount ?? 0) * exchRate * 100) / 100;              // total paid (C&F)
+  const expFobInr  = Math.round(order.items.reduce((s, i) => s + (i.amount ?? (i.inrUnit != null ? i.inrUnit * i.quantity : 0)), 0) * 100) / 100; // goods (purchase+15%)
+  const expShipInr = Math.round((expCnfInr - expFobInr) * 100) / 100;           // shipping = paid − goods
   const totalQty   = order.items.reduce((s, i) => s + i.quantity, 0);
 
-  // Per-item INR amounts: prefer item.amount → inrUnit × qty → sellingPrice × rate × qty
+  // Per-item INR amount = purchase rate + 15% (item.inrUnit) × quantity.
   function itemInr(item: Item): { unit: number; total: number } {
-    let total: number;
-    if (item.amount != null && item.amount > 0) {
-      total = item.amount;
-    } else if (item.inrUnit != null) {
-      total = Math.round(item.inrUnit * item.quantity * 100) / 100;
-    } else {
-      total = Math.round(item.sellingPrice * exchRate * item.quantity * 100) / 100;
-    }
-    total = Math.round(total * 100) / 100;
+    const total = Math.round((item.inrUnit ?? 0) * item.quantity * 100) / 100;
     const unit = item.quantity > 0 ? Math.round(total / item.quantity * 100) / 100 : 0;
     return { total, unit };
   }
@@ -2008,24 +1999,19 @@ function MultiExportInvoiceDoc({ orders, branding }: { orders: Order[]; branding
   const invDate   = getInvoiceDate(first);
   const dateStr   = invDate.toLocaleDateString("en-GB").replaceAll("/", ".");
 
-  // Combined totals
-  const expCnfUsd  = orders.reduce((s, o) => s + (o.dollarAmount ?? 0), 0);
-  const expShipUsd = orders.reduce((s, o) => s + o.shippingPrice, 0);
-  const expFobUsd  = Math.max(0, expCnfUsd - expShipUsd);
-  const expFobInr  = Math.round(expFobUsd * exchRate * 100) / 100;
+  // Combined totals. Goods priced at purchase+15% (inrUnit); paid total is fixed;
+  // shipping absorbs the difference so the invoice total equals what was paid.
+  const goodsInr   = orders.reduce((s, o) => s + o.items.reduce((si, i) => si + (i.amount ?? (i.inrUnit != null ? i.inrUnit * i.quantity : 0)), 0), 0);
+  const expCnfUsd  = orders.reduce((s, o) => s + (o.dollarAmount ?? 0), 0);      // total paid (C&F)
+  const expFobUsd  = Math.round((goodsInr / exchRate) * 100) / 100;             // goods (purchase+15%)
+  const expShipUsd = Math.round((expCnfUsd - expFobUsd) * 100) / 100;           // shipping = paid − goods
+  const expFobInr  = Math.round(goodsInr * 100) / 100;
   const expCnfInr  = Math.round(expCnfUsd * exchRate * 100) / 100;
 
-  // Flat list of all items across all orders with USD pricing
+  // Flat list of all items across all orders — unit price = purchase+15% in USD.
   const allItems = orders.flatMap(o => {
-    const totalItemInr = o.items.reduce((s, i) => s + (i.amount ?? 0), 0);
-    const fobUsd = Math.max(0, (o.dollarAmount ?? 0) - o.shippingPrice);
     return o.items.map(item => {
-      const rawTotal = totalItemInr > 0 && fobUsd > 0
-        ? (item.amount ?? 0) / totalItemInr * fobUsd
-        : item.inrUnit != null
-          ? item.inrUnit * item.quantity / exchRate
-          : item.sellingPrice * item.quantity;
-      const total = Math.round(rawTotal * 100) / 100;
+      const total = Math.round((item.inrUnit ?? 0) * item.quantity / exchRate * 100) / 100;
       const unit  = item.quantity > 0 ? Math.round(total / item.quantity * 100) / 100 : 0;
       return { ...item, usdUnit: unit, usdTotal: total };
     });
@@ -2233,19 +2219,17 @@ function MultiExportInvoiceINRDoc({ orders, branding }: { orders: Order[]; brand
   const invDate  = getInvoiceDate(first);
   const dateStr  = invDate.toLocaleDateString("en-GB").replaceAll("/", ".");
 
+  // Goods priced at purchase+15% (inrUnit); paid total fixed; shipping = paid − goods.
   const expCnfInr  = orders.reduce((s, o) => {
     const cnf = (o.inrAmount != null && o.inrAmount > 0) ? o.inrAmount : Math.round((o.dollarAmount ?? 0) * exchRate * 100) / 100;
     return s + cnf;
-  }, 0);
-  const expShipInr = orders.reduce((s, o) => s + Math.round(o.shippingPrice * exchRate * 100) / 100, 0);
-  const expFobInr  = Math.max(0, expCnfInr - expShipInr);
+  }, 0);                                                                        // total paid (C&F)
+  const expFobInr  = Math.round(orders.reduce((s, o) => s + o.items.reduce((si, i) => si + (i.amount ?? (i.inrUnit != null ? i.inrUnit * i.quantity : 0)), 0), 0) * 100) / 100; // goods (purchase+15%)
+  const expShipInr = Math.round((expCnfInr - expFobInr) * 100) / 100;          // shipping = paid − goods
 
   function itemInr(item: Item): { unit: number; total: number } {
-    let total: number;
-    if (item.amount != null && item.amount > 0)      total = item.amount;
-    else if (item.inrUnit != null)                   total = Math.round(item.inrUnit * item.quantity * 100) / 100;
-    else total = Math.round(item.sellingPrice * exchRate * item.quantity * 100) / 100;
-    return { total: Math.round(total * 100) / 100, unit: item.quantity > 0 ? Math.round(total / item.quantity * 100) / 100 : 0 };
+    const total = Math.round((item.inrUnit ?? 0) * item.quantity * 100) / 100;
+    return { total, unit: item.quantity > 0 ? Math.round(total / item.quantity * 100) / 100 : 0 };
   }
 
   const allItems = orders.flatMap(o => o.items.map(item => ({ ...item, ...itemInr(item) })));
