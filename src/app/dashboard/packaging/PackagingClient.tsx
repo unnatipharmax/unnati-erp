@@ -2879,17 +2879,17 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
   // landscape: print in A4 landscape (297×210mm) — for wide tables
   // multiPage: allow content to flow to a second page instead of being clipped
   const nonDHLDocs = [
-    { label: "Export Invoice",     landscape: true,  multiPage: false, comp: <ExportInvoiceDoc    order={o} branding={ds} /> },
-    { label: "Export Invoice INR", landscape: true,  multiPage: false, comp: <ExportInvoiceINRDoc order={o} branding={ds} /> },
-    { label: "Packing List",       landscape: true,  multiPage: false, comp: <PackingListDoc      order={o} branding={ds} /> },
-    { label: "Form II",           landscape: true,  multiPage: false, comp: <Form2Doc          order={o} branding={ds} /> },
+    { label: "Export Invoice",     landscape: true,  multiPage: true,  comp: <ExportInvoiceDoc    order={o} branding={ds} /> },
+    { label: "Export Invoice INR", landscape: true,  multiPage: true,  comp: <ExportInvoiceINRDoc order={o} branding={ds} /> },
+    { label: "Packing List",       landscape: true,  multiPage: true,  comp: <PackingListDoc      order={o} branding={ds} /> },
+    { label: "Form II",           landscape: true,  multiPage: true,  comp: <Form2Doc          order={o} branding={ds} /> },
     { label: "EDF",               landscape: true,  multiPage: false, comp: <EdfDoc            order={o} branding={ds} /> },
     { label: "CN22 Label",        landscape: false, multiPage: false, comp: <CN22LabelDoc      order={o} companyName={ds.companyName} companyAddress={ds.companyAddress} customDesc={lblDesc || undefined} customValue={lblValue ? Number(lblValue) : undefined} customCurrency={lblCurrency || undefined} customHsn={lblHsn || undefined} /> },
   ];
 
   const dhlDocs = [
     { label: "DHL Invoice",          landscape: false, multiPage: false, comp: <DHLInvoiceDoc    order={order} /> },
-    { label: "DHL Packing List",     landscape: true,  multiPage: false, comp: <DHLPackingDoc    order={order} /> },
+    { label: "DHL Packing List",     landscape: true,  multiPage: true,  comp: <DHLPackingDoc    order={order} /> },
     { label: "ADC Sheet",            landscape: false, multiPage: false, comp: <DHLAdcDoc        order={order} /> },
     { label: "Shipper's Letter",     landscape: false, multiPage: false, comp: <DHLShipperDoc    order={order} /> },
     { label: "Export Declaration",   landscape: false, multiPage: true,  comp: <DHLExportDeclDoc order={order} /> },
