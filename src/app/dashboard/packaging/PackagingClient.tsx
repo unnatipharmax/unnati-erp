@@ -3436,7 +3436,7 @@ function BatchActionBar({
       <div style={{ flex: 1 }} />
       <button onClick={onClear} className="btn btn-secondary btn-sm">✕ Clear</button>
       <button onClick={onViewDocs} disabled={blocked} className="btn btn-secondary" style={{ fontSize: "0.9rem", opacity: blocked ? 0.5 : 1, cursor: blocked ? "not-allowed" : "pointer" }}>
-        View Combined Docs
+        {selectedCount > 1 ? "View Combined Docs" : "View Documents"}
       </button>
       <button
         onClick={onGenerate}
@@ -3444,7 +3444,7 @@ function BatchActionBar({
         className="btn btn-primary"
         style={{ fontSize: "0.9rem", opacity: blocked ? 0.5 : 1, cursor: blocked ? "not-allowed" : "pointer" }}
       >
-        {generating ? "Generating…" : "Generate Combined Documents"}
+        {generating ? "Generating…" : selectedCount > 1 ? "Generate Combined Documents" : "Generate Documents"}
       </button>
       {/* Combinability warning takes precedence; otherwise show server error */}
       {incompatible ? (
