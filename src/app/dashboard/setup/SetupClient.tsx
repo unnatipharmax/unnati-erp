@@ -366,6 +366,7 @@ export default function SetupClient({ initialUsers, currentUserId }: { initialUs
   const [showModal, setShowModal] = useState(false);
   const [updatingRole, setUpdatingRole] = useState<string | null>(null);
   const [togglingId, setTogglingId]     = useState<string | null>(null);
+  const [deletingId, setDeletingId]     = useState<string | null>(null);
 
   function handleAdded(u: User) { setUsers(prev => [u, ...prev]); setShowModal(false); }
 
@@ -389,6 +390,16 @@ export default function SetupClient({ initialUsers, currentUserId }: { initialUs
     const data = await res.json();
     if (res.ok) setUsers(prev => prev.map(u => u.id === id ? { ...u, isActive: data.isActive } : u));
     setTogglingId(null);
+  }
+
+  async function deleteUser(id: string, name: string) {
+    if (!confirm(`Permanently delete user "${name}"? This cannot be undone.`)) return;
+    setDeletingId(id);
+    const res  = await fetch(`/api/users/${id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) setUsers(prev => prev.filter(u => u.id !== id));
+    else alert(data?.error || "Failed to delete user");
+    setDeletingId(null);
   }
 
   const stats = useMemo(() => ({
@@ -477,13 +488,24 @@ export default function SetupClient({ initialUsers, currentUserId }: { initialUs
                 </td>
                 <td>
                   {u.id !== currentUserId && (
-                    <button
-                      onClick={() => toggleActive(u.id, u.isActive)}
-                      disabled={togglingId === u.id}
-                      className={`btn btn-sm ${u.isActive ? "btn-danger" : "btn-secondary"}`}
-                    >
-                      {togglingId === u.id ? "…" : u.isActive ? "Deactivate" : "Activate"}
-                    </button>
+                    <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                      <button
+                        onClick={() => toggleActive(u.id, u.isActive)}
+                        disabled={togglingId === u.id || deletingId === u.id}
+                        className={`btn btn-sm ${u.isActive ? "btn-danger" : "btn-secondary"}`}
+                      >
+                        {togglingId === u.id ? "…" : u.isActive ? "Deactivate" : "Activate"}
+                      </button>
+                      <button
+                        onClick={() => deleteUser(u.id, u.name)}
+                        disabled={deletingId === u.id || togglingId === u.id}
+                        className="btn btn-sm btn-secondary"
+                        style={{ color: "#dc2626", borderColor: "#dc262655" }}
+                        title="Permanently delete this user"
+                      >
+                        {deletingId === u.id ? "…" : "Delete"}
+                      </button>
+                    </div>
                   )}
                 </td>
               </tr>
