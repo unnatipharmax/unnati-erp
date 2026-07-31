@@ -700,19 +700,18 @@ export default function QuotationClient() {
   const [printing, setPrinting] = useState(false);
   async function handlePrint() {
     setPrinting(true);
-    try {
-      let quoteNo = q.quoteNo;
-      if (!quoteNo || quoteNo === "Q-draft") {
-        try {
-          const res = await fetch("/api/quotation/next-number", { method: "POST" });
-          if (res.ok) { const d = await res.json(); quoteNo = d.quoteNo; setQ(prev => ({ ...prev, quoteNo })); }
-        } catch { /* fall back to whatever is shown */ }
-      }
-      // Let React paint the assigned number before the print dialog opens.
-      setTimeout(() => { printQuotation(); }, 60);
-    } finally {
-      setTimeout(() => setPrinting(false), 400);
+    // Assign the real per-company quote number first (if still a draft).
+    if (!q.quoteNo || q.quoteNo === "Q-draft") {
+      try {
+        const res = await fetch("/api/quotation/next-number", { method: "POST" });
+        if (res.ok) { const d = await res.json(); setQ(prev => ({ ...prev, quoteNo: d.quoteNo })); }
+      } catch { /* fall back to whatever is shown */ }
     }
+    // Reset the button state BEFORE printing, then wait two animation frames so
+    // React has committed + painted the preview (with the number) before the
+    // print dialog snapshots the DOM. Printing before paint yields a blank page.
+    setPrinting(false);
+    requestAnimationFrame(() => requestAnimationFrame(() => printQuotation()));
   }
 
   return (
@@ -721,7 +720,15 @@ export default function QuotationClient() {
         @media print {
           body * { visibility: hidden !important; }
           #quotation-preview, #quotation-preview * { visibility: visible !important; }
-          #quotation-preview { position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important; padding: 15mm 18mm !important; }
+          /* position: fixed pins to the page (not a positioned/transformed ancestor),
+             so the preview can't land off-page and print blank. */
+          #quotation-preview {
+            visibility: visible !important;
+            position: fixed !important;
+            top: 0 !important; left: 0 !important; right: 0 !important; width: 100% !important;
+            margin: 0 !important; padding: 12mm 15mm !important;
+            background: #fff !important; z-index: 2147483647 !important;
+          }
           @page { size: A4 portrait; margin: 0; }
         }
       `}</style>
