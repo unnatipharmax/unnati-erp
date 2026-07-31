@@ -720,23 +720,22 @@ export default function QuotationClient() {
         @media print {
           body * { visibility: hidden !important; }
           #quotation-preview, #quotation-preview * { visibility: visible !important; }
-          /* Undo the on-screen scale(0.72) + overflow so the preview renders at
-             full size on the page (a transform would trap position:fixed and the
-             scale/overflow-hidden was clipping the print → blank page). */
+          /* Undo the on-screen scale(0.72) + card chrome so the quote prints full size. */
           .qp-scale { transform: none !important; width: 100% !important; pointer-events: auto !important; }
-          .qp-preview-card { overflow: visible !important; border: none !important; box-shadow: none !important; }
+          .qp-preview-card { overflow: visible !important; border: none !important; box-shadow: none !important; border-radius: 0 !important; }
+          /* position: absolute (NOT fixed) pins the quote to the page origin without
+             repeating on every printed page (fixed elements duplicate on each page).
+             The .qp-scale transform is reset above, so absolute resolves to the page. */
           #quotation-preview {
             visibility: visible !important;
-            position: fixed !important;
+            position: absolute !important;
             top: 0 !important; left: 0 !important; right: 0 !important; width: 100% !important;
-            /* Only take the height the content needs — the on-screen minHeight:900px
-               pushed a near-empty second page. */
             min-height: 0 !important; height: auto !important;
-            margin: 0 !important; padding: 10mm 14mm !important;
-            background: #fff !important; z-index: 2147483647 !important;
+            margin: 0 !important; padding: 0 !important;
+            background: #fff !important;
           }
           #quotation-preview > *:last-child { margin-bottom: 0 !important; }
-          @page { size: A4 portrait; margin: 0; }
+          @page { size: A4 portrait; margin: 10mm; }
         }
       `}</style>
 
