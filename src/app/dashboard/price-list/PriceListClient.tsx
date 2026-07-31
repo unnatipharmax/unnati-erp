@@ -65,6 +65,16 @@ export default function PriceListClient({ role }: { role?: string }) {
     });
   }, [items, search, groupFilter]);
 
+  // Download the current (filtered) price list as an .xlsx with composition,
+  // group and manufacturer in separate columns.
+  function downloadExcel() {
+    const params = new URLSearchParams();
+    if (groupFilter !== "ALL") params.set("group", groupFilter);
+    if (search.trim()) params.set("q", search.trim());
+    const qs = params.toString();
+    window.location.href = `/api/price-list/export${qs ? `?${qs}` : ""}`;
+  }
+
   function startEdit(item: PriceItem) {
     setEditId(item.id);
     setEditMin(item.minPrice != null ? String(item.minPrice) : "");
@@ -125,15 +135,21 @@ export default function PriceListClient({ role }: { role?: string }) {
           placeholder="Search by name, composition, manufacturer…"
           className="flex-1 min-w-[220px] rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-600 outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
         />
-        {groups.length > 2 && (
-          <select
-            value={groupFilter}
-            onChange={e => setGroupFilter(e.target.value)}
-            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
-          >
-            {groups.map(g => <option key={g}>{g}</option>)}
-          </select>
-        )}
+        <select
+          value={groupFilter}
+          onChange={e => setGroupFilter(e.target.value)}
+          className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer min-w-[160px]"
+          title="Filter by product group"
+        >
+          {groups.map(g => <option key={g} value={g}>{g === "ALL" ? "All groups" : g}</option>)}
+        </select>
+        <button
+          onClick={downloadExcel}
+          className="btn btn-secondary btn-sm whitespace-nowrap"
+          title="Download the current list as an Excel file"
+        >
+          ⬇ Download Excel
+        </button>
       </div>
 
       {/* Table */}
