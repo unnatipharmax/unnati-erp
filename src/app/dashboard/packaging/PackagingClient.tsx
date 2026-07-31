@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import PurchaseBillPanel from "./PurchaseBillPanel";
 import SupplierSuggestions from "./SupplierSuggestions";
-import PackagePhotos from "./PackagePhotos";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type Item = {
@@ -3671,15 +3670,9 @@ function OrderCard({
         );
       })()}
 
-      {/* Package photos + AI weight extraction */}
-      {!hasInvoice && hasEnoughStock && (
-        <PackagePhotos
-          onWeightExtracted={w => {
-            setNetWeight(String(w));
-            setGrossWeight(String(w));
-          }}
-        />
-      )}
+      {/* Package/scale photos are captured AFTER invoicing (In Packing stage),
+          via the per-order scale-photo bar in the documents overlay — matching
+          UNNATI's flow. Nothing to upload here at the Ready-for-Invoice stage. */}
 
       {/* ── Stock summary banner ── */}
       {(() => {
