@@ -1,10 +1,11 @@
 "use client";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Home, Link2, FileText, Users, Package, Settings,
   BookOpen, Box, ClipboardList, Wallet, Tag,
   Bell, RotateCcw, ShoppingCart, BarChart2, Building2, PenLine, Truck, FileSpreadsheet, BookText,
+  Menu, X,
 } from "lucide-react";
 import CompanySwitcher from "./CompanySwitcher";
 
@@ -94,7 +95,18 @@ export default function Sidebar({ userName, userRole, activeCompanyId }: { userN
   const pathname    = usePathname();
   const router      = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [open, setOpen] = useState(false);   // mobile drawer open state
   const badge = ROLE_BADGE[userRole];
+
+  // Close the mobile drawer whenever the route changes
+  useEffect(() => { setOpen(false); }, [pathname]);
+
+  // Lock body scroll while the mobile drawer is open
+  useEffect(() => {
+    if (open) document.body.classList.add("nav-open");
+    else document.body.classList.remove("nav-open");
+    return () => document.body.classList.remove("nav-open");
+  }, [open]);
 
   async function logout() {
     setLoggingOut(true);
@@ -108,11 +120,36 @@ export default function Sidebar({ userName, userRole, activeCompanyId }: { userN
     .filter(g => g.items.length > 0);
 
   return (
-    <aside style={{
-      width: 220, minHeight: "100vh", flexShrink: 0,
-      background: "var(--surface-1)", borderRight: "1px solid var(--border)",
-      display: "flex", flexDirection: "column",
-    }}>
+    <>
+      {/* Hamburger — only visible on mobile (see globals.css .nav-hamburger) */}
+      <button
+        className="nav-hamburger"
+        aria-label="Open menu"
+        onClick={() => setOpen(true)}
+      >
+        <Menu size={20} strokeWidth={2.2} />
+      </button>
+
+      {/* Backdrop behind the drawer on mobile */}
+      {open && <div className="nav-backdrop" onClick={() => setOpen(false)} />}
+
+    <aside
+      className={`app-sidebar${open ? " open" : ""}`}
+      style={{
+        width: 220, minHeight: "100vh", flexShrink: 0,
+        background: "var(--surface-1)", borderRight: "1px solid var(--border)",
+        display: "flex", flexDirection: "column",
+      }}
+    >
+      {/* Close button — only shown inside the mobile drawer */}
+      <button
+        className="nav-close"
+        aria-label="Close menu"
+        onClick={() => setOpen(false)}
+      >
+        <X size={18} strokeWidth={2.2} />
+      </button>
+
       {/* Company switcher (replaces the static logo header) */}
       <CompanySwitcher activeCompanyId={activeCompanyId} isAdmin={userRole === "ADMIN"} />
 
@@ -171,5 +208,6 @@ export default function Sidebar({ userName, userRole, activeCompanyId }: { userN
         </button>
       </div>
     </aside>
+    </>
   );
 }

@@ -448,3 +448,86 @@ tbody td     {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* ── Mobile navigation drawer ────────────────────────────────────────────── */
+/* Desktop default: hamburger, close button and backdrop are hidden; the
+   sidebar behaves as the normal static column. */
+.nav-hamburger,
+.nav-close,
+.nav-backdrop { display: none; }
+
+@media (max-width: 860px) {
+  /* Fixed hamburger button, top-left, above content */
+  .nav-hamburger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 1001;
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    color: var(--text-primary);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    cursor: pointer;
+  }
+
+  /* The sidebar becomes an off-canvas drawer */
+  .app-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 1002;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    box-shadow: 2px 0 16px rgba(0,0,0,0.18);
+  }
+  .app-sidebar.open { transform: translateX(0); }
+
+  /* Close (X) button inside the drawer */
+  .nav-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 1;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+
+  /* Dim backdrop behind the open drawer */
+  .nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1001;
+    background: rgba(0,0,0,0.45);
+  }
+
+  /* Give page content room for the fixed hamburger */
+  main { padding-top: 52px; }
+
+  /* Prevent background scroll while the drawer is open */
+  body.nav-open { overflow: hidden; }
+
+  /* Never let the page itself scroll sideways on a phone */
+  html, body { max-width: 100%; overflow-x: hidden; }
+
+  /* Wide data tables scroll inside their own box instead of pushing the
+     whole layout wide. Wrapping the table area in .table-scroll is preferred,
+     but this catches bare tables too. */
+  main table { display: block; overflow-x: auto; max-width: 100%; }
+  .table-scroll { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
+}
