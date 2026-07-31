@@ -269,70 +269,74 @@ function QuotationPreview({ q, totalWeightKg, websites }: { q: QuotationData; to
   const hasBank = q.bankName || q.bankAccount || q.bankIfsc || q.bankBranch;
 
   return (
-    <div id="quotation-preview" style={{ background: "#fff", color: "#1a1a1a", fontFamily: "Arial, sans-serif", fontSize: "9pt", padding: "28px 34px", minHeight: 900 }}>
+    <div id="quotation-preview" style={{ background: "#fff", color: "#1a1a1a", fontFamily: "Arial, sans-serif", fontSize: "9pt", minHeight: 900 }}>
 
-      {/* ── Header ── */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, borderBottom: `3px solid ${accentBlue}`, paddingBottom: 16 }}>
+      {/* ── Header band (dark) ── */}
+      <div style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16,
+        background: accentBlue, color: "#fff", padding: "18px 26px",
+      }}>
         {/* Left: Logo + Company */}
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-          <CompanyLogo name={q.fromName || "Company"} logoB64={q.fromLogo} size={70} radius={10} />
-          <div>
-            <div style={{ fontWeight: 700, fontSize: "13pt", color: accentBlue, letterSpacing: "-0.01em" }}>{q.fromName}</div>
-            <div style={{ whiteSpace: "pre-line", color: "#555", fontSize: "8pt", marginTop: 2, lineHeight: 1.5 }}>{q.fromAddress}</div>
-            {q.fromEmail && <div style={{ color: "#555", fontSize: "8pt" }}>✉ {q.fromEmail}</div>}
-            {q.fromPhone && <div style={{ color: "#555", fontSize: "8pt" }}>✆ {q.fromPhone}</div>}
-            {websites.website  && <div style={{ color: "#555", fontSize: "8pt" }}>🌐 {websites.website}</div>}
-            {websites.indiamart && <div style={{ color: "#555", fontSize: "8pt" }}>🛒 {websites.indiamart}</div>}
-            {websites.marketing && <div style={{ color: "#555", fontSize: "8pt" }}>📣 {websites.marketing}</div>}
+        <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
+          <div style={{ background: "#fff", borderRadius: 8, padding: 4, flexShrink: 0, display: "flex" }}>
+            <CompanyLogo name={q.fromName || "Company"} logoB64={q.fromLogo} size={54} radius={5} />
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 800, fontSize: "15pt", letterSpacing: "0.01em", lineHeight: 1.1 }}>{q.fromName}</div>
+            <div style={{ fontSize: "7.5pt", color: "#c7d6ec", marginTop: 3, letterSpacing: "0.04em", textTransform: "uppercase" }}>Pharmaceutical Distributor &amp; Exporter</div>
+            {q.fromEmail && <div style={{ fontSize: "7.5pt", color: "#c7d6ec", marginTop: 3 }}>{q.fromEmail}{q.fromPhone ? `  ·  ${q.fromPhone}` : ""}</div>}
           </div>
         </div>
 
-        {/* Right: QUOTATION title + meta */}
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: "24pt", fontWeight: 700, color: accentBlue, letterSpacing: 2, lineHeight: 1 }}>QUOTATION</div>
+        {/* Right: PROFORMA INVOICE title + meta */}
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          <div style={{ fontSize: "15pt", fontWeight: 800, letterSpacing: "0.12em", lineHeight: 1 }}>PROFORMA INVOICE</div>
           <table style={{ marginTop: 10, marginLeft: "auto", borderCollapse: "collapse" }}>
             <tbody>
               <tr>
-                <td style={{ padding: "3px 10px 3px 0", color: "#666", fontSize: "8pt", fontWeight: 600 }}>Quote No.</td>
-                <td style={{ padding: "3px 0", fontFamily: "monospace", fontWeight: 700, color: accentBlue, fontSize: "10pt" }}>{q.quoteNo && q.quoteNo !== "Q-draft" ? q.quoteNo : "(auto)"}</td>
+                <td style={{ padding: "2px 10px 2px 0", color: "#c7d6ec", fontSize: "7.5pt", textAlign: "right" }}>Quote No.</td>
+                <td style={{ padding: "2px 0", fontFamily: "monospace", fontWeight: 700, fontSize: "9pt", textAlign: "right" }}>{q.quoteNo && q.quoteNo !== "Q-draft" ? q.quoteNo : "(auto)"}</td>
               </tr>
               <tr>
-                <td style={{ padding: "3px 10px 3px 0", color: "#666", fontSize: "8pt" }}>Date</td>
-                <td style={{ padding: "3px 0" }}>{new Date(q.quoteDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                <td style={{ padding: "2px 10px 2px 0", color: "#c7d6ec", fontSize: "7.5pt", textAlign: "right" }}>Date</td>
+                <td style={{ padding: "2px 0", fontSize: "8pt", textAlign: "right" }}>{new Date(q.quoteDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
               </tr>
               <tr>
-                <td style={{ padding: "3px 10px 3px 0", color: "#666", fontSize: "8pt" }}>Valid Until</td>
-                <td style={{ padding: "3px 0" }}>{new Date(q.validUntil).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                <td style={{ padding: "2px 10px 2px 0", color: "#c7d6ec", fontSize: "7.5pt", textAlign: "right" }}>Valid Until</td>
+                <td style={{ padding: "2px 0", fontSize: "8pt", textAlign: "right" }}>{new Date(q.validUntil).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
               </tr>
-              {totalWeightKg != null && (
-                <tr>
-                  <td style={{ padding: "3px 10px 3px 0", color: "#666", fontSize: "8pt" }}>Est. Weight</td>
-                  <td style={{ padding: "3px 0", fontWeight: 600, color: "#1a7c5e" }}>{totalWeightKg.toFixed(3)} kg</td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* ── Bill To ── */}
-      <div style={{ marginBottom: 18, background: "#f0f4fa", borderLeft: `4px solid ${accentBlue}`, borderRadius: "0 6px 6px 0", padding: "10px 14px" }}>
-        <div style={{ fontWeight: 700, color: accentBlue, marginBottom: 4, fontSize: "7.5pt", textTransform: "uppercase", letterSpacing: "0.08em" }}>Bill To</div>
-        <div style={{ fontWeight: 700, fontSize: "10.5pt" }}>{q.toName || "—"}</div>
-        {q.toAddress && <div style={{ whiteSpace: "pre-line", color: "#555", fontSize: "8pt", marginTop: 2 }}>{q.toAddress}</div>}
-        {q.toEmail   && <div style={{ color: "#555", fontSize: "8pt", marginTop: 2 }}>✉ {q.toEmail}</div>}
+      {/* Body padding wrapper */}
+      <div style={{ padding: "22px 26px 28px" }}>
+
+      {/* ── From + Bill To ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 18 }}>
+        <div style={{ background: "#f7f9fc", border: "1px solid #e6ecf5", borderRadius: 6, padding: "10px 14px" }}>
+          <div style={{ fontWeight: 700, color: accentBlue, marginBottom: 4, fontSize: "7.5pt", textTransform: "uppercase", letterSpacing: "0.08em" }}>From</div>
+          <div style={{ fontWeight: 700, fontSize: "9.5pt" }}>{q.fromName}</div>
+          {q.fromAddress && <div style={{ whiteSpace: "pre-line", color: "#555", fontSize: "8pt", marginTop: 2, lineHeight: 1.5 }}>{q.fromAddress}</div>}
+        </div>
+        <div style={{ background: "#f0f4fa", borderLeft: `4px solid ${accentBlue}`, borderRadius: "0 6px 6px 0", padding: "10px 14px" }}>
+          <div style={{ fontWeight: 700, color: accentBlue, marginBottom: 4, fontSize: "7.5pt", textTransform: "uppercase", letterSpacing: "0.08em" }}>Bill To</div>
+          <div style={{ fontWeight: 700, fontSize: "10pt" }}>{q.toName || "—"}</div>
+          {q.toAddress && <div style={{ whiteSpace: "pre-line", color: "#555", fontSize: "8pt", marginTop: 2, lineHeight: 1.5 }}>{q.toAddress}</div>}
+          {q.toEmail   && <div style={{ color: "#555", fontSize: "8pt", marginTop: 2 }}>✉ {q.toEmail}</div>}
+        </div>
       </div>
 
-      {/* ── Items Table ── */}
+      {/* ── Items Table (no weight column) ── */}
       <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 0 }}>
         <thead>
           <tr>
-            <th style={{ ...th, width: "4%",  textAlign: "center" }}>#</th>
-            <th style={{ ...th, width: "44%" }}>Description</th>
-            <th style={{ ...th, width: "9%",  textAlign: "right" }}>Qty</th>
+            <th style={{ ...th, width: "5%",  textAlign: "center" }}>#</th>
+            <th style={{ ...th, width: "52%" }}>Description</th>
+            <th style={{ ...th, width: "10%", textAlign: "right" }}>Qty</th>
             <th style={{ ...th, width: "16%", textAlign: "right" }}>Rate ({q.currency})</th>
-            <th style={{ ...th, width: "12%", textAlign: "right" }}>Weight (kg)</th>
-            <th style={{ ...th, width: "15%", textAlign: "right" }}>Amount ({q.currency})</th>
+            <th style={{ ...th, width: "17%", textAlign: "right" }}>Amount ({q.currency})</th>
           </tr>
         </thead>
         <tbody>
@@ -342,9 +346,6 @@ function QuotationPreview({ q, totalWeightKg, websites }: { q: QuotationData; to
               <td style={td}>{item.description || <span style={{ color: "#bbb" }}>—</span>}</td>
               <td style={{ ...td, textAlign: "right" }}>{item.quantity}</td>
               <td style={{ ...td, textAlign: "right" }}>{fmtNum(item.rate)}</td>
-              <td style={{ ...td, textAlign: "right", color: "#1a7c5e" }}>
-                {item.unitWeightKg != null ? (item.unitWeightKg * item.quantity).toFixed(3) : "—"}
-              </td>
               <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{fmtNum(item.quantity * item.rate)}</td>
             </tr>
           ))}
@@ -420,6 +421,8 @@ function QuotationPreview({ q, totalWeightKg, websites }: { q: QuotationData; to
       <div style={{ marginTop: 32, borderTop: "1px solid #e5e7eb", paddingTop: 8, textAlign: "center", color: "#aaa", fontSize: "7pt" }}>
         This is a computer-generated quotation — {q.fromName} · {q.fromEmail}
       </div>
+
+      </div>{/* end body padding wrapper */}
     </div>
   );
 }
