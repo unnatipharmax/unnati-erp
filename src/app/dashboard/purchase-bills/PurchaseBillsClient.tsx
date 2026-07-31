@@ -63,10 +63,10 @@ type SaveResult = {
 
 // ── Field component ─────────────────────────────────────────────────────────
 function Field({
-  label, value, onChange, type = "text", mono = false, placeholder,
+  label, value, onChange, type = "text", mono = false, placeholder, error,
 }: {
   label: string; value: string | number | null; onChange: (v: string) => void;
-  type?: string; mono?: boolean; placeholder?: string;
+  type?: string; mono?: boolean; placeholder?: string; error?: string | null;
 }) {
   return (
     <div>
@@ -78,10 +78,26 @@ function Field({
         value={value ?? ""}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder ?? `Enter ${label.toLowerCase()}`}
-        style={{ fontFamily: mono ? "monospace" : undefined, fontSize: "0.8rem", padding: "0.4rem 0.6rem" }}
+        style={{
+          fontFamily: mono ? "monospace" : undefined, fontSize: "0.8rem", padding: "0.4rem 0.6rem",
+          borderColor: error ? "#dc2626" : undefined,
+          boxShadow: error ? "0 0 0 1px #dc2626" : undefined,
+        }}
       />
+      {error && (
+        <div style={{ color: "#dc2626", fontSize: "0.68rem", marginTop: 3, fontWeight: 600 }}>{error}</div>
+      )}
     </div>
   );
+}
+
+// A pharma HSN code must be more than 4 digits (typically 6–8). Returns an
+// error string when the value is present but 4 digits or fewer, else null.
+function hsnError(hsn: string | null | undefined): string | null {
+  const digits = (hsn ?? "").replace(/\D/g, "");
+  if (digits.length === 0) return null;          // blank handled separately; don't nag here
+  if (digits.length <= 4) return "Edit HSN code — must be more than 4 digits";
+  return null;
 }
 
 // ── Product row ─────────────────────────────────────────────────────────────
@@ -114,7 +130,7 @@ function ProductRow({
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem", marginBottom: "0.5rem" }}>
         <Field label="Manufacturer / Brand" value={product.manufacturer} onChange={f("manufacturer")} />
-        <Field label="HSN Code"             value={product.hsn}          onChange={f("hsn")} mono />
+        <Field label="HSN Code"             value={product.hsn}          onChange={f("hsn")} mono error={hsnError(product.hsn)} />
         <Field label="Pack / Unit"          value={product.pack}         onChange={f("pack")} />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem", marginBottom: "0.5rem" }}>
@@ -262,6 +278,12 @@ export default function PurchaseBillsClient() {
 
   async function save(force = false) {
     if (!data) return;
+    // Block save if any item has an HSN of 4 digits or fewer — force a fix.
+    const badHsn = data.products.findIndex(p => hsnError(p.hsn) !== null);
+    if (badHsn !== -1) {
+      setSaveErr(`Item #${badHsn + 1}: HSN code must be more than 4 digits. Please edit it before saving.`);
+      return;
+    }
     setSaving(true); setSaveErr(""); if (force) setDup(null);
     const res  = await fetch("/api/purchase/save", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -525,7 +547,7 @@ export default function PurchaseBillsClient() {
                 </div>
               )}
 
-              <button onClick={() => save()} disabled={saving || data.products.length === 0 || !!dup} className="btn btn-primary" style={{ minWidth: 160 }}>
+              <button onClick={() => save()} disabled={saving || data.products.length === 0 || !!dup || data.products.some(p => hsnError(p.hsn) !== null)} className="btn btn-primary" style={{ minWidth: 160 }}>
                 {saving ? (
                   <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="animate-spin">
