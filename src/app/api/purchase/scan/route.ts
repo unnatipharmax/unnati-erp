@@ -47,7 +47,8 @@ Return exactly this structure:
       "igstAmount": numeric IGST rupee amount for this line or null,
       "quantity": numeric quantity ordered,
       "rate": numeric purchase rate per unit (excluding GST),
-      "discount": numeric discount percentage or null
+      "discount": "numeric discount PERCENTAGE for this line or null. Look in a column headed DISC / DISC% / DISCOUNT / SCHEME / DIS. IMPORTANT: if the bill shows the discount as a RUPEE AMOUNT (not a %), convert it to a percentage: discount% = round(discountAmount / grossLineAmount * 100, 2). If the discount is a bill-level total (in the summary/footer, e.g. a DISC total next to GROSS), and there is only one product line, apply that same discount to that line. Return the numeric percentage only, e.g. 4 or 10. null only if there is genuinely no discount anywhere on the bill.",
+      "discountAmount": "numeric discount RUPEE amount for this line if the bill prints one, else null"
     }
   ]
 }
@@ -65,7 +66,9 @@ Rules:
 - For GST: if bill shows CGST 2.5% + SGST 2.5%, set gstPercent=5, cgstPercent=2.5, sgstPercent=2.5
 - If bill shows IGST 5%, set gstPercent=5, igstPercent=5, cgstPercent=null, sgstPercent=null
 - Always extract the actual GST rupee amounts (cgstAmount, sgstAmount, igstAmount) from the bill
-- taxableAmount is the line amount before any GST is added`;
+- taxableAmount is the line amount before any GST is added
+- DISCOUNT: never leave discount null when the bill shows any DISC/DISCOUNT value. If it is a rupee amount, convert to a percentage of the gross line amount. A discount printed only in the summary/footer still applies — if there is a single product line, use it for that line.
+- Fill EVERY field you can see. Do not leave a field null just because it was hard to read — read it carefully. Only use null when the value is truly absent from the bill.`;
 
 export async function POST(req: Request) {
   const session = await getSession();
