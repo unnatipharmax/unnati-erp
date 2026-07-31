@@ -2699,6 +2699,61 @@ const lblInput = (width: number): React.CSSProperties => ({
   border: "1px solid #374151", borderRadius: 5, outline: "none",
 });
 
+// ── Net / Gross weight fields for the In-Packing stage ───────────────────────
+// Editable weight inputs shown on invoiced orders. Persists each value to the
+// order on blur (or Enter). The scale photo in the documents overlay can also
+// auto-fill these — this is the manual/editable counterpart.
+function PackingWeightFields({
+  orderId, initialNet, initialGross,
+}: {
+  orderId: string; initialNet: number | null; initialGross: number | null;
+}) {
+  const [net, setNet]     = useState(initialNet   != null ? String(initialNet)   : "");
+  const [gross, setGross] = useState(initialGross != null ? String(initialGross) : "");
+  const [savingKey, setSavingKey] = useState<"net" | "gross" | null>(null);
+  const [savedKey, setSavedKey]   = useState<"net" | "gross" | null>(null);
+
+  async function save(key: "net" | "gross", value: string) {
+    setSavingKey(key); setSavedKey(null);
+    try {
+      const payload = key === "net"
+        ? { netWeight: value === "" ? null : Number(value) }
+        : { grossWeight: value === "" ? null : Number(value) };
+      const res = await fetch(`/api/packaging/orders/${orderId}/weight`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) { setSavedKey(key); setTimeout(() => setSavedKey(null), 1500); }
+    } catch { /* ignore; user can retry */ }
+    setSavingKey(null);
+  }
+
+  const box: React.CSSProperties = { width: 92, fontSize: "0.82rem", padding: "0.3rem 0.5rem" };
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }} title="Weights print on the shipping documents">
+      <input
+        type="number" min="0" step="0.001" placeholder="Net Wt (kg)"
+        value={net}
+        onChange={e => setNet(e.target.value)}
+        onBlur={e => save("net", e.target.value)}
+        onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+        style={box}
+      />
+      <input
+        type="number" min="0" step="0.001" placeholder="Gross Wt (kg)"
+        value={gross}
+        onChange={e => setGross(e.target.value)}
+        onBlur={e => save("gross", e.target.value)}
+        onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+        style={box}
+      />
+      {savingKey && <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>saving…</span>}
+      {savedKey && !savingKey && <span style={{ fontSize: "0.72rem", color: "#047857", fontWeight: 700 }}>✓</span>}
+    </div>
+  );
+}
+
 // ── Inline weight-capture bar (used inside doc overlays) ─────────────────────
 // Lets the user upload a weighing-machine photo; AI reads the weight and the
 // parent passes it down to all document components via weightKg override.
@@ -3005,7 +3060,15 @@ function DocumentsOverlay({ order, onClose }: { order: Order; onClose: () => voi
         {/* ── Scale photo / weight capture bar ── */}
         <WeightCaptureBar
           currentWeight={order.netWeight}
-          onExtracted={kg => setWeightKg(kg)}
+          onExtracted={kg => {
+            setWeightKg(kg);
+            // Persist the scale-read weight so it's saved, not just previewed.
+            fetch(`/api/packaging/orders/${order.id}/weight`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ netWeight: kg, grossWeight: kg }),
+            }).catch(() => {});
+          }}
         />
 
         {/* ── CN22 label fields ── */}
@@ -3585,6 +3648,12 @@ function OrderCard({
                       🔗 Combined ×{combinedSiblings.length}
                     </span>
                   )}
+                  {/* Net / Gross weight — captured here, in the In-Packing stage */}
+                  <PackingWeightFields
+                    orderId={order.id}
+                    initialNet={order.netWeight}
+                    initialGross={order.grossWeight}
+                  />
                   <button
                     onClick={() => isCombined && onViewCombinedDocs ? onViewCombinedDocs(combinedSiblings) : onViewDocs(order)}
                     className="btn btn-primary btn-sm"
@@ -3609,22 +3678,8 @@ function OrderCard({
                 placeholder="Tracking number…"
                 style={{ width: 160, fontSize: "0.82rem", padding: "0.3rem 0.6rem" }}
               />
-              <input
-                type="number"
-                value={netWeight}
-                onChange={e => setNetWeight(e.target.value)}
-                placeholder="Net Wt (kg)"
-                min="0" step="0.01"
-                style={{ width: 100, fontSize: "0.82rem", padding: "0.3rem 0.6rem" }}
-              />
-              <input
-                type="number"
-                value={grossWeight}
-                onChange={e => setGrossWeight(e.target.value)}
-                placeholder="Gross Wt (kg)"
-                min="0" step="0.01"
-                style={{ width: 110, fontSize: "0.82rem", padding: "0.3rem 0.6rem" }}
-              />
+              {/* Weights are captured in the In-Packing stage (after invoicing),
+                  next to the scale photo — not here. */}
               <button
                 onClick={generateInvoice}
                 disabled={generating || !trackingNo.trim()}
