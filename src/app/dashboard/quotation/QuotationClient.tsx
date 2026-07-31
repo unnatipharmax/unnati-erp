@@ -720,8 +720,11 @@ export default function QuotationClient() {
         @media print {
           body * { visibility: hidden !important; }
           #quotation-preview, #quotation-preview * { visibility: visible !important; }
-          /* position: fixed pins to the page (not a positioned/transformed ancestor),
-             so the preview can't land off-page and print blank. */
+          /* Undo the on-screen scale(0.72) + overflow so the preview renders at
+             full size on the page (a transform would trap position:fixed and the
+             scale/overflow-hidden was clipping the print → blank page). */
+          .qp-scale { transform: none !important; width: 100% !important; pointer-events: auto !important; }
+          .qp-preview-card { overflow: visible !important; border: none !important; box-shadow: none !important; }
           #quotation-preview {
             visibility: visible !important;
             position: fixed !important;
@@ -863,13 +866,14 @@ export default function QuotationClient() {
                         style={{ ...iS, fontSize: "0.8rem" }}
                       >
                         <option value="">— Free text / no product —</option>
+                        <option value="__add_new__">＋ Add new product…</option>
+                        <option disabled>──────────────</option>
                         {products.map(p => (
                           <option key={p.id} value={p.id}>
                             {p.name}{p.unitType ? ` (${p.unitType})` : ""}
                             {resolveUnitWeight(p) != null ? ` · ${resolveUnitWeight(p)!.toFixed(5)} kg/unit` : ""}
                           </option>
                         ))}
-                        <option value="__add_new__">＋ Add new product…</option>
                       </select>
                     </div>
 
@@ -986,11 +990,13 @@ export default function QuotationClient() {
           </div>
 
           {/* Live Preview */}
-          <div style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}>
+          <div className="qp-preview-card" style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}>
             <div style={{ background: "var(--surface-1)", padding: "8px 16px", fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600, borderBottom: "1px solid var(--border)" }}>
               PREVIEW (live)
             </div>
-            <div style={{ transform: "scale(0.72)", transformOrigin: "top left", width: "138.9%", pointerEvents: "none" }}>
+            {/* The on-screen scale(0.72) makes fixed-positioned children resolve to
+                this wrapper; print CSS resets it so the preview lands on the page. */}
+            <div className="qp-scale" style={{ transform: "scale(0.72)", transformOrigin: "top left", width: "138.9%", pointerEvents: "none" }}>
               <QuotationPreview q={q} totalWeightKg={totalWeightKg} websites={companyWebsites} />
             </div>
           </div>
