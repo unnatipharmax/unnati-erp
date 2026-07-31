@@ -258,12 +258,15 @@ function QuotationPreview({ q, totalWeightKg, websites }: { q: QuotationData; to
   const grandTotal  = subtotal + extraTotal;
 
   const accentBlue = "#1a3c6e";
+  // Light table header with a strong bottom rule — reads clean and prints correctly
+  // even when the browser's "Background graphics" option is off.
   const th: React.CSSProperties = {
-    background: accentBlue, color: "#fff", fontWeight: 700, textAlign: "left",
-    padding: "8px 10px", fontSize: "8.5pt", border: "1px solid #c8d6e8",
+    background: "#f2f6fb", color: accentBlue, fontWeight: 700, textAlign: "left",
+    padding: "8px 10px", fontSize: "8pt", textTransform: "uppercase", letterSpacing: "0.03em",
+    borderBottom: `2px solid ${accentBlue}`, borderTop: "1px solid #dde3ed",
   };
   const td: React.CSSProperties = {
-    border: "1px solid #dde3ed", padding: "7px 10px", fontSize: "8.5pt", verticalAlign: "top",
+    borderBottom: "1px solid #eef1f6", padding: "8px 10px", fontSize: "8.5pt", verticalAlign: "top",
   };
 
   const hasBank = q.bankName || q.bankAccount || q.bankIfsc || q.bankBranch;
@@ -271,47 +274,47 @@ function QuotationPreview({ q, totalWeightKg, websites }: { q: QuotationData; to
   return (
     <div id="quotation-preview" style={{ background: "#fff", color: "#1a1a1a", fontFamily: "Arial, sans-serif", fontSize: "9pt", minHeight: 900 }}>
 
-      {/* ── Header band (dark) ── */}
-      <div style={{
-        display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16,
-        background: accentBlue, color: "#fff", padding: "18px 26px",
-      }}>
+      {/* Body padding wrapper */}
+      <div style={{ padding: "26px 30px 28px" }}>
+
+      {/* ── Header (light, ruled — prints without background graphics) ── */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
         {/* Left: Logo + Company */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
-          <div style={{ background: "#fff", borderRadius: 8, padding: 4, flexShrink: 0, display: "flex" }}>
-            <CompanyLogo name={q.fromName || "Company"} logoB64={q.fromLogo} size={54} radius={5} />
-          </div>
+          <CompanyLogo name={q.fromName || "Company"} logoB64={q.fromLogo} size={62} radius={8} />
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: "15pt", letterSpacing: "0.01em", lineHeight: 1.1 }}>{q.fromName}</div>
-            <div style={{ fontSize: "7.5pt", color: "#c7d6ec", marginTop: 3, letterSpacing: "0.04em", textTransform: "uppercase" }}>Pharmaceutical Distributor &amp; Exporter</div>
-            {q.fromEmail && <div style={{ fontSize: "7.5pt", color: "#c7d6ec", marginTop: 3 }}>{q.fromEmail}{q.fromPhone ? `  ·  ${q.fromPhone}` : ""}</div>}
+            <div style={{ fontWeight: 800, fontSize: "16pt", color: accentBlue, letterSpacing: "0.02em", lineHeight: 1.05, textTransform: "uppercase" }}>{q.fromName}</div>
+            <div style={{ fontSize: "7pt", color: "#8a94a6", marginTop: 4, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 600 }}>Pharmaceutical Distributor &amp; Exporter</div>
+            {(q.fromEmail || q.fromPhone) && (
+              <div style={{ fontSize: "7.5pt", color: "#666", marginTop: 4 }}>
+                {q.fromEmail}{q.fromEmail && q.fromPhone ? "  ·  " : ""}{q.fromPhone}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Right: PROFORMA INVOICE title + meta */}
         <div style={{ textAlign: "right", flexShrink: 0 }}>
-          <div style={{ fontSize: "15pt", fontWeight: 800, letterSpacing: "0.12em", lineHeight: 1 }}>PROFORMA INVOICE</div>
-          <table style={{ marginTop: 10, marginLeft: "auto", borderCollapse: "collapse" }}>
+          <div style={{ fontSize: "17pt", fontWeight: 800, letterSpacing: "0.18em", lineHeight: 1, color: "#c3cbd8" }}>PROFORMA INVOICE</div>
+          <table style={{ marginTop: 12, marginLeft: "auto", borderCollapse: "collapse", minWidth: 190 }}>
             <tbody>
-              <tr>
-                <td style={{ padding: "2px 10px 2px 0", color: "#c7d6ec", fontSize: "7.5pt", textAlign: "right" }}>Quote No.</td>
-                <td style={{ padding: "2px 0", fontFamily: "monospace", fontWeight: 700, fontSize: "9pt", textAlign: "right" }}>{q.quoteNo && q.quoteNo !== "Q-draft" ? q.quoteNo : "(auto)"}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: "2px 10px 2px 0", color: "#c7d6ec", fontSize: "7.5pt", textAlign: "right" }}>Date</td>
-                <td style={{ padding: "2px 0", fontSize: "8pt", textAlign: "right" }}>{new Date(q.quoteDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: "2px 10px 2px 0", color: "#c7d6ec", fontSize: "7.5pt", textAlign: "right" }}>Valid Until</td>
-                <td style={{ padding: "2px 0", fontSize: "8pt", textAlign: "right" }}>{new Date(q.validUntil).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
-              </tr>
+              {[
+                ["Quote No.", q.quoteNo && q.quoteNo !== "Q-draft" ? q.quoteNo : "(auto)", true],
+                ["Date", new Date(q.quoteDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }), false],
+                ["Valid Until", new Date(q.validUntil).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }), false],
+              ].map(([label, val, mono], i) => (
+                <tr key={label as string} style={{ borderTop: i === 0 ? "none" : "1px solid #e6ecf5" }}>
+                  <td style={{ padding: "4px 12px 4px 0", color: "#8a94a6", fontSize: "7.5pt", textAlign: "right", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</td>
+                  <td style={{ padding: "4px 0", fontFamily: mono ? "monospace" : undefined, fontWeight: 700, fontSize: mono ? "10pt" : "8.5pt", textAlign: "right", color: mono ? accentBlue : "#222" }}>{val}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Body padding wrapper */}
-      <div style={{ padding: "22px 26px 28px" }}>
+      {/* Accent rule under header */}
+      <div style={{ height: 3, background: accentBlue, borderRadius: 2, margin: "16px 0 20px" }} />
 
       {/* ── From + Bill To ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 18 }}>
@@ -353,28 +356,31 @@ function QuotationPreview({ q, totalWeightKg, websites }: { q: QuotationData; to
       </table>
 
       {/* ── Totals block ── */}
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 20 }}>
-        <table style={{ borderCollapse: "collapse", minWidth: 300 }}>
-          <tbody>
-            <tr>
-              <td style={{ padding: "5px 16px 5px 0", color: "#555", borderTop: "1px solid #dde3ed" }}>Subtotal</td>
-              <td style={{ padding: "5px 0", textAlign: "right", fontFamily: "monospace", borderTop: "1px solid #dde3ed" }}>{fmtCur(subtotal, q.currency)}</td>
-            </tr>
-            {q.extraCharges.filter(c => c.label || c.amount > 0).map(c => (
-              <tr key={c.id}>
-                <td style={{ padding: "4px 16px 4px 0", color: "#444" }}>{c.label || "Additional Charge"}</td>
-                <td style={{ padding: "4px 0", textAlign: "right", fontFamily: "monospace" }}>{fmtCur(c.amount, q.currency)}</td>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 22 }}>
+        <div style={{ minWidth: 320 }}>
+          <table style={{ borderCollapse: "collapse", width: "100%" }}>
+            <tbody>
+              <tr>
+                <td style={{ padding: "6px 16px 6px 0", color: "#555", fontSize: "8.5pt" }}>Subtotal</td>
+                <td style={{ padding: "6px 0", textAlign: "right", fontFamily: "monospace", fontSize: "8.5pt" }}>{fmtCur(subtotal, q.currency)}</td>
               </tr>
-            ))}
-            <tr>
-              <td colSpan={2} style={{ borderTop: `2px solid ${accentBlue}`, padding: "6px 0 0" }} />
-            </tr>
-            <tr>
-              <td style={{ padding: "4px 16px 4px 0", fontWeight: 700, fontSize: "12pt", color: accentBlue }}>GRAND TOTAL</td>
-              <td style={{ padding: "4px 0", textAlign: "right", fontWeight: 700, fontSize: "12pt", color: accentBlue, fontFamily: "monospace" }}>{fmtCur(grandTotal, q.currency)}</td>
-            </tr>
-          </tbody>
-        </table>
+              {q.extraCharges.filter(c => c.label || c.amount > 0).map(c => (
+                <tr key={c.id}>
+                  <td style={{ padding: "4px 16px 4px 0", color: "#555", fontSize: "8.5pt" }}>{c.label || "Additional Charge"}</td>
+                  <td style={{ padding: "4px 0", textAlign: "right", fontFamily: "monospace", fontSize: "8.5pt" }}>{fmtCur(c.amount, q.currency)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {/* GRAND TOTAL bar */}
+          <div style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            background: accentBlue, color: "#fff", borderRadius: 6, padding: "9px 14px", marginTop: 8,
+          }}>
+            <span style={{ fontWeight: 700, fontSize: "10pt", letterSpacing: "0.04em" }}>GRAND TOTAL</span>
+            <span style={{ fontWeight: 800, fontSize: "12pt", fontFamily: "monospace" }}>{fmtCur(grandTotal, q.currency)}</span>
+          </div>
+        </div>
       </div>
 
       {/* ── Bank Details + Notes/Terms ── */}
@@ -723,6 +729,12 @@ export default function QuotationClient() {
         @media print {
           body * { visibility: hidden !important; }
           #quotation-preview, #quotation-preview * { visibility: visible !important; }
+          /* Force backgrounds/colors to print even when the browser's "Background
+             graphics" checkbox is off, so the accent rules & table header render. */
+          #quotation-preview, #quotation-preview * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
           /* Undo the on-screen scale(0.72) + card chrome so the quote prints full size. */
           .qp-scale { transform: none !important; width: 100% !important; pointer-events: auto !important; }
           .qp-preview-card { overflow: visible !important; border: none !important; box-shadow: none !important; border-radius: 0 !important; }
