@@ -729,9 +729,13 @@ export default function QuotationClient() {
             visibility: visible !important;
             position: fixed !important;
             top: 0 !important; left: 0 !important; right: 0 !important; width: 100% !important;
-            margin: 0 !important; padding: 12mm 15mm !important;
+            /* Only take the height the content needs — the on-screen minHeight:900px
+               pushed a near-empty second page. */
+            min-height: 0 !important; height: auto !important;
+            margin: 0 !important; padding: 10mm 14mm !important;
             background: #fff !important; z-index: 2147483647 !important;
           }
+          #quotation-preview > *:last-child { margin-bottom: 0 !important; }
           @page { size: A4 portrait; margin: 0; }
         }
       `}</style>
