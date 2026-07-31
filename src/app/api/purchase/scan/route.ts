@@ -29,13 +29,13 @@ Return exactly this structure:
   },
   "products": [
     {
-      "name": "product/medicine name (brand name only, no composition here)",
-      "manufacturer": "manufacturing company name",
+      "name": "the FULL product/brand name for this line, read left-to-right in the PRODUCT column exactly as printed — include EVERY word of the name, not just part of it (e.g. 'MORR F 5% SOLUTION', not 'F 5% SOLUTION'). Do not drop the first word or any leading brand word. Include strength/percentage if it is part of the printed name. Do NOT include composition/salt details.",
+      "manufacturer": "manufacturing company / MFR name (often a short code in a column headed MFR / MFG / COMPANY, e.g. 'INT', 'LUPIN'). Read it exactly.",
       "hsn": "HSN / HSN CODE / HSN-SAC number for this line — usually a 4 to 8 digit number (pharma is commonly 3003, 3004, or 30049099). Look in a column headed HSN / HSN CODE / HSN-SAC / TARIFF, or printed next to the product name. Read the digits exactly. null only if truly not on the bill.",
       "pack": "pack size e.g. 10TAB, 1VIAL, 30ML",
       "batchNo": "batch number",
-      "mfgDate": "mfg date as Mon-YY e.g. Jan-25",
-      "expDate": "expiry date as Mon-YY e.g. Dec-27",
+      "mfgDate": "manufacturing date as Mon-YY e.g. Jan-25, ONLY if the bill has a distinct MFG/MFG DATE/M.DATE column or value. Most pharma purchase bills print ONLY an expiry (EXP) and NO manufacturing date — in that case return null. NEVER invent, guess, or derive a mfg date from the expiry. If unsure, return null.",
+      "expDate": "expiry date as Mon-YY e.g. Dec-27, from the EXP / EXPIRY column. This is the ONLY date column on most bills.",
       "mrp": numeric MRP per unit or null,
       "gstPercent": numeric total GST percentage or null (e.g. 5 or 18),
       "cgstPercent": numeric CGST percentage or null (e.g. 2.5 or 9),
@@ -68,7 +68,9 @@ Rules:
 - Always extract the actual GST rupee amounts (cgstAmount, sgstAmount, igstAmount) from the bill
 - taxableAmount is the line amount before any GST is added
 - DISCOUNT: never leave discount null when the bill shows any DISC/DISCOUNT value. If it is a rupee amount, convert to a percentage of the gross line amount. A discount printed only in the summary/footer still applies — if there is a single product line, use it for that line.
-- Fill EVERY field you can see. Do not leave a field null just because it was hard to read — read it carefully. Only use null when the value is truly absent from the bill.`;
+- Fill every field you can actually READ on the bill. Read carefully before giving up on a field.
+- NEVER INVENT DATA. If a value is not printed on the bill, return null — do NOT guess, estimate, or derive it from another field. This is critical for mfgDate: most bills have only an expiry date, so mfgDate must be null unless a real MFG date is printed.
+- PRODUCT NAME: capture the WHOLE name in the product column including the first/leading word (e.g. "MORR F 5% SOLUTION", never just "F 5% SOLUTION"). Do not truncate.`;
 
 export async function POST(req: Request) {
   const session = await getSession();

@@ -28,6 +28,7 @@ type SavePayload = {
     totalAmount?: number | null;
     documentType?: PurchaseDocumentType | null;
   };
+  force?: boolean;   // set true to save even when a matching invoice number already exists
   products: Array<{
     id?: string;
     name: string;
@@ -73,6 +74,39 @@ export async function POST(req: Request) {
   }
 
   const companyId = await getActiveCompanyId();
+
+  // Duplicate-invoice guard: if a bill with this invoice number already exists
+  // for this company (same document type), warn and let the user confirm with
+  // force:true before saving a second copy. Skipped when no invoice number.
+  if (!payload.force && bill?.invoiceNo?.trim()) {
+    const dup = await prisma.purchaseBill.findFirst({
+      where: {
+        companyId,
+        documentType,
+        invoiceNo: { equals: bill.invoiceNo.trim(), mode: "insensitive" },
+      },
+      select: {
+        id: true,
+        invoiceNo: true,
+        invoiceDate: true,
+        totalAmount: true,
+        party: { select: { name: true } },
+      },
+    });
+    if (dup) {
+      return NextResponse.json(
+        {
+          duplicate: {
+            invoiceNo: dup.invoiceNo,
+            partyName: dup.party?.name ?? null,
+            invoiceDate: dup.invoiceDate ? dup.invoiceDate.toISOString().slice(0, 10) : null,
+            totalAmount: dup.totalAmount != null ? Number(dup.totalAmount) : null,
+          },
+        },
+        { status: 409 },
+      );
+    }
+  }
 
   try {
     let partyRecord: Awaited<ReturnType<typeof prisma.party.create>>;

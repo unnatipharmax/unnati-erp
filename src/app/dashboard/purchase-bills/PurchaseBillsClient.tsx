@@ -128,14 +128,20 @@ function ProductRow({
         <Field label="Discount %"  value={product.discount}   onChange={f("discount")}   type="number" />
         <Field label="GST %"       value={product.gstPercent} onChange={f("gstPercent")} type="number" />
       </div>
-      {product.rate > 0 && product.quantity > 0 && (
-        <div style={{ marginTop: "0.4rem", fontSize: "0.72rem", color: "var(--text-secondary)", display: "flex", gap: "1rem" }}>
-          <span>Line Total: <strong style={{ color: "var(--text-primary)" }}>₹{(product.rate * product.quantity).toFixed(2)}</strong></span>
-          {product.gstPercent && (
-            <span>With GST: <strong style={{ color: "#047857" }}>₹{(product.rate * product.quantity * (1 + product.gstPercent / 100)).toFixed(2)}</strong></span>
-          )}
-        </div>
-      )}
+      {product.rate > 0 && product.quantity > 0 && (() => {
+        // Taxable = gross less discount%, then GST is charged on the taxable value.
+        const gross   = product.rate * product.quantity;
+        const taxable = gross * (1 - (product.discount || 0) / 100);
+        const withGst = taxable * (1 + (product.gstPercent || 0) / 100);
+        return (
+          <div style={{ marginTop: "0.4rem", fontSize: "0.72rem", color: "var(--text-secondary)", display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+            <span>Line Total: <strong style={{ color: "var(--text-primary)" }}>₹{taxable.toFixed(2)}</strong></span>
+            {product.gstPercent ? (
+              <span>With GST: <strong style={{ color: "#047857" }}>₹{withGst.toFixed(2)}</strong></span>
+            ) : null}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -161,6 +167,7 @@ export default function PurchaseBillsClient() {
   const [saving, setSaving]     = useState(false);
   const [saveErr, setSaveErr]   = useState("");
   const [saved, setSaved]       = useState<SaveResult | null>(null);
+  const [dup, setDup]           = useState<{ invoiceNo: string | null; partyName: string | null; invoiceDate: string | null; totalAmount: number | null } | null>(null);
 
   function handleFile(file: File) {
     if (!file) return;
@@ -253,16 +260,20 @@ export default function PurchaseBillsClient() {
     setSaved(null); setScanErr(""); setSaveErr("");
   }
 
-  async function save() {
+  async function save(force = false) {
     if (!data) return;
-    setSaving(true); setSaveErr("");
+    setSaving(true); setSaveErr(""); if (force) setDup(null);
     const res  = await fetch("/api/purchase/save", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, force }),
     });
     const json = await res.json();
+    // 409 = an invoice with this number already exists; ask to confirm.
+    if (res.status === 409 && json?.duplicate) {
+      setDup(json.duplicate); setSaving(false); return;
+    }
     if (!res.ok) { setSaveErr(json?.error || "Save failed"); setSaving(false); return; }
-    setSaved(json.result);
+    setSaved(json.result); setDup(null);
     setSaving(false);
   }
 
@@ -437,6 +448,9 @@ export default function PurchaseBillsClient() {
                   <Field label="Supplier Name *" value={data.party.name}      onChange={v => setParty("name", v)} />
                   <Field label="GST Number"       value={data.party.gstNumber} onChange={v => setParty("gstNumber", v)} mono />
                 </div>
+                <div style={{ marginBottom: "0.5rem" }}>
+                  <Field label="Drug License No" value={data.party.drugLicenseNumber} onChange={v => setParty("drugLicenseNumber", v)} mono />
+                </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
                   <Field label="Phone"   value={data.party.phone}   onChange={v => setParty("phone", v)} />
                   <Field label="Email"   value={data.party.email}   onChange={v => setParty("email", v)} />
@@ -483,7 +497,35 @@ export default function PurchaseBillsClient() {
                 <div className="alert alert-error" style={{ marginBottom: "0.75rem", fontSize: "0.8rem" }}>{saveErr}</div>
               )}
 
-              <button onClick={save} disabled={saving || data.products.length === 0} className="btn btn-primary" style={{ minWidth: 160 }}>
+              {/* Duplicate invoice warning — asks the user to confirm before saving a second copy */}
+              {dup && (
+                <div style={{
+                  marginBottom: "0.75rem", padding: "0.85rem 1rem",
+                  borderRadius: 10, border: "1px solid #f59e0b",
+                  background: "rgba(245,158,11,0.08)",
+                }}>
+                  <div style={{ fontWeight: 700, color: "#b45309", fontSize: "0.85rem", marginBottom: 4 }}>
+                    ⚠ This invoice number already exists
+                  </div>
+                  <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginBottom: "0.7rem" }}>
+                    A bill with invoice no. <strong style={{ fontFamily: "monospace" }}>{dup.invoiceNo}</strong>
+                    {dup.partyName ? <> from <strong>{dup.partyName}</strong></> : null}
+                    {dup.invoiceDate ? <> dated {dup.invoiceDate}</> : null}
+                    {dup.totalAmount != null ? <> (₹{dup.totalAmount.toFixed(2)})</> : null}
+                    {" "}is already saved. Do you still want to save this one?
+                  </div>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <button onClick={() => save(true)} disabled={saving} className="btn btn-primary" style={{ fontSize: "0.8rem" }}>
+                      {saving ? "Saving…" : "Yes, save anyway"}
+                    </button>
+                    <button onClick={() => setDup(null)} disabled={saving} className="btn btn-secondary" style={{ fontSize: "0.8rem" }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <button onClick={() => save()} disabled={saving || data.products.length === 0 || !!dup} className="btn btn-primary" style={{ minWidth: 160 }}>
                 {saving ? (
                   <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="animate-spin">
