@@ -67,12 +67,32 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { name, manufacturer, hsn, pack, mrp, gstPercent,
           composition, batchNo, mfgDate, expDate,
-          minMargin, maxMargin, qty, unitType, unitWeightKg, groupId } = body;
+          minMargin, maxMargin, qty, unitType, unitWeightKg, groupId, force } = body;
 
   if (!name?.trim())
     return NextResponse.json({ error: "Product name is required" }, { status: 400 });
 
   const companyId = await getActiveCompanyId();
+
+  // Duplicate guard: unless the caller confirms with force:true, look for an
+  // existing product whose name matches after normalizing case/spaces/punctuation
+  // (so "HORR F", "HORRF", "horr-f" all collide). If found, return the candidates
+  // and let the client ask "is this the same product?".
+  if (!force) {
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const target = norm(name);
+    const existing = await prisma.product.findMany({
+      where: { companyId, isActive: true },
+      select: { id: true, name: true, manufacturer: true, pack: true, hsn: true },
+    });
+    const similar = existing.filter(p => {
+      const pn = norm(p.name);
+      return pn === target || pn.includes(target) || target.includes(pn);
+    }).slice(0, 5);
+    if (similar.length > 0) {
+      return NextResponse.json({ similar }, { status: 409 });
+    }
+  }
 
   try {
     const product = await prisma.product.create({

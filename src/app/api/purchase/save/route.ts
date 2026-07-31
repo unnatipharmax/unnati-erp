@@ -162,13 +162,18 @@ export async function POST(req: Request) {
         });
         savedProducts.push({ id: productRecord.id, name: productRecord.name, isNew: false });
       } else {
-        const existing = await prisma.product.findFirst({
-          where: {
-            name: { equals: product.name.trim(), mode: "insensitive" },
-            isActive: true,
-            companyId,
-          },
+        // Match to an existing product by NORMALIZED name (case/space/punctuation
+        // insensitive) so a re-scanned "HORR F" reuses "HORRF" instead of creating
+        // a duplicate. Exact match is tried first, then normalized.
+        let existing = await prisma.product.findFirst({
+          where: { name: { equals: product.name.trim(), mode: "insensitive" }, isActive: true, companyId },
         });
+        if (!existing) {
+          const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+          const target = norm(product.name);
+          const candidates = await prisma.product.findMany({ where: { isActive: true, companyId } });
+          existing = candidates.find(c => norm(c.name) === target) ?? null;
+        }
 
         if (existing) {
           productRecord = await prisma.product.update({

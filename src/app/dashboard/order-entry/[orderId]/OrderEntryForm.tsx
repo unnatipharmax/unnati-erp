@@ -159,6 +159,8 @@ function AddProductModal({ onClose, onAdded }: { onClose: () => void; onAdded: (
   const [loading, setLoading] = useState(false);
   const [err, setErr]         = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
+  // Possible duplicates returned by the API — user picks "use existing" or "create anyway".
+  const [similar, setSimilar] = useState<Array<{ id: string; name: string; manufacturer: string | null; pack: string | null; hsn: string | null }>>([]);
 
   useEffect(() => { const t = requestAnimationFrame(() => setVisible(true)); return () => cancelAnimationFrame(t); }, []);
 
@@ -171,7 +173,7 @@ function AddProductModal({ onClose, onAdded }: { onClose: () => void; onAdded: (
     return () => window.removeEventListener("keydown", fn);
   }, []);
 
-  async function handleSave() {
+  async function handleSave(force = false) {
     if (!form.name.trim()) { setErr("Product name is required"); return; }
     setLoading(true); setErr(null);
     const res  = await fetch("/api/products", {
@@ -183,11 +185,15 @@ function AddProductModal({ onClose, onAdded }: { onClose: () => void; onAdded: (
         pack:         form.pack.trim()          || null,
         mrp:          form.mrp        ? Number(form.mrp)        : null,
         gstPercent:   form.gstPercent ? Number(form.gstPercent) : null,
+        force,
       }),
     });
     const data = await res.json();
+    // 409 → possible duplicate(s); ask the user before creating.
+    if (res.status === 409 && Array.isArray(data?.similar)) {
+      setSimilar(data.similar); setLoading(false); return;
+    }
     if (!res.ok) { setErr(data?.error || "Failed to add product"); setLoading(false); return; }
-    // API returns { product: { id, name, ... } }
     const created = data?.product ?? data;
     if (!created?.id || !created?.name) { setErr("Product saved but response was invalid — refresh and retry."); setLoading(false); return; }
     onAdded({ id: created.id, name: created.name });
@@ -241,12 +247,45 @@ function AddProductModal({ onClose, onAdded }: { onClose: () => void; onAdded: (
             <Field label="Product Name *">
               <input
                 autoFocus value={form.name}
-                onChange={e => set("name", e.target.value)}
+                onChange={e => { set("name", e.target.value); if (similar.length) setSimilar([]); }}
                 onKeyDown={e => { if (e.key === "Enter" && !loading) handleSave(); }}
                 placeholder="e.g. TADALAFIL 20MG"
                 className={inputCls}
               />
             </Field>
+
+            {/* Possible duplicate — ask before creating a second record */}
+            {similar.length > 0 && (
+              <div className="rounded-xl border border-amber-400 bg-amber-50 p-3">
+                <div className="text-sm font-semibold text-amber-800 mb-1.5">
+                  Did you mean one of these? A similar product already exists.
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {similar.map(s => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => onAdded({ id: s.id, name: s.name })}
+                      className="w-full text-left px-3 py-2 rounded-lg bg-white border border-amber-300 hover:bg-amber-100 transition-colors"
+                    >
+                      <span className="font-semibold text-slate-800">{s.name}</span>
+                      <span className="text-xs text-slate-500 ml-2">
+                        {[s.manufacturer, s.pack, s.hsn && `HSN ${s.hsn}`].filter(Boolean).join(" · ")}
+                      </span>
+                      <span className="text-xs text-amber-700 font-medium ml-2">→ Use this</span>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleSave(true)}
+                  disabled={loading}
+                  className="mt-2 text-xs font-semibold text-slate-600 underline underline-offset-2 hover:text-slate-900"
+                >
+                  No, these are different — create &ldquo;{form.name.trim()}&rdquo; as a new product
+                </button>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="Manufacturer">
@@ -281,7 +320,7 @@ function AddProductModal({ onClose, onAdded }: { onClose: () => void; onAdded: (
           {/* Footer */}
           <div className="flex gap-2.5 px-6 pb-5">
             <button
-              onClick={handleSave} disabled={loading}
+              onClick={() => handleSave()} disabled={loading}
               className={[
                 "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150",
                 loading

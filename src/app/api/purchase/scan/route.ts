@@ -31,7 +31,7 @@ Return exactly this structure:
     {
       "name": "product/medicine name (brand name only, no composition here)",
       "manufacturer": "manufacturing company name",
-      "hsn": "HSN code if visible",
+      "hsn": "HSN / HSN CODE / HSN-SAC number for this line — usually a 4 to 8 digit number (pharma is commonly 3003, 3004, or 30049099). Look in a column headed HSN / HSN CODE / HSN-SAC / TARIFF, or printed next to the product name. Read the digits exactly. null only if truly not on the bill.",
       "pack": "pack size e.g. 10TAB, 1VIAL, 30ML",
       "batchNo": "batch number",
       "mfgDate": "mfg date as Mon-YY e.g. Jan-25",
